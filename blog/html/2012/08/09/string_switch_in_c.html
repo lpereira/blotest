@@ -1,0 +1,177 @@
+<!DOCTYPE html><!--[if lt IE 7]>      <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width">
+        <title>String switch in C &mdash; Leandro Pereira</title>
+            <link rel="stylesheet" href="../../../_static/normalize.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/sphinx.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/main.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/flat.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+            <link rel="stylesheet" href="../../../_static/webfont.css" type="text/css">
+        <link rel="shortcut icon" href="../../../_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
+        <script src="../../../_static/vendor/modernizr-2.6.2.min.js"></script>
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+        <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
+        <script src="../../../_static/plugins.js"></script>
+        <script src="../../../_static/main.js"></script>
+        <link rel="next" title="FOSDEM 2012" href="../../02/13/fosdem_2012.html" /><link rel="prev" title="Hash trie" href="../10/hash_trie.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.2.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+            // Scroll to content if on small screen
+            if (screen.width < 480)
+            {
+                $(document).scrollTop(document.getElementsByTagName("article")[0].offsetTop - 44);
+            }
+        });
+    </script></head>
+    <body>
+        <!--[if lt IE 7]>
+            <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
+        <![endif]-->
+
+      <div id="container"><header>
+            <hgroup>
+              <h1><a href="../../../index.html">Leandro Pereira</a></h1><h2>Geek in training</h2></hgroup>
+          </header>
+      <nav>
+            <ul><li class="main-nav">
+                  <a href="../../../index.html">Home</a>
+                </li>
+              </ul>
+          </nav><div class="main-container"><div class="main wrapper clearfix"><article><div class="timestamp postmeta">
+            <span>09 August 2012</span>
+        </div>
+    <div class="section" id="string-switch-in-c">
+<h1>String switch in C</h1>
+<p>C’s <span class="docutils literal"><span class="pre">switch</span></span> statement is very powerful. However, it can’t be used with
+strings, only with constant integral types. This is understandable, since
+strings in C are merely arrays – they’re not first-class citizens.</p>
+<p>There are cases where such statement would be useful for strings. Here’s a
+trick I’m employing in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a> to avoid calling the <span class="docutils literal"><span class="pre">strcmp</span></span> family of
+functions in some hot paths. This exploits the notion that strings are just
+an array of bytes – and by casting them to a pointer to a 32-bit integer, and
+dereferencing this pointer, we’ll be able to perform a switch statement on
+very small strings (such as file extensions, which are usually comprised of
+four characters, including the dot).</p>
+<p>C also supports multicharacters integral constants. However, because of
+endianess concerns, GCC warns by default when <span class="docutils literal"><span class="pre">-Wall</span> <span class="pre">-Wextra</span></span> is used with
+these constants. My solution was to just use a macro in conjuntion with an
+<span class="docutils literal"><span class="pre">enum</span></span>, to create the constant integral types expected by the compiler.</p>
+<p>The code below, copied directly from <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>, illustrates an usage of this
+<span class="docutils literal"><span class="pre">STRING_SWITCH</span></span> statement:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="cp">#define STRING_SWITCH_L(s) switch (*((int32_t *)(s)) | 0x20202020)</span>
+<span class="cp">#define MULTICHAR_CONSTANT(a,b,c,d) ((int32_t)((a) | (b) &lt;&lt; 8 | (c)</span>
+<span class="o">&lt;&lt;</span> <span class="mi">16</span> <span class="o">|</span> <span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="mi">24</span><span class="p">))</span>
+
+<span class="k">enum</span> <span class="p">{</span>
+    <span class="n">EXT_JPG</span> <span class="o">=</span> <span class="n">MULTICHAR_CONSTANT_L</span><span class="p">(</span><span class="sc">&#39;.&#39;</span><span class="p">,</span><span class="sc">&#39;j&#39;</span><span class="p">,</span><span class="sc">&#39;p&#39;</span><span class="p">,</span><span class="sc">&#39;g&#39;</span><span class="p">),</span>
+    <span class="n">EXT_PNG</span> <span class="o">=</span> <span class="n">MULTICHAR_CONSTANT_L</span><span class="p">(</span><span class="sc">&#39;.&#39;</span><span class="p">,</span><span class="sc">&#39;p&#39;</span><span class="p">,</span><span class="sc">&#39;n&#39;</span><span class="p">,</span><span class="sc">&#39;g&#39;</span><span class="p">),</span>
+    <span class="n">EXT_HTM</span> <span class="o">=</span> <span class="n">MULTICHAR_CONSTANT_L</span><span class="p">(</span><span class="sc">&#39;.&#39;</span><span class="p">,</span><span class="sc">&#39;h&#39;</span><span class="p">,</span><span class="sc">&#39;t&#39;</span><span class="p">,</span><span class="sc">&#39;m&#39;</span><span class="p">),</span>
+    <span class="n">EXT_CSS</span> <span class="o">=</span> <span class="n">MULTICHAR_CONSTANT_L</span><span class="p">(</span><span class="sc">&#39;.&#39;</span><span class="p">,</span><span class="sc">&#39;c&#39;</span><span class="p">,</span><span class="sc">&#39;s&#39;</span><span class="p">,</span><span class="sc">&#39;s&#39;</span><span class="p">),</span>
+    <span class="n">EXT_TXT</span> <span class="o">=</span> <span class="n">MULTICHAR_CONSTANT_L</span><span class="p">(</span><span class="sc">&#39;.&#39;</span><span class="p">,</span><span class="sc">&#39;t&#39;</span><span class="p">,</span><span class="sc">&#39;x&#39;</span><span class="p">,</span><span class="sc">&#39;t&#39;</span><span class="p">),</span>
+    <span class="n">EXT_JS</span>  <span class="o">=</span> <span class="n">MULTICHAR_CONSTANT_L</span><span class="p">(</span><span class="sc">&#39;.&#39;</span><span class="p">,</span><span class="sc">&#39;j&#39;</span><span class="p">,</span><span class="sc">&#39;s&#39;</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span>
+<span class="p">}</span> <span class="kt">lwan_mime_ext_t</span><span class="p">;</span>
+
+<span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="nf">lwan_determine_mime_type_for_file_name</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">file_name</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">last_dot</span> <span class="o">=</span> <span class="n">strrchr</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="sc">&#39;.&#39;</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">UNLIKELY</span><span class="p">(</span><span class="o">!</span><span class="n">last_dot</span><span class="p">))</span>
+        <span class="k">goto</span> <span class="n">fallback</span><span class="p">;</span>
+
+    <span class="n">STRING_SWITCH_L</span><span class="p">(</span><span class="n">last_dot</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">case</span> <span class="n">EXT_CSS</span>: <span class="k">return</span> <span class="s">&quot;text/css&quot;</span><span class="p">;</span>
+    <span class="k">case</span> <span class="n">EXT_HTM</span>: <span class="k">return</span> <span class="s">&quot;text/html&quot;</span><span class="p">;</span>
+    <span class="k">case</span> <span class="n">EXT_JPG</span>: <span class="k">return</span> <span class="s">&quot;image/jpeg&quot;</span><span class="p">;</span>
+    <span class="k">case</span> <span class="n">EXT_JS</span>:  <span class="k">return</span> <span class="s">&quot;application/javascript&quot;</span><span class="p">;</span>
+    <span class="k">case</span> <span class="n">EXT_PNG</span>: <span class="k">return</span> <span class="s">&quot;image/png&quot;</span><span class="p">;</span>
+    <span class="k">case</span> <span class="n">EXT_TXT</span>: <span class="k">return</span> <span class="s">&quot;text/plain&quot;</span><span class="p">;</span>
+    <span class="p">}</span>
+
+<span class="nl">fallback:</span>
+    <span class="k">return</span> <span class="s">&quot;application/octet-stream&quot;</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Note that <span class="docutils literal"><span class="pre">STRING_SWITCH_L</span></span> performs a bitwise OR with the 32-bit integral
+value – this is a fast means of lowering the case of four characters at once.</p>
+<p>This kind of switch statement is used in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a> to match HTTP headers and
+HTTP methods, and also the naïve file extension to MIME-Type conversion code
+shown above.</p>
+</div>
+
+    <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="../../../tags/trick.html">trick</a>, <a href="../../../tags/c.html">C</a>, <a href="../../../tags/programming.html">programming</a>, <a href="../../../tags/lwan.html">lwan</a></span>
+        </div>
+        </div><ul class="related clearfix">
+            <li class="left"> &laquo; <a href="../10/hash_trie.html">Hash trie</a></li>
+            <li class="right"><a href="../../02/13/fosdem_2012.html">FOSDEM 2012</a> &raquo; </li>
+        </ul></article><aside class="sidebar"><section><div class="widget">
+    <h1>Recent Posts</h1>
+    <ul><li>
+            <a href="../../11/11/mustache_templates_in_c.html">Mustache templates in C</a>
+        </li><li>
+            <a href="../../10/27/programming_on_an_arduino_without_a_pc.html">Programming on an Arduino without a PC</a>
+        </li><li>
+            <a href="../../10/14/vectored_i_o_with_mmap___to_serve_files.html">Vectored I/O with mmap() to serve files</a>
+        </li><li>
+            <a href="../../09/29/asynchronous_i_o_in_c_with_coroutines.html">Asynchronous I/O in C with Coroutines</a>
+        </li><li>
+            <a href="../../09/21/presenting_easyui.html">Presenting EasyUI</a>
+        </li><li>
+            <a href="../12/file_serving_with_few_system_calls.html">File serving with few system calls</a>
+        </li><li>
+            <a href="../11/deferred_statements_in_c.html">Deferred statements in C</a>
+        </li><li>
+            <a href="../10/hash_trie.html">Hash trie</a>
+        </li><li>
+            <a href="#">String switch in C</a>
+        </li><li>
+            <a href="../../02/13/fosdem_2012.html">FOSDEM 2012</a>
+        </li></ul>
+</div>
+</section><section><div class="widget" id="searchbox">
+    <h1>Search</h1>
+    <form action="../../../search.html" method="get">
+        <input type="text" name="q" />
+        <button type="submit"><span class="webfont">L</span></button>
+    </form>
+</div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
+
+        <div class="footer-container"><footer class="wrapper">&copy; Copyright 2013, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
+
+      </div> <!--! end of #container --><!--[if lt IE 7 ]>
+          <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"></script>
+          <script>window.attachEvent('onload',function(){CFInstall.check({mode:'overlay'})})</script>
+        <![endif]-->
+    </body>
+</html>

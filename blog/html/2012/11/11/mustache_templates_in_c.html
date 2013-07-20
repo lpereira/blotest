@@ -1,0 +1,229 @@
+<!DOCTYPE html><!--[if lt IE 7]>      <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width">
+        <title>Mustache templates in C &mdash; Leandro Pereira</title>
+            <link rel="stylesheet" href="../../../_static/normalize.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/sphinx.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/main.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/flat.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+            <link rel="stylesheet" href="../../../_static/webfont.css" type="text/css">
+        <link rel="shortcut icon" href="../../../_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
+        <script src="../../../_static/vendor/modernizr-2.6.2.min.js"></script>
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+        <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
+        <script src="../../../_static/plugins.js"></script>
+        <script src="../../../_static/main.js"></script>
+        <link rel="next" title="Programming on an Arduino without a PC" href="../../10/27/programming_on_an_arduino_without_a_pc.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.2.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+            // Scroll to content if on small screen
+            if (screen.width < 480)
+            {
+                $(document).scrollTop(document.getElementsByTagName("article")[0].offsetTop - 44);
+            }
+        });
+    </script></head>
+    <body>
+        <!--[if lt IE 7]>
+            <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
+        <![endif]-->
+
+      <div id="container"><header>
+            <hgroup>
+              <h1><a href="../../../index.html">Leandro Pereira</a></h1><h2>Geek in training</h2></hgroup>
+          </header>
+      <nav>
+            <ul><li class="main-nav">
+                  <a href="../../../index.html">Home</a>
+                </li>
+              </ul>
+          </nav><div class="main-container"><div class="main wrapper clearfix"><article><div class="timestamp postmeta">
+            <span>11 November 2012</span>
+        </div>
+    <div class="section" id="mustache-templates-in-c">
+<h1>Mustache templates in C</h1>
+<p>Generating textual output is a lot easier with templates than it is with
+handcrafted functions. And it is a lot easier in languages such as Python,
+where things like introspection are easy and cheap. But that doesn’t
+necessarily mean we can’t do that in C if we know where to look.</p>
+<p>I’ve implemented a subset of <a class="reference external" href="http://mustache.github.com/">Mustache</a> templates in C that leverages some
+tricks that makes template rendering both convenient and efficient. For
+instance, if you have a template such as this:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="n">Hello</span><span class="p">,</span> <span class="p">{{</span><span class="n">name</span><span class="p">}}</span><span class="o">!</span>
+</pre></div>
+</div>
+<p>It can easily be rendered with the following code:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="kt">hello_t</span> <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;World&quot;</span>
+<span class="p">};</span>
+<span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">data</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Where <span class="docutils literal"><span class="pre">hello</span></span> is the template that was previously compiled into a series of
+simple instructions (such as <strong>append text</strong> or <strong>append the value of a
+variable</strong>), and the second parameter is a structure containing the data
+needed by the renderer.</p>
+<p>My first thought to render these templates would involve the use of a hash
+table. While reasonably efficient (even considering the overhead to create
+and destroy the table every time the template had to be rendered), they’re
+not first class citizens in C, and the usage would be pretty clumsy, to say
+the least:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="n">hash_table</span> <span class="o">*</span><span class="n">ht</span> <span class="o">=</span> <span class="n">hash_table_new</span><span class="p">();</span>
+<span class="n">hash_table_add</span><span class="p">(</span><span class="n">ht</span><span class="p">,</span> <span class="s">&quot;name&quot;</span><span class="p">,</span> <span class="s">&quot;World&quot;</span><span class="p">);</span>
+
+<span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="n">ht</span><span class="p">);</span>
+
+<span class="n">hash_table_free</span><span class="p">(</span><span class="n">ht</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Instead, I’ve decided to go on another road: use standard C structures to
+store the values in their native form, and then find a way to lookup these
+values whenever necessary to render the template.</p>
+<p>The first trick, then, was to use a C99 feature called <a class="reference external" href="http://gcc.gnu.org/onlinedocs/gcc-3.3.1/gcc/Compound-Literals.html">compound literals</a>,
+which is supported by GCC even in C89 mode. This trick allows the use of
+<a class="reference external" href="http://www.run.montefiore.ulg.ac.be/~martin/resources/kung-f00.html">anonymous arrays</a>, among other things, and provides enough syntactic sugar
+to conveniently group the template variables:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="p">(</span><span class="kt">hello_t</span><span class="p">[])</span> <span class="p">{{</span>
+  <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;World&quot;</span>
+<span class="p">}});</span>
+</pre></div>
+</div>
+<p>Without a way to lookup which value to obtain from the structure, however,
+this would not help much. Enter the second trick: the <span class="docutils literal"><span class="pre">offsetof(3)</span></span> macro,
+which computes the offset of a field in a given structure. By storing this
+offset alongside data type information, the value lookup is not only possible
+but can also work with types different than strings:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">typedef</span> <span class="k">struct</span> <span class="kt">hello_t</span> <span class="p">{</span>
+  <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">;</span>
+  <span class="kt">int</span> <span class="n">age</span><span class="p">;</span>
+<span class="p">};</span>
+<span class="cm">/*</span>
+<span class="cm"> * The TPL_VAR_??? macros provides some convenience to declare each</span>
+<span class="cm"> * descriptor. These expand to a declaration containing the name of</span>
+<span class="cm"> * the variable as a string (used to validate the template during</span>
+<span class="cm"> * compile time), the field offset, and pointers to functions that</span>
+<span class="cm"> * convert the values to string and check if they&#39;re empty.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The SENTINEL type is there so the template compiler knows when to</span>
+<span class="cm"> * stop looking for descriptors, since of course you can have as</span>
+<span class="cm"> many</span>
+<span class="cm"> * fields as necessary.</span>
+<span class="cm"> */</span>
+<span class="kt">lwan_var_descriptor_t</span> <span class="n">hello_descriptor</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="n">TPL_VAR_STR</span><span class="p">(</span><span class="kt">hello_t</span><span class="p">,</span> <span class="n">name</span><span class="p">),</span>
+  <span class="n">TPL_VAR_INT</span><span class="p">(</span><span class="kt">hello_t</span><span class="p">,</span> <span class="n">age</span><span class="p">),</span>
+  <span class="n">TPL_VAR_SENTINEL</span>
+<span class="p">};</span>
+<span class="kt">lwan_tpl_t</span> <span class="o">*</span><span class="n">hello</span><span class="p">;</span>
+<span class="kt">strbuf_t</span> <span class="o">*</span><span class="n">rendered</span><span class="p">;</span>
+
+<span class="cm">/*</span>
+<span class="cm"> * ``hello&#39;&#39; would usually be compiled once and kept around for</span>
+<span class="cm"> * the whole duration of the program.</span>
+<span class="cm"> */</span>
+<span class="n">hello</span> <span class="o">=</span> <span class="n">lwan_tpl_compile</span><span class="p">(</span><span class="s">&quot;hello.tpl&quot;</span><span class="p">,</span> <span class="n">hello_descriptor</span><span class="p">);</span>
+
+<span class="cm">/*</span>
+<span class="cm"> * Rendering the template then would be just the matter of calling</span>
+<span class="cm"> * this function, which will output a ``strbuf_t&#39;&#39;. The template</span>
+<span class="cm"> * compiler estimates the starting size of this string buffer, so</span>
+<span class="cm"> * rendering will incur in very few expensive reallocations, if</span>
+<span class="cm"> * there are reallocations at all.</span>
+<span class="cm"> */</span>
+<span class="n">rendered</span> <span class="o">=</span> <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="p">(</span><span class="kt">hello_t</span><span class="p">[])</span> <span class="p">{{</span>
+  <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;World&quot;</span><span class="p">,</span>
+  <span class="p">.</span><span class="n">age</span> <span class="o">=</span> <span class="mi">42</span>
+<span class="p">}});</span>
+
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">strbuf_get_buffer</span><span class="p">(</span><span class="n">rendered</span><span class="p">));</span>
+<span class="n">strbuf_free</span><span class="p">(</span><span class="n">rendered</span><span class="p">);</span>
+</pre></div>
+</div>
+<p><a class="reference external" href="https://github.com/lpereira/lwan/blob/wip/template.c">Code for this engine</a> is available in the <a class="reference external" href="https://github.com/lpereira/lwan/tree/wip/">wip branch</a> of my toy web
+server, lwan. It is not currently used there, but it is built alongside the
+main program and can be tested by invoking the generated <span class="docutils literal"><span class="pre">template</span></span>
+executable.</p>
+<p>Before using that in lwan, though, I’ll try to employ this <a class="reference external" href="http://dginasa.blogspot.com.br/2012/10/brainfuck-jit-compiler-in-around-155.html">nifty trick</a> to
+JIT-compile the template and avoid some of the overhead where it really
+matters. While at the same time possibly opening a whole can of worms from
+the security standpoint, though – but it wouldn’t be fun without some risk,
+would it? :)</p>
+</div>
+
+    <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="../../../tags/lwan.html">lwan</a>, <a href="../../../tags/c.html">C</a>, <a href="../../../tags/tricks.html">tricks</a>, <a href="../../../tags/template.html">template</a></span>
+        </div>
+        </div><ul class="related clearfix">
+            <li class="left"></li>
+            <li class="right"><a href="../../10/27/programming_on_an_arduino_without_a_pc.html">Programming on an Arduino without a PC</a> &raquo; </li>
+        </ul></article><aside class="sidebar"><section><div class="widget">
+    <h1>Recent Posts</h1>
+    <ul><li>
+            <a href="#">Mustache templates in C</a>
+        </li><li>
+            <a href="../../10/27/programming_on_an_arduino_without_a_pc.html">Programming on an Arduino without a PC</a>
+        </li><li>
+            <a href="../../10/14/vectored_i_o_with_mmap___to_serve_files.html">Vectored I/O with mmap() to serve files</a>
+        </li><li>
+            <a href="../../09/29/asynchronous_i_o_in_c_with_coroutines.html">Asynchronous I/O in C with Coroutines</a>
+        </li><li>
+            <a href="../../09/21/presenting_easyui.html">Presenting EasyUI</a>
+        </li><li>
+            <a href="../../08/12/file_serving_with_few_system_calls.html">File serving with few system calls</a>
+        </li><li>
+            <a href="../../08/11/deferred_statements_in_c.html">Deferred statements in C</a>
+        </li><li>
+            <a href="../../08/10/hash_trie.html">Hash trie</a>
+        </li><li>
+            <a href="../../08/09/string_switch_in_c.html">String switch in C</a>
+        </li><li>
+            <a href="../../02/13/fosdem_2012.html">FOSDEM 2012</a>
+        </li></ul>
+</div>
+</section><section><div class="widget" id="searchbox">
+    <h1>Search</h1>
+    <form action="../../../search.html" method="get">
+        <input type="text" name="q" />
+        <button type="submit"><span class="webfont">L</span></button>
+    </form>
+</div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
+
+        <div class="footer-container"><footer class="wrapper">&copy; Copyright 2013, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
+
+      </div> <!--! end of #container --><!--[if lt IE 7 ]>
+          <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"></script>
+          <script>window.attachEvent('onload',function(){CFInstall.check({mode:'overlay'})})</script>
+        <![endif]-->
+    </body>
+</html>

@@ -1,0 +1,294 @@
+<!DOCTYPE html><!--[if lt IE 7]>      <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width">
+        <title>Asynchronous I/O in C with Coroutines &mdash; Leandro Pereira</title>
+            <link rel="stylesheet" href="../../../_static/normalize.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/sphinx.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/main.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/flat.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+            <link rel="stylesheet" href="../../../_static/webfont.css" type="text/css">
+        <link rel="shortcut icon" href="../../../_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
+        <script src="../../../_static/vendor/modernizr-2.6.2.min.js"></script>
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+        <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
+        <script src="../../../_static/plugins.js"></script>
+        <script src="../../../_static/main.js"></script>
+        <link rel="next" title="Presenting EasyUI" href="../21/presenting_easyui.html" /><link rel="prev" title="Vectored I/O with mmap() to serve files" href="../../10/14/vectored_i_o_with_mmap___to_serve_files.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.2.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+            // Scroll to content if on small screen
+            if (screen.width < 480)
+            {
+                $(document).scrollTop(document.getElementsByTagName("article")[0].offsetTop - 44);
+            }
+        });
+    </script></head>
+    <body>
+        <!--[if lt IE 7]>
+            <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
+        <![endif]-->
+
+      <div id="container"><header>
+            <hgroup>
+              <h1><a href="../../../index.html">Leandro Pereira</a></h1><h2>Geek in training</h2></hgroup>
+          </header>
+      <nav>
+            <ul><li class="main-nav">
+                  <a href="../../../index.html">Home</a>
+                </li>
+              </ul>
+          </nav><div class="main-container"><div class="main wrapper clearfix"><article><div class="timestamp postmeta">
+            <span>29 September 2012</span>
+        </div>
+    <div class="section" id="asynchronous-i-o-in-c-with-coroutines">
+<h1>Asynchronous I/O in C with Coroutines</h1>
+<p>Writing asynchronous I/O code in C is kind of tedious, and often leads to a
+callback hell. But it doesn’t have to be this way; if you have a main loop,
+it’s quite simple to use <a class="reference external" href="https://en.wikipedia.org/wiki/Coroutine">coroutines</a> and write code in a soothing, old
+school, synchronous way.</p>
+<img alt="yodawg" src="http://i.imgur.com/dHCqj.jpg" />
+<p>Under POSIX, it’s also quite easy to implement coroutines, via the use of the
+stuff contained in the <a class="reference external" href="https://en.wikipedia.org/wiki/Setcontext">ucontext.h</a> header. Unfortunately deprecated in
+favor of threads, the functions and structures found in this header are one
+of the unpopular gems in the POSIX C library.</p>
+<div class="section" id="coroutines-in-lwan-my-toy-web-server">
+<h2>Coroutines in lwan, my toy web server</h2>
+<p>In <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>, there are <span class="docutils literal"><span class="pre">n</span> <span class="pre">+</span> <span class="pre">1</span></span> worker threads, where <span class="docutils literal"><span class="pre">n</span></span> is the number of
+logical CPUs. One thread is the <em>acceptor</em> thread, which accepts connections,
+and gives control to the other <span class="docutils literal"><span class="pre">n</span></span> threads, which in turn do all the work
+of receiving a request, parsing, and delivering the response.</p>
+<p>Each of these worker threads can multiplex thousands of connections by
+polling on events: so, for each worker thread, only one request can be
+handled at a time. And, if one blocking operation (say, write to a socket)
+would block, all other requests would wait for a response.</p>
+<p>By <em>yielding</em> the coroutine at the right moments, lwan blocks only on calls
+to <a class="reference external" href="http://linux.die.net/man/4/epoll">epoll(4)</a>. Whenever the socket can be written again, that coroutine is
+resumed. The request handler function does not know what happened.</p>
+</div>
+<div class="section" id="implementing-coroutines-using-ucontext">
+<h2>Implementing coroutines using ucontext</h2>
+<p>As said earlier, POSIX offers some infrastructure that can be used to
+implement coroutines or more powerful concepts, like <a class="reference external" href="https://en.wikipedia.org/wiki/Call-with-current-continuation">call/cc</a>. However,
+they’re quite tricky to use, so it’s often a good idea to offer a thin
+wrapper on top of them. The API used in lwan is the following (implementation
+details omitted for brevity):</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="kt">coro_t</span> <span class="o">*</span><span class="nf">coro_new</span><span class="p">(</span><span class="kt">coro_function_t</span> <span class="n">function</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">coro_free</span><span class="p">(</span><span class="kt">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">coro_resume</span><span class="p">(</span><span class="kt">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">coro_yield</span><span class="p">(</span><span class="kt">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="kt">int</span> <span class="n">value</span><span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="coroutine-allocation">
+<h2>Coroutine allocation</h2>
+<p>A coroutine is pretty much a simple data structure; the real implementation
+has more fields, but they’re implementation details:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">struct</span> <span class="n">coro_t_</span> <span class="p">{</span>
+    <span class="kt">coro_function_t</span> <span class="n">function</span><span class="p">;</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">;</span>
+
+    <span class="kt">ucontext_t</span> <span class="n">context</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">yield_value</span><span class="p">;</span>
+
+    <span class="kt">char</span> <span class="n">stack</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>To allocate one, just allocate space for <span class="docutils literal"><span class="pre">sizeof(coro_t_)</span> <span class="pre">+</span> <span class="pre">stack_size</span></span>,
+initialize the variables, and call <span class="docutils literal"><span class="pre">getcontext(&amp;coro-&gt;context)</span></span>. (These
+context-swapping functions are weirdly-named in my opinion: <span class="docutils literal"><span class="pre">getcontext</span></span>
+actually <em>saves</em> the current context into the variable pointed to by its sole
+parameter.)</p>
+<p>After that, one just need to set up the context so that it points to the
+newly-allocated stack:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="n">coro</span><span class="o">-&gt;</span><span class="n">context</span><span class="p">.</span><span class="n">uc_stack</span><span class="p">.</span><span class="n">ss_sp</span> <span class="o">=</span> <span class="n">coro</span><span class="o">-&gt;</span><span class="n">stack</span><span class="p">;</span>
+<span class="n">coro</span><span class="o">-&gt;</span><span class="n">context</span><span class="p">.</span><span class="n">uc_stack</span><span class="p">.</span><span class="n">ss_size</span> <span class="o">=</span> <span class="n">stack_size</span><span class="p">;</span>
+<span class="n">coro</span><span class="o">-&gt;</span><span class="n">context</span><span class="p">.</span><span class="n">uc_stack</span><span class="p">.</span><span class="n">ss_flags</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="n">coro</span><span class="o">-&gt;</span><span class="n">context</span><span class="p">.</span><span class="n">uc_link</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>And then call <span class="docutils literal"><span class="pre">makecontext()</span></span> so that the coroutine entry point can be
+called when resuming the coroutine. (Another weirdly-named function. No
+wonder why this thing is quite unpopular.) This function takes a variable
+number of parameters, each one being a 32-bit integer value. I don’t know why
+a <span class="docutils literal"><span class="pre">void</span> <span class="pre">*</span></span> wasn’t used instead – so, on 64-bit, I use an union to break a
+pointer into two 32-bit components:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">union</span> <span class="n">ptr_splitter</span> <span class="p">{</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">;</span>
+    <span class="kt">uint32_t</span> <span class="n">part</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>That’s it to allocate a coroutine.</p>
+</div>
+<div class="section" id="freeing-a-coroutine">
+<h2>Freeing a coroutine</h2>
+<p>Just free the coroutine’s <span class="docutils literal"><span class="pre">coro_t</span></span> structure. Lwan’s implementation does
+run the deferred statements at this moment.</p>
+</div>
+<div class="section" id="resuming-a-coroutine">
+<h2>Resuming a coroutine</h2>
+<p>Resuming a coroutine pretty simple: one has to save the current context, swap
+the current context with the coroutine context, and when the coroutine
+yields, return the contexts where they were.</p>
+</div>
+<div class="section" id="yielding-from-a-coroutine">
+<h2>Yielding from a coroutine</h2>
+<p>To yield from a coroutine, just save <span class="docutils literal"><span class="pre">value</span></span> into <span class="docutils literal"><span class="pre">coro_t</span></span>’s
+<span class="docutils literal"><span class="pre">yield_value</span></span> field, and make a call to <span class="docutils literal"><span class="pre">swapcontext()</span></span>, swapping the
+current coroutine stack with the context that was active when the coroutine
+was resumed (which happens to be the routine that resumes a coroutine – which
+now cleans up and return to whoever called it, most probably the main loop).
+<span class="docutils literal"><span class="pre">value</span></span> is now available to whoever called <span class="docutils literal"><span class="pre">coro_resume()</span></span> and is used in
+lwan to determine if a coroutine should be resumed.</p>
+</div>
+<div class="section" id="using-the-coroutines">
+<h2>Using the coroutines</h2>
+<p>From the user perspective, it’s just like calling some blocking function:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="n">lwan_sendfile</span><span class="p">(</span><span class="n">request</span><span class="o">-&gt;</span><span class="n">socket</span><span class="p">,</span> <span class="n">file_fd</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">total_bytes</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Behind the scenes, <span class="docutils literal"><span class="pre">lwan_sendfile</span></span> is actually doing this (error handling
+omitted for brevity):</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">while</span> <span class="p">(</span><span class="n">sent_bytes</span> <span class="o">&lt;</span> <span class="n">total_bytes</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">read_bytes</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">file_fd</span><span class="p">,</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">buffer_size</span><span class="p">);</span>
+    <span class="n">sent_bytes</span> <span class="o">+=</span> <span class="n">read_bytes</span><span class="p">;</span>
+    <span class="n">write</span><span class="p">(</span><span class="n">socket_fd</span><span class="p">,</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">read_bytes</span><span class="p">);</span>
+
+    <span class="n">coro_yield</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>(Of course, if available, <a class="reference external" href="http://linux.die.net/man/2/sendfile">sendfile(2)</a> is used instead in a similar
+fashion, but this better illustrates the point.)</p>
+<p>Whenever the coroutine yields, it goes back to the main loop, which is now
+free to resume another coroutine. Ideally, one could yield to be resumed on a
+certain condition (instead of assuming that the condition is just “the socket
+is ready to be written to”), but this isn’t possible in the current
+implementation.</p>
+<p>For implementation simplicity, the same timer code that is used for keep-
+alive connections is used for coroutines, so that they don’t linger
+indefinitely.</p>
+</div>
+<div class="section" id="implementation-details">
+<h2>Implementation details</h2>
+<ul class="simple">
+<li>On 64-bit, hand-tuned assembly versions of <span class="docutils literal"><span class="pre">ucontext</span></span> routines are
+used. These routines avoid saving and restoring the signal mask (avoiding
+two roundtrips to the kernel), and does not save the floating point
+registers.</li>
+<li>Also, on 64-bit, resuming a coroutine is orders of magnitude faster,
+since not everything is copied when switching contexts.</li>
+<li>Swapping stacks makes tools like <a class="reference external" href="http://valgrind.org/">Valgrind</a> get pretty crazy. Lwan’s
+implementation uses Valgrind-provided macros that marks the newly-
+allocated blocks (from the heap) as stacks.</li>
+<li>The real implementation has a <span class="docutils literal"><span class="pre">coro_switcher_t</span></span> data structure.
+This structure is used to both avoid race conditions when swapping
+coroutines in different threads, but also to maintain coroutine state
+from different threads.</li>
+</ul>
+<p>There are other details that were ommitted from this post. Lwan’s source code
+is small enough it can digested easily, and if you’re not sleeping already,
+check it out.</p>
+</div>
+<div class="section" id="closing-notes">
+<h2>Closing notes</h2>
+<p>Although not as performant as the traditional way of using callbacks
+(resuming and yielding from coroutines are a little bit more expensive than
+calling a function), coroutines brings a lot of simplicity when writing
+asynchronous code.</p>
+<p>The example shown here might not be expressive, but imagine an application
+fetching data from a key-value store from another machine: there might be
+dozens of calls to the database to build a web page, which would be pretty
+difficult to handle if there were dozen callbacks. With a synchronous style,
+that would be a lot easier to write and maintain.</p>
+<p>One could argue that the same thing could be done in threads. But creating
+more threads than there are processors will often hurt performance (for
+various reasons) in noticeable ways. Also, coroutines are cheaper on the
+memory requirements: in Lwan, they sport 16KiB of stack space and it takes a
+little bit more than a <span class="docutils literal"><span class="pre">malloc()</span></span> to set them up.</p>
+<p>I believe we should stop using callbacks for asynchronous I/O and use things
+like this. Even if <span class="docutils literal"><span class="pre">ucontext.h</span></span> is deprecated from POSIX, the functions a
+fairly trivial to write (even in assembly language) – actually, encouraged,
+given that <span class="docutils literal"><span class="pre">swapcontext()</span></span> and <span class="docutils literal"><span class="pre">getcontext()</span></span> makes often unnecessary
+system calls.</p>
+</div>
+</div>
+
+    <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="../../../tags/trick.html">trick</a>, <a href="../../../tags/lwan.html">lwan</a>, <a href="../../../tags/programming.html">programming</a>, <a href="../../../tags/c.html">C</a></span>
+        </div>
+        </div><ul class="related clearfix">
+            <li class="left"> &laquo; <a href="../../10/14/vectored_i_o_with_mmap___to_serve_files.html">Vectored I/O with mmap() to serve files</a></li>
+            <li class="right"><a href="../21/presenting_easyui.html">Presenting EasyUI</a> &raquo; </li>
+        </ul></article><aside class="sidebar"><section><div class="widget">
+    <h1>Recent Posts</h1>
+    <ul><li>
+            <a href="../../11/11/mustache_templates_in_c.html">Mustache templates in C</a>
+        </li><li>
+            <a href="../../10/27/programming_on_an_arduino_without_a_pc.html">Programming on an Arduino without a PC</a>
+        </li><li>
+            <a href="../../10/14/vectored_i_o_with_mmap___to_serve_files.html">Vectored I/O with mmap() to serve files</a>
+        </li><li>
+            <a href="#">Asynchronous I/O in C with Coroutines</a>
+        </li><li>
+            <a href="../21/presenting_easyui.html">Presenting EasyUI</a>
+        </li><li>
+            <a href="../../08/12/file_serving_with_few_system_calls.html">File serving with few system calls</a>
+        </li><li>
+            <a href="../../08/11/deferred_statements_in_c.html">Deferred statements in C</a>
+        </li><li>
+            <a href="../../08/10/hash_trie.html">Hash trie</a>
+        </li><li>
+            <a href="../../08/09/string_switch_in_c.html">String switch in C</a>
+        </li><li>
+            <a href="../../02/13/fosdem_2012.html">FOSDEM 2012</a>
+        </li></ul>
+</div>
+</section><section><div class="widget" id="searchbox">
+    <h1>Search</h1>
+    <form action="../../../search.html" method="get">
+        <input type="text" name="q" />
+        <button type="submit"><span class="webfont">L</span></button>
+    </form>
+</div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
+
+        <div class="footer-container"><footer class="wrapper">&copy; Copyright 2013, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
+
+      </div> <!--! end of #container --><!--[if lt IE 7 ]>
+          <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"></script>
+          <script>window.attachEvent('onload',function(){CFInstall.check({mode:'overlay'})})</script>
+        <![endif]-->
+    </body>
+</html>
