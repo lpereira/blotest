@@ -13,7 +13,7 @@ to FISL to talk about.
 
 .. image:: http://i.imgur.com/AsCOr.jpg
     :alt: audience
-
+    :align: center
 
 Arduinos are traditionally programmed by using its IDE, in a language that
 resembles C++. In fact, it is C++, but some of the (boring) details are

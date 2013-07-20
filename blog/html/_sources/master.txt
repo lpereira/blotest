@@ -14,4 +14,5 @@ Sitemap
    2012/08/10/hash_trie
    2012/08/09/string_switch_in_c
    2012/02/13/fosdem_2012
+   pages/about
 

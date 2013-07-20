@@ -9,7 +9,7 @@ also in the agenda.
 
 .. image:: http://i.imgur.com/ufLRC.jpg
     :alt: groupphoto
-
+    :align: center
 
 I talked briefly about testing in WebKit EFL, after the required tools have
 been implemented last year, and how it affected the quality of the port.

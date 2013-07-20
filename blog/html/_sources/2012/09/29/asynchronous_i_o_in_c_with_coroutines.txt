@@ -8,6 +8,7 @@ school, synchronous way.
 
 .. image:: http://i.imgur.com/dHCqj.jpg
     :alt: yodawg
+    :align: center
 
 
 Under POSIX, it’s also quite easy to implement coroutines, via the use of the
