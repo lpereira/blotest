@@ -10,3 +10,5 @@ RewriteRule ^posts/async_io_with_coroutines(.*)$ /2012/09/29/asynchronous_i_o_in
 RewriteRule ^posts/vectored_io_with_mmap(.*)$ /2012/10/14/vectored_i_o_with_mmap___to_serve_files/ [R=301,L]
 RewriteRule ^posts/arduino_without_a_pc(.*)$ /2012/10/27/programming_on_an_arduino_without_a_pc/ [R=301,L]
 RewriteRule ^posts/mustache_templates_in_c(.*)$ /2012/11/11/mustache_templates_in_c/ [R=301,L]
+
+RewriteRule ^tags/(.*)/$ /blog/html/tags/$1.html [R=301,L]
