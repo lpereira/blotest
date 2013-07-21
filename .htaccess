@@ -14,3 +14,5 @@ RewriteRule ^posts/mustache_templates_in_c(.*)$ /blog/html/2012/11/11/mustache_t
 RewriteRule ^tags/(.*)/?$ /blog/html/tags/$1.html [R=301,L]
 
 RewriteRule ^about/?$ /blog/html/pages/about.html [R=301,L]
+
+RewriteRule ^feed/?$ /blog/html/rss.html [R=301,L]
