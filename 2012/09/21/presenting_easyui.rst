@@ -22,6 +22,8 @@ applications using EFL.
 Before talking about code, let me show a video (best viewed in HD) of some
 sample EasyUI applications being executed:
 
+.. youtube:: NsRoj3s2Tok
+
 
 Brief overview of an EasyUI app
 :::::::::::::::::::::::::::::::

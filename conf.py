@@ -56,7 +56,7 @@ posts_per_page = 10
 # **************************************************************
 
 # Add other Sphinx extensions here
-extensions = ['tinkerer.ext.blog', 'tinkerer.ext.disqus']
+extensions = ['tinkerer.ext.blog', 'youtube']
 
 # Add other template paths here
 templates_path = ['_templates']
