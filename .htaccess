@@ -15,6 +15,6 @@ RewriteRule ^tags/(.*)/?$ /blog/html/tags/$1.html [R=301,L]
 
 RewriteRule ^about/?$ /blog/html/pages/about.html [R=301,L]
 
-RewriteRule ^feed/?$ /blog/html/rss.html [R=301,L]
+RewriteRule ^feed/?$ /blog/html/rss.html [L]
 
 RewriteRule ^blog/?$ /blog/html/ [R=301,L]
