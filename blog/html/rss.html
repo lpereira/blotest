@@ -5,8 +5,146 @@
         <link>http://tia.mat.br/blog/html/</link>
         <description>Geek in training</description>
         <language>en-us</language>
-        <pubDate>Sun, 11 Nov 2012 00:00:00 -0200</pubDate>
+        <pubDate>Sat, 20 Jul 2013 00:00:00 -0300</pubDate>
         
+        <item>
+            <link>http://tia.mat.br/blog/html/2013/07/20/partial_functions_in_c.html</link>
+            <guid>http://tia.mat.br/blog/html/2013/07/20/partial_functions_in_c.html</guid>
+            <title><![CDATA[Partial Functions in C]]></title>
+            <description><![CDATA[<div class="section" id="partial-functions-in-c">
+<h1>Partial Functions in C</h1>
+<p>There are some functions in the standard C library that takes a function
+pointer to be used as a callback later on.  Examples include <span class="docutils literal"><span class="pre">atexit()</span></span>
+and <span class="docutils literal"><span class="pre">signal()</span></span>.  However, these functions can’t receive an arbitrary
+pointer (which could hold some important program state) in addition to the
+function pointer, so you’re left with pesky global variables.</p>
+<p>I’ve devised a workaround, which I’ll explain below. I believe the overall
+mechanism to be quite interesting, however I do not recommend its usage. Not
+only because the implementation wastes a whole memory page for a callback,
+but also because I don’t want to encourage people to perpetuate this kind of
+take-pointer-to-function-without-argument nonsense.</p>
+<p>I’ll begin with the template function. The idea is to have a function whose
+code can be patched up later – however that code turns out to be generated
+by the compiler:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="cp">#define PARAMETER_CONSTANT 0xFEEDBEEF</span>
+<span class="cp">#define FUNCTION_CONSTANT 0xABAD1DEA</span>
+
+<span class="k">static</span> <span class="kt">void</span>
+<span class="nf">partial_template_function</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="p">((</span><span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="p">))</span><span class="n">FUNCTION_CONSTANT</span><span class="p">)((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">PARAMETER_CONSTANT</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The funky-looking cast basically says “call a function pointer at
+<span class="docutils literal"><span class="pre">FUNCTION_CONSTANT</span></span> with a pointer pointing to <span class="docutils literal"><span class="pre">PARAMETER_CONSTANT</span></span>”. Of
+course, if you call this code as is, the program will crash (unless you’re
+very fortunate to some executable code in <span class="docutils literal"><span class="pre">0xABAD1DEA</span></span>, of course). The
+idea is that this generates this code (IA32 assembly):</p>
+<div class="highlight-objdump"><div class="highlight"><pre><span class="mh">0f00deba</span> <span class="p">&lt;</span><span class="nf">partial_template_function</span><span class="p">&gt;:</span>
+<span class="x">   0:    55                       push   %ebp</span>
+<span class="x">   1:    89 e5                    mov    %esp,%ebp</span>
+<span class="x">   3:    83 ec 18                 sub    $0x18,%esp</span>
+<span class="x">   6:    c7 04 24 ef be ed fe     movl   $0xfeedbeef,(%esp)</span>
+<span class="x">   d:    b8 ea 1d ad ab           mov    $0xabad1dea,%eax</span>
+<span class="x">  12:    ff d0                    call   *%eax</span>
+<span class="x">  14:    c9                       leave</span>
+<span class="x">  15:    c3                       ret</span>
+</pre></div>
+</div>
+<p>Even if you don’t know assembly, you can clearly see the constants in the
+code. By writing a trivial function to patch these magic values to something
+useful (such as a real function or some real pointer argument):</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">bool</span>
+<span class="nf">patch_pointer</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">code_addr</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">code_len</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">look_for</span><span class="p">,</span> <span class="kt">void</span>
+<span class="o">*</span><span class="n">patch_with</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">*</span><span class="n">code</span> <span class="o">=</span> <span class="n">code_addr</span><span class="p">;</span>
+    <span class="kt">intptr_t</span> <span class="n">look</span> <span class="o">=</span> <span class="p">(</span><span class="kt">intptr_t</span><span class="p">)</span><span class="n">look_for</span><span class="p">;</span>
+
+    <span class="k">do</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">*</span><span class="p">((</span><span class="kt">intptr_t</span> <span class="o">*</span><span class="p">)</span><span class="n">code</span><span class="p">)</span> <span class="o">==</span> <span class="n">look</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">union</span> <span class="p">{</span>
+              <span class="kt">unsigned</span> <span class="kt">char</span> <span class="n">octet</span><span class="p">[</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)];</span>
+              <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">;</span>
+            <span class="p">}</span> <span class="n">patch</span><span class="p">;</span>
+
+            <span class="n">patch</span><span class="p">.</span><span class="n">ptr</span> <span class="o">=</span> <span class="n">patch_with</span><span class="p">;</span>
+            <span class="n">code</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">patch</span><span class="p">.</span><span class="n">octet</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+            <span class="n">code</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">patch</span><span class="p">.</span><span class="n">octet</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+            <span class="n">code</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">patch</span><span class="p">.</span><span class="n">octet</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+            <span class="n">code</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">patch</span><span class="p">.</span><span class="n">octet</span><span class="p">[</span><span class="mi">3</span><span class="p">];</span>
+
+            <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="n">code</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">while</span> <span class="p">(</span><span class="n">code_len</span><span class="o">--</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>And using it to patch the pointers in a page allocated with <cite>mmap()</cite>
+(comments and error recovery have been ommitted for brevity; full source
+code is linked below):</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">struct</span> <span class="n">Partial</span> <span class="o">*</span>
+<span class="nf">partial_new</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">func</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">),</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">Partial</span> <span class="o">*</span><span class="n">t</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">func</span><span class="p">)</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+
+    <span class="n">t</span> <span class="o">=</span> <span class="n">calloc</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="o">*</span><span class="n">t</span><span class="p">));</span>
+    <span class="n">t</span><span class="o">-&gt;</span><span class="n">caller_len</span> <span class="o">=</span> <span class="p">(</span><span class="kt">size_t</span><span class="p">)((</span><span class="kt">intptr_t</span><span class="p">)</span><span class="n">partial_new</span> <span class="o">-</span> <span class="p">(</span><span class="kt">intptr_t</span><span class="p">)</span><span class="n">partial_template_function</span><span class="p">);</span>
+
+    <span class="n">t</span><span class="o">-&gt;</span><span class="n">caller</span> <span class="o">=</span> <span class="n">mmap</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">t</span><span class="o">-&gt;</span><span class="n">caller_len</span><span class="p">,</span> <span class="n">PROT_WRITE</span> <span class="o">|</span> <span class="n">PROT_READ</span><span class="p">,</span> <span class="n">MAP_PRIVATE</span> <span class="o">|</span> <span class="n">MAP_ANONYMOUS</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+
+    <span class="n">memcpy</span><span class="p">(</span><span class="n">t</span><span class="o">-&gt;</span><span class="n">caller</span><span class="p">,</span> <span class="n">partial_template_function</span><span class="p">,</span> <span class="n">t</span><span class="o">-&gt;</span><span class="n">caller_len</span><span class="p">);</span>
+
+    <span class="n">patch_pointer</span><span class="p">(</span><span class="n">t</span><span class="o">-&gt;</span><span class="n">caller</span><span class="p">,</span> <span class="n">t</span><span class="o">-&gt;</span><span class="n">caller_len</span><span class="p">,</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">FUNCTION_CONSTANT</span><span class="p">,</span> <span class="n">func</span><span class="p">);</span>
+    <span class="n">patch_pointer</span><span class="p">(</span><span class="n">t</span><span class="o">-&gt;</span><span class="n">caller</span><span class="p">,</span> <span class="n">t</span><span class="o">-&gt;</span><span class="n">caller_len</span><span class="p">,</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">PARAMETER_CONSTANT</span><span class="p">,</span> <span class="n">data</span><span class="p">);</span>
+
+    <span class="n">mprotect</span><span class="p">(</span><span class="n">t</span><span class="o">-&gt;</span><span class="n">caller</span><span class="p">,</span> <span class="n">t</span><span class="o">-&gt;</span><span class="n">caller_len</span><span class="p">,</span> <span class="n">PROT_EXEC</span> <span class="o">|</span> <span class="n">PROT_READ</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="n">t</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The end result will be a function that can be called without arguments –
+which will magically call another function with a given parameter:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">void</span>
+<span class="nf">test</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Test called with data=%p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">Partial</span> <span class="o">*</span><span class="n">p</span><span class="p">;</span>
+    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">func</span><span class="p">)();</span>
+
+    <span class="n">p</span> <span class="o">=</span> <span class="n">partial_new</span><span class="p">(</span><span class="n">test</span><span class="p">,</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="mh">0x12341337</span><span class="p">);</span>
+    <span class="n">func</span> <span class="o">=</span> <span class="n">partial_to_function</span><span class="p">(</span><span class="n">p</span><span class="p">);</span>
+
+    <span class="n">atexit</span><span class="p">(</span><span class="n">func</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Which, when executed, will print:</p>
+<div class="highlight-console"><div class="highlight"><pre><span class="go">[leandro@navi]$ ./a.out</span>
+<span class="go">Test called with data=0x12341337</span>
+</pre></div>
+</div>
+<p>Useful? Hardly. Interesting? I think so. Fun? Yup.</p>
+<p>If you’d like to try, the full source code, with comments and error recovery
+is available in this <a class="reference external" href="https://gist.github.com/lpereira/5062388">gist</a>.</p>
+</div>]]></description>
+             <pubDate>Sat, 20 Jul 2013 00:00:00 -0300</pubDate>
+        </item>
+    
         <item>
             <link>http://tia.mat.br/blog/html/2012/11/11/mustache_templates_in_c.html</link>
             <guid>http://tia.mat.br/blog/html/2012/11/11/mustache_templates_in_c.html</guid>

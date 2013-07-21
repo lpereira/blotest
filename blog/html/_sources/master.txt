@@ -4,6 +4,7 @@ Sitemap
 .. toctree::
    :maxdepth: 1
 
+   2013/07/20/partial_functions_in_c
    2012/11/11/mustache_templates_in_c
    2012/10/27/programming_on_an_arduino_without_a_pc
    2012/10/14/vectored_i_o_with_mmap___to_serve_files
