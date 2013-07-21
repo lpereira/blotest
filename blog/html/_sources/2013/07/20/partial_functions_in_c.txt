@@ -1,5 +1,5 @@
-Partial Functions in C
-======================
+Partially Applied Functions in C
+================================
 
 There are some functions in the standard C library that takes a function
 pointer to be used as a callback later on.  Examples include ``atexit()``
@@ -153,7 +153,7 @@ Which, when executed, will print:
   [leandro@navi /tmp]$ ./a.out
   Test called with data=0x12341337
 
-So there you have it, `partial functions`_ in C. Useful? Hardly.
+So there you have it, `partially applied functions`_ in C. Useful? Hardly.
 Interesting?  I think so.  Fun?  Yup.
 
 If you'd like to try, the full source code, with comments and error recovery
@@ -162,7 +162,7 @@ is available in this `gist`_.
 
 .. _gist: https://gist.github.com/lpereira/5062388
 .. _`memory page`: https://en.wikipedia.org/wiki/Page_(computer_memory)
-.. _`partial functions`: https://en.wikipedia.org/wiki/Partial_function
+.. _`partially applied functions`: https://en.wikipedia.org/wiki/Partial_application
 
 .. author:: default
 .. categories:: none
