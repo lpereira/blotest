@@ -1,0 +1,286 @@
+<!DOCTYPE html><!--[if lt IE 7]>      <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width">
+        <title>Partial Functions in C &mdash; Leandro Pereira</title>
+            <link rel="stylesheet" href="../../../_static/normalize.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/sphinx.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/main.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/flat.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+            <link rel="stylesheet" href="../../../_static/webfont.css" type="text/css">
+        <link rel="shortcut icon" href="../../../_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
+        <script src="../../../_static/vendor/modernizr-2.6.2.min.js"></script>
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+        <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
+        <script src="../../../_static/plugins.js"></script>
+        <script src="../../../_static/main.js"></script>
+        <link rel="next" title="Mustache templates in C" href="../../../2012/11/11/mustache_templates_in_c.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.2.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+            // Scroll to content if on small screen
+            if (screen.width < 480)
+            {
+                $(document).scrollTop(document.getElementsByTagName("article")[0].offsetTop - 44);
+            }
+        });
+    </script></head>
+    <body>
+        <!--[if lt IE 7]>
+            <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
+        <![endif]-->
+
+      <div id="container"><header>
+            <hgroup>
+              <h1><a href="../../../index.html">Leandro Pereira</a></h1><h2>Geek in training</h2></hgroup>
+          </header>
+      <nav>
+            <ul><li class="main-nav">
+                  <a href="../../../index.html">Home</a>
+                </li>
+              <li class="main-nav">
+                  <a href="../../../pages/about.html">About</a>
+                </li>
+              </ul>
+          </nav><div class="main-container"><div class="main wrapper clearfix"><article><div class="timestamp postmeta">
+            <span>20 July 2013</span>
+        </div>
+    <div class="section" id="partial-functions-in-c">
+<h1>Partial Functions in C</h1>
+<p>There are some functions in the standard C library that takes a function
+pointer to be used as a callback later on.  Examples include <span class="docutils literal"><span class="pre">atexit()</span></span>
+and <span class="docutils literal"><span class="pre">signal()</span></span>.  However, these functions can&#8217;t receive an arbitrary
+pointer (which could hold some important program state) in addition to the
+function pointer, so you&#8217;re left with pesky global variables:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="cm">/* You have: */</span>
+<span class="n">atexit</span><span class="p">(</span><span class="n">foo</span><span class="p">);</span> <span class="cm">/* foo() will have to fetch program state from globals */</span>
+
+<span class="cm">/* Instead of: */</span>
+<span class="k">static</span> <span class="k">struct</span> <span class="n">program_state</span> <span class="n">state</span><span class="p">;</span>
+<span class="n">atexit</span><span class="p">(</span><span class="n">foo</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">state</span><span class="p">);</span> <span class="cm">/* foo() now have a pointer to program state */</span>
+</pre></div>
+</div>
+<p>Turns out that there&#8217;s a workaround, but it involves some black magic.</p>
+<p>I believe the overall mechanism to be quite interesting, however I do not
+recommend its usage.  Not only because the implementation wastes a whole
+<a class="reference external" href="https://en.wikipedia.org/wiki/Page_(computer_memory)">memory page</a> for a callback, but also because I don&#8217;t want to encourage
+people to perpetuate this kind of take-pointer-to-function-without-argument
+nonsense.</p>
+<p>I&#8217;ll try to explain how this contraption works by showing the smaller parts
+first.  I&#8217;ll begin with the template function.  The idea is to have a
+function whose code can be patched up later &#8211; however that code turns out
+to be generated by the compiler:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="cp">#define PARAMETER_CONSTANT 0xFEEDBEEF</span>
+<span class="cp">#define FUNCTION_CONSTANT 0xABAD1DEA</span>
+
+<span class="k">static</span> <span class="kt">void</span>
+<span class="nf">partial_template_function</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="p">((</span><span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="p">))</span><span class="n">FUNCTION_CONSTANT</span><span class="p">)((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">PARAMETER_CONSTANT</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The funky-looking cast basically says &#8220;call a function pointer at
+<span class="docutils literal"><span class="pre">FUNCTION_CONSTANT</span></span> with a pointer pointing to <span class="docutils literal"><span class="pre">PARAMETER_CONSTANT</span></span>&#8221;. Of
+course, if you call this code as is, the program will most likely crash.
+The idea is that this generates this code (IA32 assembly):</p>
+<div class="highlight-objdump"><div class="highlight"><pre><span class="mh">0f00deba</span> <span class="p">&lt;</span><span class="nf">partial_template_function</span><span class="p">&gt;:</span>
+<span class="x">   0:    55                       push   %ebp</span>
+<span class="x">   1:    89 e5                    mov    %esp,%ebp</span>
+<span class="x">   3:    83 ec 18                 sub    $0x18,%esp</span>
+<span class="x">   6:    c7 04 24 ef be ed fe     movl   $0xfeedbeef,(%esp)</span>
+<span class="x">   d:    b8 ea 1d ad ab           mov    $0xabad1dea,%eax</span>
+<span class="x">  12:    ff d0                    call   *%eax</span>
+<span class="x">  14:    c9                       leave</span>
+<span class="x">  15:    c3                       ret</span>
+</pre></div>
+</div>
+<p>Even if you don&#8217;t know assembly, if you squint a little bit, you can clearly
+see the magic constants defined in the C code above.  By writing a trivial
+function to patch these magic values to something useful (such as a real
+function or some real pointer argument):</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">bool</span>
+<span class="nf">patch_pointer</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">code_addr</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">code_len</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">look_for</span><span class="p">,</span> <span class="kt">void</span>
+<span class="o">*</span><span class="n">patch_with</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">*</span><span class="n">code</span> <span class="o">=</span> <span class="n">code_addr</span><span class="p">;</span>
+    <span class="kt">intptr_t</span> <span class="n">look</span> <span class="o">=</span> <span class="p">(</span><span class="kt">intptr_t</span><span class="p">)</span><span class="n">look_for</span><span class="p">;</span>
+
+    <span class="k">do</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">*</span><span class="p">((</span><span class="kt">intptr_t</span> <span class="o">*</span><span class="p">)</span><span class="n">code</span><span class="p">)</span> <span class="o">==</span> <span class="n">look</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">union</span> <span class="p">{</span>
+              <span class="kt">unsigned</span> <span class="kt">char</span> <span class="n">octet</span><span class="p">[</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)];</span>
+              <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">;</span>
+            <span class="p">}</span> <span class="n">patch</span><span class="p">;</span>
+
+            <span class="n">patch</span><span class="p">.</span><span class="n">ptr</span> <span class="o">=</span> <span class="n">patch_with</span><span class="p">;</span>
+            <span class="n">code</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">patch</span><span class="p">.</span><span class="n">octet</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+            <span class="n">code</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">patch</span><span class="p">.</span><span class="n">octet</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+            <span class="n">code</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">patch</span><span class="p">.</span><span class="n">octet</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+            <span class="n">code</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">patch</span><span class="p">.</span><span class="n">octet</span><span class="p">[</span><span class="mi">3</span><span class="p">];</span>
+
+            <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="n">code</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">while</span> <span class="p">(</span><span class="n">code_len</span><span class="o">--</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>And using it to patch the pointers in a page allocated with <span class="docutils literal"><span class="pre">mmap()</span></span>
+(comments and error recovery have been ommitted for brevity; full source
+code is linked below):</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">struct</span> <span class="n">Partial</span> <span class="o">*</span>
+<span class="nf">partial_new</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">func</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">),</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">Partial</span> <span class="o">*</span><span class="n">t</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">func</span><span class="p">)</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+
+    <span class="n">t</span> <span class="o">=</span> <span class="n">calloc</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="o">*</span><span class="n">t</span><span class="p">));</span>
+    <span class="cm">/* partial_template_function must be declared just before partial_new</span>
+<span class="cm">     * so that caller_len is calculated correctly */</span>
+    <span class="n">t</span><span class="o">-&gt;</span><span class="n">caller_len</span> <span class="o">=</span> <span class="p">(</span><span class="kt">size_t</span><span class="p">)((</span><span class="kt">intptr_t</span><span class="p">)</span><span class="n">partial_new</span> <span class="o">-</span>
+          <span class="p">(</span><span class="kt">intptr_t</span><span class="p">)</span><span class="n">partial_template_function</span><span class="p">);</span>
+
+    <span class="n">t</span><span class="o">-&gt;</span><span class="n">caller</span> <span class="o">=</span> <span class="n">mmap</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">t</span><span class="o">-&gt;</span><span class="n">caller_len</span><span class="p">,</span> <span class="n">PROT_WRITE</span> <span class="o">|</span> <span class="n">PROT_READ</span><span class="p">,</span>
+          <span class="n">MAP_PRIVATE</span> <span class="o">|</span> <span class="n">MAP_ANONYMOUS</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+
+    <span class="n">memcpy</span><span class="p">(</span><span class="n">t</span><span class="o">-&gt;</span><span class="n">caller</span><span class="p">,</span> <span class="n">partial_template_function</span><span class="p">,</span> <span class="n">t</span><span class="o">-&gt;</span><span class="n">caller_len</span><span class="p">);</span>
+
+    <span class="n">patch_pointer</span><span class="p">(</span><span class="n">t</span><span class="o">-&gt;</span><span class="n">caller</span><span class="p">,</span> <span class="n">t</span><span class="o">-&gt;</span><span class="n">caller_len</span><span class="p">,</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">FUNCTION_CONSTANT</span><span class="p">,</span> <span class="n">func</span><span class="p">);</span>
+    <span class="n">patch_pointer</span><span class="p">(</span><span class="n">t</span><span class="o">-&gt;</span><span class="n">caller</span><span class="p">,</span> <span class="n">t</span><span class="o">-&gt;</span><span class="n">caller_len</span><span class="p">,</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">PARAMETER_CONSTANT</span><span class="p">,</span> <span class="n">data</span><span class="p">);</span>
+
+    <span class="n">mprotect</span><span class="p">(</span><span class="n">t</span><span class="o">-&gt;</span><span class="n">caller</span><span class="p">,</span> <span class="n">t</span><span class="o">-&gt;</span><span class="n">caller_len</span><span class="p">,</span> <span class="n">PROT_EXEC</span> <span class="o">|</span> <span class="n">PROT_READ</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="n">t</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The end result will be a function that can be called without arguments &#8211;
+which will magically call another function with a given parameter:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">void</span>
+<span class="nf">test</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Test called with data=%p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">Partial</span> <span class="o">*</span><span class="n">p</span><span class="p">;</span>
+
+    <span class="n">p</span> <span class="o">=</span> <span class="n">partial_new</span><span class="p">(</span><span class="n">test</span><span class="p">,</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="mh">0x12341337</span><span class="p">);</span>
+    <span class="n">atexit</span><span class="p">(</span><span class="n">partial_to_function</span><span class="p">(</span><span class="n">p</span><span class="p">));</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Which, when executed, will print:</p>
+<div class="highlight-console"><div class="highlight"><pre><span class="go">[leandro@navi /tmp]$ ./a.out</span>
+<span class="go">Test called with data=0x12341337</span>
+</pre></div>
+</div>
+<p>So there you have it, <a class="reference external" href="https://en.wikipedia.org/wiki/Partial_function">partial functions</a> in C. Useful? Hardly.
+Interesting?  I think so.  Fun?  Yup.</p>
+<p>If you&#8217;d like to try, the full source code, with comments and error recovery
+is available in this <a class="reference external" href="https://gist.github.com/lpereira/5062388">gist</a>.</p>
+</div>
+
+    <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="../../../tags/c.html">c</a>, <a href="../../../tags/trick.html">trick</a>, <a href="../../../tags/programming.html">programming</a></span>
+        </div>
+        </div><ul class="related clearfix">
+            <li class="left"></li>
+            <li class="right"><a href="../../../2012/11/11/mustache_templates_in_c.html">Mustache templates in C</a> &raquo; </li>
+        </ul></article><aside class="sidebar"><section><div class="widget" id="searchbox">
+    <h1>Search</h1>
+    <form action="../../../search.html" method="get">
+        <input type="text" name="q" />
+        <button type="submit"><span class="webfont">L</span></button>
+    </form>
+</div></section><section><div class="widget">
+    <h1>Recent Posts</h1>
+    <ul><li>
+            <a href="#">Partial Functions in C</a>
+        </li><li>
+            <a href="../../../2012/11/11/mustache_templates_in_c.html">Mustache templates in C</a>
+        </li><li>
+            <a href="../../../2012/10/27/programming_on_an_arduino_without_a_pc.html">Programming on an Arduino without a PC</a>
+        </li><li>
+            <a href="../../../2012/10/14/vectored_i_o_with_mmap___to_serve_files.html">Vectored I/O with mmap() to serve files</a>
+        </li><li>
+            <a href="../../../2012/09/29/asynchronous_i_o_in_c_with_coroutines.html">Asynchronous I/O in C with Coroutines</a>
+        </li><li>
+            <a href="../../../2012/09/21/presenting_easyui.html">Presenting EasyUI</a>
+        </li><li>
+            <a href="../../../2012/08/12/file_serving_with_few_system_calls.html">File serving with few system calls</a>
+        </li><li>
+            <a href="../../../2012/08/11/deferred_statements_in_c.html">Deferred statements in C</a>
+        </li><li>
+            <a href="../../../2012/08/10/hash_trie.html">Hash trie</a>
+        </li><li>
+            <a href="../../../2012/08/09/string_switch_in_c.html">String switch in C</a>
+        </li></ul>
+</div>
+</section><section><div class="widget">
+    <h1>Tags Cloud</h1>
+      <a href="../../../tags/arduino.html" style="font-size: 8pt">arduino</a>&nbsp;&nbsp;
+      <a href="../../../tags/c.html" style="font-size: 16pt">C</a>&nbsp;&nbsp;
+      <a href="../../../tags/c.html" style="font-size: 8pt">c</a>&nbsp;&nbsp;
+      <a href="../../../tags/conferences.html" style="font-size: 9pt">conferences</a>&nbsp;&nbsp;
+      <a href="../../../tags/data_structure.html" style="font-size: 8pt">data-structure</a>&nbsp;&nbsp;
+      <a href="../../../tags/efl.html" style="font-size: 8pt">efl</a>&nbsp;&nbsp;
+      <a href="../../../tags/enlightenment.html" style="font-size: 8pt">enlightenment</a>&nbsp;&nbsp;
+      <a href="../../../tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
+      <a href="../../../tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
+      <a href="../../../tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
+      <a href="../../../tags/lwan.html" style="font-size: 18pt">lwan</a>&nbsp;&nbsp;
+      <a href="../../../tags/profusion.html" style="font-size: 11pt">profusion</a>&nbsp;&nbsp;
+      <a href="../../../tags/programming.html" style="font-size: 20pt">programming</a>&nbsp;&nbsp;
+      <a href="../../../tags/strace.html" style="font-size: 8pt">strace</a>&nbsp;&nbsp;
+      <a href="../../../tags/template.html" style="font-size: 8pt">template</a>&nbsp;&nbsp;
+      <a href="../../../tags/tizen.html" style="font-size: 8pt">tizen</a>&nbsp;&nbsp;
+      <a href="../../../tags/trick.html" style="font-size: 13pt">trick</a>&nbsp;&nbsp;
+      <a href="../../../tags/tricks.html" style="font-size: 8pt">tricks</a>
+</div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
+
+        <div class="footer-container"><footer class="wrapper">&copy; Copyright 2013, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
+
+      </div> <!--! end of #container --><!--[if lt IE 7 ]>
+          <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"></script>
+          <script>window.attachEvent('onload',function(){CFInstall.check({mode:'overlay'})})</script>
+        <![endif]-->
+    </body>
+</html>
