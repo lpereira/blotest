@@ -77,6 +77,8 @@ keep state, iterate, and clean up after itself.</p>
 <span class="p">}</span>
 </pre></div>
 </div>
+<p>A diagram might help understand how this contraption works:</p>
+<img alt="diagram" class="align-center" src="http://i.imgur.com/4XF6c3B.png"/>
 <p>When rendering the template, the engine will create a coroutine whenever it
 finds an <cite>{{#list}}</cite> template tag (notice <cite>list</cite> is the name of the inner
 struct in <cite>struct file_list</cite>).  This coroutine will be resumed (the first
@@ -86,7 +88,8 @@ the engine will then apply everything until it finds the corresponding
 <cite>{{/list}}</cite> tag.  When that happens, it will resume the coroutine again.  On
 a non-zero value, it will apply everything again from the <cite>{{#list}}</cite> tag.
 If a zero value is returned, the coroutine is freed and the template engine
-proceeds.  Did I mention I like Rube Goldberg machines?</p>
+proceeds.</p>
+<p>Did I mention I like Rube Goldberg machines?</p>
 <p>In an ideal world, one would use something akin to Golang’s <a class="reference external" href="http://golang.org/doc/effective_go.html#channels">Channels</a>, but
 if I were to implement them in lwan it would take another year.  Plus, they
 wouldn’t be as efficient as setting some pointers.</p>

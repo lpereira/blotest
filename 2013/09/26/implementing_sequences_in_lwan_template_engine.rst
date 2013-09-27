@@ -76,6 +76,12 @@ keep state, iterate, and clean up after itself.
         return 0;
     }
 
+A diagram might help understand how this contraption works:
+
+.. image:: http://i.imgur.com/4XF6c3B.png
+    :alt: diagram
+    :align: center
+
 When rendering the template, the engine will create a coroutine whenever it
 finds an `{{#list}}` template tag (notice `list` is the name of the inner
 struct in `struct file_list`).  This coroutine will be resumed (the first
@@ -85,7 +91,9 @@ the engine will then apply everything until it finds the corresponding
 `{{/list}}` tag.  When that happens, it will resume the coroutine again.  On
 a non-zero value, it will apply everything again from the `{{#list}}` tag. 
 If a zero value is returned, the coroutine is freed and the template engine
-proceeds.  Did I mention I like Rube Goldberg machines?
+proceeds.
+
+Did I mention I like Rube Goldberg machines?
 
 In an ideal world, one would use something akin to Golang's `Channels`_, but
 if I were to implement them in lwan it would take another year.  Plus, they
