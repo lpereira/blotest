@@ -23,37 +23,37 @@ the iterator.
 While writing a completely different program in Python, it struck me: I
 could use the `coroutine stuff`_ I was already using in lwan and implement
 generator functions.  A few minutes later and I had a working prototype. 
-And it does work like a charm.  Here's how to use it.
+And it does work like a charm.
 
-First, the structure to hold the template variables should be defined:
+The following diagram might help understand how this contraption works.
 
-.. code-block:: c
+.. image:: http://i.imgur.com/4XF6c3B.png
+    :alt: diagram
+    :align: center
 
-    struct file_list {
-	const char *path;
-     
-        struct {
-          lwan_tpl_generator_t generator; /* TPL_VAR_SEQUENCE macro assumes this exists! */
-          const char *name;
-        } list;
-    };
+When rendering the template, the engine will create a coroutine whenever it
+finds an `{{#list}}` template tag (notice `list` is the name of the inner
+struct in `struct file_list`).  This coroutine will be resumed (the first
+time this means it'll actually run for the first time, and if the
+`opendir()` call succeeds, it will yield a non-zero value.  This means that
+the engine will then apply everything until it finds the corresponding
+`{{/list}}` tag.  When that happens, it will resume the coroutine again.  On
+a non-zero value, it will apply everything again from the `{{#list}}` tag. 
+If a zero value is returned, the coroutine is freed and the template engine
+proceeds.
 
-Then, the descriptors for these variables are written:
 
-.. code-block:: c
+.. figure:: http://i.imgur.com/7P2yadJ.jpg
+    :alt: rubegoldbergmachine
+    :align: center
 
-    lwan_var_descriptor_t lst_item_desc[] = {
-        TPL_VAR_STR(struct file_list, list.name),
-        TPL_VAR_SENTINEL
-    };
-    lwan_var_descriptor_t main_desc[] = {
-        TPL_VAR_STR(struct file_list, path),
-        TPL_VAR_SEQUENCE(struct file_list, list, dir_list_generator, lst_item_desc),
-        TPL_VAR_SENTINEL
-    };
+    Professor Butts would be proud. `Source`_.
 
-Last but not least, the generator function. Just one function will initialize,
-keep state, iterate, and clean up after itself.
+A sample generator function is shown below. This one opens a directory,
+yields for every entry, close the directory and finally yields 0, telling
+the template engine to clean the state and continue rendering.  The same
+idea could be used to fetch rows from a database query, for instance, and the
+template syntax would remain unchanged.
 
 .. code-block:: c
 
@@ -76,28 +76,13 @@ keep state, iterate, and clean up after itself.
         return 0;
     }
 
-A diagram might help understand how this contraption works:
-
-.. image:: http://i.imgur.com/4XF6c3B.png
-    :alt: diagram
-    :align: center
-
-When rendering the template, the engine will create a coroutine whenever it
-finds an `{{#list}}` template tag (notice `list` is the name of the inner
-struct in `struct file_list`).  This coroutine will be resumed (the first
-time this means it'll actually run for the first time, and if the
-`opendir()` call succeeds, it will yield a non-zero value.  This means that
-the engine will then apply everything until it finds the corresponding
-`{{/list}}` tag.  When that happens, it will resume the coroutine again.  On
-a non-zero value, it will apply everything again from the `{{#list}}` tag. 
-If a zero value is returned, the coroutine is freed and the template engine
-proceeds.
-
-Did I mention I like Rube Goldberg machines?
+The details of how the variable descriptors are set up are explained in the
+`commit message`_ that introduced this change.  (The commit itself is quite
+buggy, but whatever I could find has been fixed in `HEAD` already.)
 
 In an ideal world, one would use something akin to Golang's `Channels`_, but
-if I were to implement them in lwan it would take another year.  Plus, they
-wouldn't be as efficient as setting some pointers.
+if I were to implement them in lwan it would take perhaps another year. 
+Plus, they wouldn't be as efficient as setting some pointers.
 
 (As always, the code is available on my `Github`_.)
 
@@ -106,7 +91,8 @@ wouldn't be as efficient as setting some pointers.
 .. _`Rube Goldberg machine`: https://en.wikipedia.org/wiki/Rube_Goldberg_machine
 .. _`blog post`: http://tia.mat.br/blog/html/2012/11/11/mustache_templates_in_c.html
 .. _`coroutine stuff`: http://tia.mat.br/blog/html/2012/09/29/asynchronous_i_o_in_c_with_coroutines.html
-
+.. _`commit message`: https://github.com/lpereira/lwan/commit/a4188d73a00cec4c99d50473803c44bfb2218d13
+.. _`Source`: https://en.wikipedia.org/wiki/File:Rubenvent.jpg
 
 .. author:: default
 .. categories:: none
