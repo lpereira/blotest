@@ -65,6 +65,76 @@
                 </li>
               </ul>
           </nav><div class="main-container"><div class="main wrapper clearfix"><article><div class="timestamp postmeta">
+            <span>09 August 2012</span>
+        </div>
+        <div class="section" id="string-switch-in-c">
+<h1><a href="2012/08/09/string_switch_in_c.html">String switch in C</a></h1>
+<p>C’s <span class="docutils literal"><span class="pre">switch</span></span> statement is very powerful. However, it can’t be used with
+strings, only with constant integral types. This is understandable, since
+strings in C are merely arrays – they’re not first-class citizens.</p>
+<p>There are cases where such statement would be useful for strings. Here’s a
+trick I’m employing in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a> to avoid calling the <span class="docutils literal"><span class="pre">strcmp</span></span> family of
+functions in some hot paths. This exploits the notion that strings are just
+an array of bytes – and by casting them to a pointer to a 32-bit integer, and
+dereferencing this pointer, we’ll be able to perform a switch statement on
+very small strings (such as file extensions, which are usually comprised of
+four characters, including the dot).</p>
+<p>C also supports multicharacters integral constants. However, because of
+endianess concerns, GCC warns by default when <span class="docutils literal"><span class="pre">-Wall</span> <span class="pre">-Wextra</span></span> is used with
+these constants. My solution was to just use a macro in conjuntion with an
+<span class="docutils literal"><span class="pre">enum</span></span>, to create the constant integral types expected by the compiler.</p>
+<p>The code below, copied directly from <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>, illustrates an usage of this
+<span class="docutils literal"><span class="pre">STRING_SWITCH</span></span> statement:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="cp">#define STRING_SWITCH_L(s) switch (*((int32_t *)(s)) | 0x20202020)</span>
+<span class="cp">#define MULTICHAR_CONSTANT(a,b,c,d) ((int32_t)((a) | (b) &lt;&lt; 8 | (c)</span>
+<span class="o">&lt;&lt;</span> <span class="mi">16</span> <span class="o">|</span> <span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="mi">24</span><span class="p">))</span>
+
+<span class="k">enum</span> <span class="p">{</span>
+    <span class="n">EXT_JPG</span> <span class="o">=</span> <span class="n">MULTICHAR_CONSTANT_L</span><span class="p">(</span><span class="sc">'.'</span><span class="p">,</span><span class="sc">'j'</span><span class="p">,</span><span class="sc">'p'</span><span class="p">,</span><span class="sc">'g'</span><span class="p">),</span>
+    <span class="n">EXT_PNG</span> <span class="o">=</span> <span class="n">MULTICHAR_CONSTANT_L</span><span class="p">(</span><span class="sc">'.'</span><span class="p">,</span><span class="sc">'p'</span><span class="p">,</span><span class="sc">'n'</span><span class="p">,</span><span class="sc">'g'</span><span class="p">),</span>
+    <span class="n">EXT_HTM</span> <span class="o">=</span> <span class="n">MULTICHAR_CONSTANT_L</span><span class="p">(</span><span class="sc">'.'</span><span class="p">,</span><span class="sc">'h'</span><span class="p">,</span><span class="sc">'t'</span><span class="p">,</span><span class="sc">'m'</span><span class="p">),</span>
+    <span class="n">EXT_CSS</span> <span class="o">=</span> <span class="n">MULTICHAR_CONSTANT_L</span><span class="p">(</span><span class="sc">'.'</span><span class="p">,</span><span class="sc">'c'</span><span class="p">,</span><span class="sc">'s'</span><span class="p">,</span><span class="sc">'s'</span><span class="p">),</span>
+    <span class="n">EXT_TXT</span> <span class="o">=</span> <span class="n">MULTICHAR_CONSTANT_L</span><span class="p">(</span><span class="sc">'.'</span><span class="p">,</span><span class="sc">'t'</span><span class="p">,</span><span class="sc">'x'</span><span class="p">,</span><span class="sc">'t'</span><span class="p">),</span>
+    <span class="n">EXT_JS</span>  <span class="o">=</span> <span class="n">MULTICHAR_CONSTANT_L</span><span class="p">(</span><span class="sc">'.'</span><span class="p">,</span><span class="sc">'j'</span><span class="p">,</span><span class="sc">'s'</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span>
+<span class="p">}</span> <span class="kt">lwan_mime_ext_t</span><span class="p">;</span>
+
+<span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="nf">lwan_determine_mime_type_for_file_name</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">file_name</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">last_dot</span> <span class="o">=</span> <span class="n">strrchr</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="sc">'.'</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">UNLIKELY</span><span class="p">(</span><span class="o">!</span><span class="n">last_dot</span><span class="p">))</span>
+        <span class="k">goto</span> <span class="n">fallback</span><span class="p">;</span>
+
+    <span class="n">STRING_SWITCH_L</span><span class="p">(</span><span class="n">last_dot</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">case</span> <span class="n">EXT_CSS</span>: <span class="k">return</span> <span class="s">&quot;text/css&quot;</span><span class="p">;</span>
+    <span class="k">case</span> <span class="n">EXT_HTM</span>: <span class="k">return</span> <span class="s">&quot;text/html&quot;</span><span class="p">;</span>
+    <span class="k">case</span> <span class="n">EXT_JPG</span>: <span class="k">return</span> <span class="s">&quot;image/jpeg&quot;</span><span class="p">;</span>
+    <span class="k">case</span> <span class="n">EXT_JS</span>:  <span class="k">return</span> <span class="s">&quot;application/javascript&quot;</span><span class="p">;</span>
+    <span class="k">case</span> <span class="n">EXT_PNG</span>: <span class="k">return</span> <span class="s">&quot;image/png&quot;</span><span class="p">;</span>
+    <span class="k">case</span> <span class="n">EXT_TXT</span>: <span class="k">return</span> <span class="s">&quot;text/plain&quot;</span><span class="p">;</span>
+    <span class="p">}</span>
+
+<span class="nl">fallback:</span>
+    <span class="k">return</span> <span class="s">&quot;application/octet-stream&quot;</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Note that <span class="docutils literal"><span class="pre">STRING_SWITCH_L</span></span> performs a bitwise OR with the 32-bit integral
+value – this is a fast means of lowering the case of four characters at once.</p>
+<p>This kind of switch statement is used in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a> to match HTTP headers and
+HTTP methods, and also the naïve file extension to MIME-Type conversion code
+shown above.</p>
+</div>
+        <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="tags/trick.html">trick</a>, <a href="tags/c.html">C</a>, <a href="tags/programming.html">programming</a>, <a href="tags/lwan.html">lwan</a></span>
+        </div>
+        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
             <span>13 February 2012</span>
         </div>
         <div class="section" id="fosdem-2012">
@@ -129,6 +199,8 @@ thank my employer, ProFUSION Embedded Systems, for sponsoring my trip.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a>
+        </li><li>
             <a href="2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a>
         </li><li>
             <a href="2012/11/11/mustache_templates_in_c.html">Mustache templates in C</a>
@@ -146,14 +218,12 @@ thank my employer, ProFUSION Embedded Systems, for sponsoring my trip.</p>
             <a href="2012/08/11/deferred_statements_in_c.html">Deferred statements in C</a>
         </li><li>
             <a href="2012/08/10/hash_trie.html">Hash trie</a>
-        </li><li>
-            <a href="2012/08/09/string_switch_in_c.html">String switch in C</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
     <h1>Tags Cloud</h1>
       <a href="tags/arduino.html" style="font-size: 8pt">arduino</a>&nbsp;&nbsp;
-      <a href="tags/c.html" style="font-size: 16pt">C</a>&nbsp;&nbsp;
+      <a href="tags/c.html" style="font-size: 17pt">C</a>&nbsp;&nbsp;
       <a href="tags/c.html" style="font-size: 8pt">c</a>&nbsp;&nbsp;
       <a href="tags/conferences.html" style="font-size: 9pt">conferences</a>&nbsp;&nbsp;
       <a href="tags/data_structure.html" style="font-size: 8pt">data-structure</a>&nbsp;&nbsp;
@@ -168,7 +238,7 @@ thank my employer, ProFUSION Embedded Systems, for sponsoring my trip.</p>
       <a href="tags/strace.html" style="font-size: 8pt">strace</a>&nbsp;&nbsp;
       <a href="tags/template.html" style="font-size: 8pt">template</a>&nbsp;&nbsp;
       <a href="tags/tizen.html" style="font-size: 8pt">tizen</a>&nbsp;&nbsp;
-      <a href="tags/trick.html" style="font-size: 13pt">trick</a>&nbsp;&nbsp;
+      <a href="tags/trick.html" style="font-size: 12pt">trick</a>&nbsp;&nbsp;
       <a href="tags/tricks.html" style="font-size: 8pt">tricks</a>
 </div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
 

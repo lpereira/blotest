@@ -5,8 +5,96 @@
         <link>http://tia.mat.br/blog/html/</link>
         <description>Geek in training</description>
         <language>en-us</language>
-        <pubDate>Sat, 20 Jul 2013 00:00:00 -0300</pubDate>
+        <pubDate>Thu, 26 Sep 2013 00:00:00 -0300</pubDate>
         
+        <item>
+            <link>http://tia.mat.br/blog/html/2013/09/26/implementing_sequences_in_lwan_template_engine.html</link>
+            <guid>http://tia.mat.br/blog/html/2013/09/26/implementing_sequences_in_lwan_template_engine.html</guid>
+            <title><![CDATA[Implementing sequences in lwan template engine]]></title>
+            <description><![CDATA[<div class="section" id="implementing-sequences-in-lwan-template-engine">
+<h1>Implementing sequences in lwan template engine</h1>
+<p>When I wrote about lwan’s templating engine on a <a class="reference external" href="http://tia.mat.br/blog/html/2012/11/11/mustache_templates_in_c.html">blog post</a> last year, I
+purposedly ommitted the fact that it didn’t support sequences. Took me
+almost a year, but I’ve finally implemented it this week. (Lwan is usually a
+low priority weekend project. Maybe that should do as an excuse for my
+lazyness.)</p>
+<p>It took me three tries to get this right. <a class="reference external" href="https://en.wikipedia.org/wiki/Rube_Goldberg_machine">Rube Goldberg machine</a> kind of
+right, but there’s always some elegance in ingenuity.</p>
+<p>The first try would require one to create the list beforehand, and then pass
+it to the template engine to render. Not only cumbersome, but would require
+the creation of (potentially) large amounts of temporary objects.</p>
+<p>The latter reason lead me to think of a way to implement iterators in C.
+This is usually done using callbacks; and although performant, it gets
+pretty verbose and tedious as there is usually the need to create structures
+to keep state, and different callbacks to initialize, destroy, and advance
+the iterator.</p>
+<p>While writing a completely different program in Python, it struck me: I
+could use the <a class="reference external" href="http://tia.mat.br/blog/html/2012/09/29/asynchronous_i_o_in_c_with_coroutines.html">coroutine stuff</a> I was already using in lwan and implement
+generator functions.  A few minutes later and I had a working prototype.
+And it does work like a charm.  Here’s how to use it.</p>
+<p>First, the structure to hold the template variables should be defined:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">struct</span> <span class="n">file_list</span> <span class="p">{</span>
+    <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">path</span><span class="p">;</span>
+
+    <span class="k">struct</span> <span class="p">{</span>
+      <span class="kt">lwan_tpl_generator_t</span> <span class="n">generator</span><span class="p">;</span> <span class="cm">/* TPL_VAR_SEQUENCE macro assumes this exists! */</span>
+      <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">;</span>
+    <span class="p">}</span> <span class="n">list</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Then, the descriptors for these variables are written:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="kt">lwan_var_descriptor_t</span> <span class="n">lst_item_desc</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">TPL_VAR_STR</span><span class="p">(</span><span class="k">struct</span> <span class="n">file_list</span><span class="p">,</span> <span class="n">list</span><span class="p">.</span><span class="n">name</span><span class="p">),</span>
+    <span class="n">TPL_VAR_SENTINEL</span>
+<span class="p">};</span>
+<span class="kt">lwan_var_descriptor_t</span> <span class="n">main_desc</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">TPL_VAR_STR</span><span class="p">(</span><span class="k">struct</span> <span class="n">file_list</span><span class="p">,</span> <span class="n">path</span><span class="p">),</span>
+    <span class="n">TPL_VAR_SEQUENCE</span><span class="p">(</span><span class="k">struct</span> <span class="n">file_list</span><span class="p">,</span> <span class="n">list</span><span class="p">,</span> <span class="n">dir_list_generator</span><span class="p">,</span> <span class="n">lst_item_desc</span><span class="p">),</span>
+    <span class="n">TPL_VAR_SENTINEL</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Last but not least, the generator function. Just one function will initialize,
+keep state, iterate, and clean up after itself.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="kt">int</span> <span class="nf">dir_list_generator</span><span class="p">(</span><span class="kt">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">DIR</span> <span class="o">*</span><span class="n">dir</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">dirent</span> <span class="o">*</span><span class="n">ent</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">file_list</span> <span class="o">*</span><span class="n">fl</span> <span class="o">=</span> <span class="n">coro_get_data</span><span class="p">(</span><span class="n">coro</span><span class="p">);</span>
+
+    <span class="n">dir</span> <span class="o">=</span> <span class="n">opendir</span><span class="p">(</span><span class="n">fl</span><span class="o">-&gt;</span><span class="n">path</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">dir</span><span class="p">)</span>
+      <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="k">while</span> <span class="p">((</span><span class="n">ent</span> <span class="o">=</span> <span class="n">readdir</span><span class="p">(</span><span class="n">dir</span><span class="p">)))</span> <span class="p">{</span>
+      <span class="n">fl</span><span class="o">-&gt;</span><span class="n">list</span><span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">ent</span><span class="o">-&gt;</span><span class="n">d_name</span><span class="p">;</span>
+      <span class="n">coro_yield</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>   <span class="cm">/* !0 means &quot;iter not done yet&quot; */</span>
+    <span class="p">}</span>
+
+    <span class="n">closedir</span><span class="p">(</span><span class="n">dir</span><span class="p">);</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>When rendering the template, the engine will create a coroutine whenever it
+finds an <cite>{{#list}}</cite> template tag (notice <cite>list</cite> is the name of the inner
+struct in <cite>struct file_list</cite>).  This coroutine will be resumed (the first
+time this means it’ll actually run for the first time, and if the
+<cite>opendir()</cite> call succeeds, it will yield a non-zero value.  This means that
+the engine will then apply everything until it finds the corresponding
+<cite>{{/list}}</cite> tag.  When that happens, it will resume the coroutine again.  On
+a non-zero value, it will apply everything again from the <cite>{{#list}}</cite> tag.
+If a zero value is returned, the coroutine is freed and the template engine
+proceeds.  Did I mention I like Rube Goldberg machines?</p>
+<p>In an ideal world, one would use something akin to Golang’s <a class="reference external" href="http://golang.org/doc/effective_go.html#channels">Channels</a>, but
+if I were to implement them in lwan it would take another year.  Plus, they
+wouldn’t be as efficient as setting some pointers.</p>
+<p>(As always, the code is available on my <a class="reference external" href="https://github.com/lpereira/lwan">Github</a>.)</p>
+</div>]]></description>
+             <pubDate>Thu, 26 Sep 2013 00:00:00 -0300</pubDate>
+        </item>
+    
         <item>
             <link>http://tia.mat.br/blog/html/2013/07/20/partial_functions_in_c.html</link>
             <guid>http://tia.mat.br/blog/html/2013/07/20/partial_functions_in_c.html</guid>

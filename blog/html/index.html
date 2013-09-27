@@ -65,6 +65,100 @@
                 </li>
               </ul>
           </nav><div class="main-container"><div class="main wrapper clearfix"><article><div class="timestamp postmeta">
+            <span>26 September 2013</span>
+        </div>
+        <div class="section" id="implementing-sequences-in-lwan-template-engine">
+<h1><a href="2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a></h1>
+<p>When I wrote about lwan’s templating engine on a <a class="reference external" href="http://tia.mat.br/blog/html/2012/11/11/mustache_templates_in_c.html">blog post</a> last year, I
+purposedly ommitted the fact that it didn’t support sequences. Took me
+almost a year, but I’ve finally implemented it this week. (Lwan is usually a
+low priority weekend project. Maybe that should do as an excuse for my
+lazyness.)</p>
+<p>It took me three tries to get this right. <a class="reference external" href="https://en.wikipedia.org/wiki/Rube_Goldberg_machine">Rube Goldberg machine</a> kind of
+right, but there’s always some elegance in ingenuity.</p>
+<p>The first try would require one to create the list beforehand, and then pass
+it to the template engine to render. Not only cumbersome, but would require
+the creation of (potentially) large amounts of temporary objects.</p>
+<p>The latter reason lead me to think of a way to implement iterators in C.
+This is usually done using callbacks; and although performant, it gets
+pretty verbose and tedious as there is usually the need to create structures
+to keep state, and different callbacks to initialize, destroy, and advance
+the iterator.</p>
+<p>While writing a completely different program in Python, it struck me: I
+could use the <a class="reference external" href="http://tia.mat.br/blog/html/2012/09/29/asynchronous_i_o_in_c_with_coroutines.html">coroutine stuff</a> I was already using in lwan and implement
+generator functions.  A few minutes later and I had a working prototype.
+And it does work like a charm.  Here’s how to use it.</p>
+<p>First, the structure to hold the template variables should be defined:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">struct</span> <span class="n">file_list</span> <span class="p">{</span>
+    <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">path</span><span class="p">;</span>
+
+    <span class="k">struct</span> <span class="p">{</span>
+      <span class="kt">lwan_tpl_generator_t</span> <span class="n">generator</span><span class="p">;</span> <span class="cm">/* TPL_VAR_SEQUENCE macro assumes this exists! */</span>
+      <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">;</span>
+    <span class="p">}</span> <span class="n">list</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Then, the descriptors for these variables are written:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="kt">lwan_var_descriptor_t</span> <span class="n">lst_item_desc</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">TPL_VAR_STR</span><span class="p">(</span><span class="k">struct</span> <span class="n">file_list</span><span class="p">,</span> <span class="n">list</span><span class="p">.</span><span class="n">name</span><span class="p">),</span>
+    <span class="n">TPL_VAR_SENTINEL</span>
+<span class="p">};</span>
+<span class="kt">lwan_var_descriptor_t</span> <span class="n">main_desc</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">TPL_VAR_STR</span><span class="p">(</span><span class="k">struct</span> <span class="n">file_list</span><span class="p">,</span> <span class="n">path</span><span class="p">),</span>
+    <span class="n">TPL_VAR_SEQUENCE</span><span class="p">(</span><span class="k">struct</span> <span class="n">file_list</span><span class="p">,</span> <span class="n">list</span><span class="p">,</span> <span class="n">dir_list_generator</span><span class="p">,</span> <span class="n">lst_item_desc</span><span class="p">),</span>
+    <span class="n">TPL_VAR_SENTINEL</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Last but not least, the generator function. Just one function will initialize,
+keep state, iterate, and clean up after itself.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="kt">int</span> <span class="nf">dir_list_generator</span><span class="p">(</span><span class="kt">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">DIR</span> <span class="o">*</span><span class="n">dir</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">dirent</span> <span class="o">*</span><span class="n">ent</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">file_list</span> <span class="o">*</span><span class="n">fl</span> <span class="o">=</span> <span class="n">coro_get_data</span><span class="p">(</span><span class="n">coro</span><span class="p">);</span>
+
+    <span class="n">dir</span> <span class="o">=</span> <span class="n">opendir</span><span class="p">(</span><span class="n">fl</span><span class="o">-&gt;</span><span class="n">path</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">dir</span><span class="p">)</span>
+      <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="k">while</span> <span class="p">((</span><span class="n">ent</span> <span class="o">=</span> <span class="n">readdir</span><span class="p">(</span><span class="n">dir</span><span class="p">)))</span> <span class="p">{</span>
+      <span class="n">fl</span><span class="o">-&gt;</span><span class="n">list</span><span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">ent</span><span class="o">-&gt;</span><span class="n">d_name</span><span class="p">;</span>
+      <span class="n">coro_yield</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>   <span class="cm">/* !0 means &quot;iter not done yet&quot; */</span>
+    <span class="p">}</span>
+
+    <span class="n">closedir</span><span class="p">(</span><span class="n">dir</span><span class="p">);</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>When rendering the template, the engine will create a coroutine whenever it
+finds an <cite>{{#list}}</cite> template tag (notice <cite>list</cite> is the name of the inner
+struct in <cite>struct file_list</cite>).  This coroutine will be resumed (the first
+time this means it’ll actually run for the first time, and if the
+<cite>opendir()</cite> call succeeds, it will yield a non-zero value.  This means that
+the engine will then apply everything until it finds the corresponding
+<cite>{{/list}}</cite> tag.  When that happens, it will resume the coroutine again.  On
+a non-zero value, it will apply everything again from the <cite>{{#list}}</cite> tag.
+If a zero value is returned, the coroutine is freed and the template engine
+proceeds.  Did I mention I like Rube Goldberg machines?</p>
+<p>In an ideal world, one would use something akin to Golang’s <a class="reference external" href="http://golang.org/doc/effective_go.html#channels">Channels</a>, but
+if I were to implement them in lwan it would take another year.  Plus, they
+wouldn’t be as efficient as setting some pointers.</p>
+<p>(As always, the code is available on my <a class="reference external" href="https://github.com/lpereira/lwan">Github</a>.)</p>
+</div>
+        <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="tags/c.html">C</a>, <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a></span>
+        </div>
+        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
             <span>20 July 2013</span>
         </div>
         <div class="section" id="partially-applied-functions-in-c">
@@ -943,76 +1037,6 @@ was a match.</p>
                 Tags:
                 <a href="tags/data_structure.html">data-structure</a>, <a href="tags/programming.html">programming</a>, <a href="tags/lwan.html">lwan</a></span>
         </div>
-        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
-            <span>09 August 2012</span>
-        </div>
-        <div class="section" id="string-switch-in-c">
-<h1><a href="2012/08/09/string_switch_in_c.html">String switch in C</a></h1>
-<p>C’s <span class="docutils literal"><span class="pre">switch</span></span> statement is very powerful. However, it can’t be used with
-strings, only with constant integral types. This is understandable, since
-strings in C are merely arrays – they’re not first-class citizens.</p>
-<p>There are cases where such statement would be useful for strings. Here’s a
-trick I’m employing in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a> to avoid calling the <span class="docutils literal"><span class="pre">strcmp</span></span> family of
-functions in some hot paths. This exploits the notion that strings are just
-an array of bytes – and by casting them to a pointer to a 32-bit integer, and
-dereferencing this pointer, we’ll be able to perform a switch statement on
-very small strings (such as file extensions, which are usually comprised of
-four characters, including the dot).</p>
-<p>C also supports multicharacters integral constants. However, because of
-endianess concerns, GCC warns by default when <span class="docutils literal"><span class="pre">-Wall</span> <span class="pre">-Wextra</span></span> is used with
-these constants. My solution was to just use a macro in conjuntion with an
-<span class="docutils literal"><span class="pre">enum</span></span>, to create the constant integral types expected by the compiler.</p>
-<p>The code below, copied directly from <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>, illustrates an usage of this
-<span class="docutils literal"><span class="pre">STRING_SWITCH</span></span> statement:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="cp">#define STRING_SWITCH_L(s) switch (*((int32_t *)(s)) | 0x20202020)</span>
-<span class="cp">#define MULTICHAR_CONSTANT(a,b,c,d) ((int32_t)((a) | (b) &lt;&lt; 8 | (c)</span>
-<span class="o">&lt;&lt;</span> <span class="mi">16</span> <span class="o">|</span> <span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="mi">24</span><span class="p">))</span>
-
-<span class="k">enum</span> <span class="p">{</span>
-    <span class="n">EXT_JPG</span> <span class="o">=</span> <span class="n">MULTICHAR_CONSTANT_L</span><span class="p">(</span><span class="sc">'.'</span><span class="p">,</span><span class="sc">'j'</span><span class="p">,</span><span class="sc">'p'</span><span class="p">,</span><span class="sc">'g'</span><span class="p">),</span>
-    <span class="n">EXT_PNG</span> <span class="o">=</span> <span class="n">MULTICHAR_CONSTANT_L</span><span class="p">(</span><span class="sc">'.'</span><span class="p">,</span><span class="sc">'p'</span><span class="p">,</span><span class="sc">'n'</span><span class="p">,</span><span class="sc">'g'</span><span class="p">),</span>
-    <span class="n">EXT_HTM</span> <span class="o">=</span> <span class="n">MULTICHAR_CONSTANT_L</span><span class="p">(</span><span class="sc">'.'</span><span class="p">,</span><span class="sc">'h'</span><span class="p">,</span><span class="sc">'t'</span><span class="p">,</span><span class="sc">'m'</span><span class="p">),</span>
-    <span class="n">EXT_CSS</span> <span class="o">=</span> <span class="n">MULTICHAR_CONSTANT_L</span><span class="p">(</span><span class="sc">'.'</span><span class="p">,</span><span class="sc">'c'</span><span class="p">,</span><span class="sc">'s'</span><span class="p">,</span><span class="sc">'s'</span><span class="p">),</span>
-    <span class="n">EXT_TXT</span> <span class="o">=</span> <span class="n">MULTICHAR_CONSTANT_L</span><span class="p">(</span><span class="sc">'.'</span><span class="p">,</span><span class="sc">'t'</span><span class="p">,</span><span class="sc">'x'</span><span class="p">,</span><span class="sc">'t'</span><span class="p">),</span>
-    <span class="n">EXT_JS</span>  <span class="o">=</span> <span class="n">MULTICHAR_CONSTANT_L</span><span class="p">(</span><span class="sc">'.'</span><span class="p">,</span><span class="sc">'j'</span><span class="p">,</span><span class="sc">'s'</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span>
-<span class="p">}</span> <span class="kt">lwan_mime_ext_t</span><span class="p">;</span>
-
-<span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="nf">lwan_determine_mime_type_for_file_name</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">file_name</span><span class="p">)</span>
-<span class="p">{</span>
-    <span class="kt">char</span> <span class="o">*</span><span class="n">last_dot</span> <span class="o">=</span> <span class="n">strrchr</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="sc">'.'</span><span class="p">);</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">UNLIKELY</span><span class="p">(</span><span class="o">!</span><span class="n">last_dot</span><span class="p">))</span>
-        <span class="k">goto</span> <span class="n">fallback</span><span class="p">;</span>
-
-    <span class="n">STRING_SWITCH_L</span><span class="p">(</span><span class="n">last_dot</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">case</span> <span class="n">EXT_CSS</span>: <span class="k">return</span> <span class="s">&quot;text/css&quot;</span><span class="p">;</span>
-    <span class="k">case</span> <span class="n">EXT_HTM</span>: <span class="k">return</span> <span class="s">&quot;text/html&quot;</span><span class="p">;</span>
-    <span class="k">case</span> <span class="n">EXT_JPG</span>: <span class="k">return</span> <span class="s">&quot;image/jpeg&quot;</span><span class="p">;</span>
-    <span class="k">case</span> <span class="n">EXT_JS</span>:  <span class="k">return</span> <span class="s">&quot;application/javascript&quot;</span><span class="p">;</span>
-    <span class="k">case</span> <span class="n">EXT_PNG</span>: <span class="k">return</span> <span class="s">&quot;image/png&quot;</span><span class="p">;</span>
-    <span class="k">case</span> <span class="n">EXT_TXT</span>: <span class="k">return</span> <span class="s">&quot;text/plain&quot;</span><span class="p">;</span>
-    <span class="p">}</span>
-
-<span class="nl">fallback:</span>
-    <span class="k">return</span> <span class="s">&quot;application/octet-stream&quot;</span><span class="p">;</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-<p>Note that <span class="docutils literal"><span class="pre">STRING_SWITCH_L</span></span> performs a bitwise OR with the 32-bit integral
-value – this is a fast means of lowering the case of four characters at once.</p>
-<p>This kind of switch statement is used in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a> to match HTTP headers and
-HTTP methods, and also the naïve file extension to MIME-Type conversion code
-shown above.</p>
-</div>
-        <div class="postmeta">
-        <div class="author">
-            <span>Posted by Leandro Pereira</span>
-        </div>
-        
-        <div class="tags">
-            <span>
-                Tags:
-                <a href="tags/trick.html">trick</a>, <a href="tags/c.html">C</a>, <a href="tags/programming.html">programming</a>, <a href="tags/lwan.html">lwan</a></span>
-        </div>
         </div><div class="archive_link">
         <a href="archive.html"> &mdash; Blog Archive &mdash; </a>
     </div><ul class="related clearfix">
@@ -1027,6 +1051,8 @@ shown above.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a>
+        </li><li>
             <a href="2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a>
         </li><li>
             <a href="2012/11/11/mustache_templates_in_c.html">Mustache templates in C</a>
@@ -1044,14 +1070,12 @@ shown above.</p>
             <a href="2012/08/11/deferred_statements_in_c.html">Deferred statements in C</a>
         </li><li>
             <a href="2012/08/10/hash_trie.html">Hash trie</a>
-        </li><li>
-            <a href="2012/08/09/string_switch_in_c.html">String switch in C</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
     <h1>Tags Cloud</h1>
       <a href="tags/arduino.html" style="font-size: 8pt">arduino</a>&nbsp;&nbsp;
-      <a href="tags/c.html" style="font-size: 16pt">C</a>&nbsp;&nbsp;
+      <a href="tags/c.html" style="font-size: 17pt">C</a>&nbsp;&nbsp;
       <a href="tags/c.html" style="font-size: 8pt">c</a>&nbsp;&nbsp;
       <a href="tags/conferences.html" style="font-size: 9pt">conferences</a>&nbsp;&nbsp;
       <a href="tags/data_structure.html" style="font-size: 8pt">data-structure</a>&nbsp;&nbsp;
@@ -1066,7 +1090,7 @@ shown above.</p>
       <a href="tags/strace.html" style="font-size: 8pt">strace</a>&nbsp;&nbsp;
       <a href="tags/template.html" style="font-size: 8pt">template</a>&nbsp;&nbsp;
       <a href="tags/tizen.html" style="font-size: 8pt">tizen</a>&nbsp;&nbsp;
-      <a href="tags/trick.html" style="font-size: 13pt">trick</a>&nbsp;&nbsp;
+      <a href="tags/trick.html" style="font-size: 12pt">trick</a>&nbsp;&nbsp;
       <a href="tags/tricks.html" style="font-size: 8pt">tricks</a>
 </div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
 
