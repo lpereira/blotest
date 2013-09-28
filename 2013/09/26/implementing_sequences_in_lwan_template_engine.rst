@@ -29,7 +29,7 @@ implement `generator functions`_.  A few minutes later and I had a working
 prototype, which can probably be better explained with the help of a
 diagram:
 
-.. image:: http://i.imgur.com/4XF6c3B.png
+.. image:: http://i.imgur.com/VsAfnsC.png
     :alt: diagram
     :align: center
 
