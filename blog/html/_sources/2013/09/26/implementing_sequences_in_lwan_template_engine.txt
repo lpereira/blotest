@@ -5,7 +5,7 @@ When I wrote about lwan's templating engine on a `blog post`_ last year, I
 purposedly ommitted the fact that it didn't support sequences. Took me
 almost a year, but I've finally implemented it this week. (Lwan is usually a
 low priority weekend project. Maybe that should do as an excuse for my
-lazyness.)
+laziness.)
 
 It took me three tries to get this right. `Rube Goldberg machine`_ kind of
 right, but there's always some elegance in ingenuity.
