@@ -25,8 +25,8 @@ eventually blogs about it.
 While online, he usually hangs out in `IRC`_, as ``acidx``. He can also be
 found on `LinkedIn`_ or `Twitter`_.
 
-This is a `personal blog`_. The opinions expressed here represent my own and
-not those of my employer.
+This is a `personal blog`_. The opinions expressed here represent his own and
+not those of his employer.
 
 .. _Twitter: http://twitter.com/lafp
 .. _LinkedIn: http://www.linkedin.com/pub/leandro-pereira/20/883/578
