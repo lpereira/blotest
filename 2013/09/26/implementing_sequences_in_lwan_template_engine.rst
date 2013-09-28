@@ -26,7 +26,8 @@ under the low priority rug for the most part of a year.
 While writing a completely different program in Python, however, it struck
 me: I could use the `coroutine stuff`_ I was already using in lwan and
 implement `generator functions`_.  A few minutes later and I had a working
-prototype, which can probably better explained with the help of a diagram:
+prototype, which can probably be better explained with the help of a
+diagram:
 
 .. image:: http://i.imgur.com/4XF6c3B.png
     :alt: diagram

@@ -89,7 +89,8 @@ under the low priority rug for the most part of a year.</p>
 <p>While writing a completely different program in Python, however, it struck
 me: I could use the <a class="reference external" href="http://tia.mat.br/blog/html/2012/09/29/asynchronous_i_o_in_c_with_coroutines.html">coroutine stuff</a> I was already using in lwan and
 implement <a class="reference external" href="https://wiki.python.org/moin/Generators">generator functions</a>.  A few minutes later and I had a working
-prototype, which can probably better explained with the help of a diagram:</p>
+prototype, which can probably be better explained with the help of a
+diagram:</p>
 <img alt="diagram" class="align-center" src="http://i.imgur.com/4XF6c3B.png" />
 <p>In short, the engine will create a coroutine whenever it finds a
 <span class="docutils literal"><span class="pre">{{#sequence}}</span></span> template tag.  This coroutine will start, and will execute
