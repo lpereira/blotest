@@ -20,7 +20,7 @@ Background toys
 ---------------
 
 One of the things that were in that refactoring thread was `my toy web
-server`_'s memory usage.  It would consume a whopping **840MB** of memory
+server`_'s memory usage.  It would consume a whopping **855MB** of memory
 while idling; recent commits dropped this amount to a mere **32MB** (with
 maybe some more room to spare).  This was only possible because I know the
 code inside out and was able to refactor the code a few times.
