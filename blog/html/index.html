@@ -67,8 +67,8 @@
           </nav><div class="main-container"><div class="main wrapper clearfix"><article><div class="timestamp postmeta">
             <span>08 December 2013</span>
         </div>
-        <div class="section" id="reducing-lwan-memory-usage">
-<h1><a href="2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage</a></h1>
+        <div class="section" id="reducing-lwan-memory-usage-by-2670">
+<h1><a href="2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage by 2670%</a></h1>
 <p>One of the things that bothers me when I’m writing software is that I <a class="reference external" href="https://www.youtube.com/watch?v=csyL9EC0S0c">never
 get things right the first time</a>.  It takes me quite a few iterations to
 achieve a good result – be it performance, memory usage, or a good
@@ -79,15 +79,17 @@ thread is able to produce a thing or two, and I’m able to revisit these
 things.</p>
 <div class="figure align-center">
 <img alt="projectmovingforward" src="http://farm1.staticflickr.com/64/169229347_f554a9c9ea.jpg"/>
-<p class="caption">Project moving forward picture by <a class="reference external" href="http://www.flickr.com/photos/tsdesign">Todd Smith</a>.</p>
+<p class="caption">Project moving forward picture by <a class="reference external" href="http://www.flickr.com/photos/tsdesign">Todd Smith</a>. Sometimes you’re so
+focused on the goal that you end up not appreciating the journey.</p>
 </div>
 <div class="section" id="background-toys">
 <h2>Background toys</h2>
 <p>One of the things that were in that refactoring thread was <a class="reference external" href="http://github.com/lpereira/lwan">my toy web
 server</a>‘s memory usage.  It would consume a whopping <strong>855MB</strong> of memory
 while idling; recent commits dropped this amount to a mere <strong>32MB</strong> (with
-maybe some more room to spare).  This was only possible because I know the
-code inside out and was able to refactor the code a few times.</p>
+maybe some more room to spare).  That’s around <strong>2670%</strong> less memory.</p>
+<p>This was only possible because I know the code inside out and was able to
+refactor the code a few times.</p>
 <div class="figure align-center">
 <a class="reference internal image-reference" href="2013/12/08/http://i.imgur.com/xSB5PZp.png"><img alt="massifscreenshot0" src="http://i.imgur.com/xSB5PZp.png" style="width: 100%;"/></a>
 <p class="caption">Massif-visualizer windows shown at different scales.</p>
@@ -589,7 +591,7 @@ to join me for some beers, don’t hesitate to contact me!)</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
-            <a href="2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage</a>
+            <a href="2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage by 2670%</a>
         </li><li>
             <a href="2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a>
         </li><li>

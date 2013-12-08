@@ -1,5 +1,5 @@
-Reducing Lwan memory usage
-==========================
+Reducing Lwan memory usage by 2670%
+===================================
 
 One of the things that bothers me when I'm writing software is that I `never
 get things right the first time`_.  It takes me quite a few iterations to
@@ -14,7 +14,8 @@ things.
     :alt: projectmovingforward
     :align: center
 
-    Project moving forward picture by `Todd Smith`_.
+    Project moving forward picture by `Todd Smith`_. Sometimes you're so
+    focused on the goal that you end up not appreciating the journey.
 
 Background toys
 ---------------
@@ -22,8 +23,10 @@ Background toys
 One of the things that were in that refactoring thread was `my toy web
 server`_'s memory usage.  It would consume a whopping **855MB** of memory
 while idling; recent commits dropped this amount to a mere **32MB** (with
-maybe some more room to spare).  This was only possible because I know the
-code inside out and was able to refactor the code a few times.
+maybe some more room to spare).  That's around **2670%** less memory.
+
+This was only possible because I know the code inside out and was able to
+refactor the code a few times.
 
 .. figure:: http://i.imgur.com/xSB5PZp.png
     :alt: massifscreenshot0
