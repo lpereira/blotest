@@ -103,7 +103,7 @@ structure.
 
 .. author:: default
 .. categories:: none
-.. tags:: none
+.. tags:: lwan,programming
 .. comments::
 
 .. _my toy web server: http://github.com/lpereira/lwan
