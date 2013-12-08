@@ -65,6 +65,52 @@
                 </li>
               </ul>
           </nav><div class="main-container"><div class="main wrapper clearfix"><article><div class="timestamp postmeta">
+            <span>14 October 2012</span>
+        </div>
+        <div class="section" id="vectored-i-o-with-mmap-to-serve-files">
+<h1><a href="2012/10/14/vectored_i_o_with_mmap___to_serve_files.html">Vectored I/O with mmap() to serve files</a></h1>
+<p>Previously, I’ve <a class="reference external" href="/posts/file_serving_with_few_syscalls">improved file serving performance</a> in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a> by
+dramatially cutting down on the number of system calls performed to serve a
+file. However, for small files (&lt; 16KiB), the throughput drop from the
+<span class="docutils literal"><span class="pre">hello</span></span> handler (which merely responds “Hello, World!”) was significant,
+since lwan was still performing system calls to open, obtain the size, and
+close the file.</p>
+<p>I’ve experimented with userland caching before, but it never occurred to me
+to use <span class="docutils literal"><span class="pre">mmap()</span></span>. For the unitiated, this system call offers a way to map a
+file into memory, by giving a pointer to the process virtual memory space,
+that, when dereferenced, will perform the necessary disk I/O if the pages
+were not already present in the kernel buffers. <a class="reference external" href="https://en.wikipedia.org/wiki/Mmap">Wikipedia</a> has more details
+about it. Using <span class="docutils literal"><span class="pre">mmap()</span></span> greatly simplifies caching code by relaying it to
+the kernel, closer to where the low level buffers are.</p>
+<p>By using a memory-mapped buffer and <a class="reference external" href="https://en.wikipedia.org/wiki/Vectored_I/O">writev()</a> (which the <span class="docutils literal"><span class="pre">hello</span></span> handler
+uses through lwan’s abstractions), the file serving performance improved
+about 60%! Before the optimization, <a class="reference external" href="https://github.com/lighttpd/weighttp">weighttp</a> would be able to make ~170000
+requests/s. Now, ~286000 requests/s can be made. (That’s on my laptop, a Core
+i7 2640m, with 8GiB of RAM and without spinning platters.)</p>
+<p>Of course, introducing caching also introduces a lot of complexity. Not only
+the file serving handler almost doubled its size (from 350 lines to 610
+lines), but I’ve had to add a hash table implementation (with around 430
+lines) and a directory watcher that uses <a class="reference external" href="https://en.wikipedia.org/wiki/Inotify">inotify</a> at around 150 lines of C
+code. In the order of 840 lines of code to improve performance by about 60%.
+About 30% more lines of code to improve performance in 60% – not bad,
+methinks.</p>
+<p>On the other hand, the cache mechanism brings shared mutable state. This is
+protected by mutexes, of course, but I’m not sure if I got it right. One more
+reason to <strong>not</strong> use lwan in production.</p>
+<p>As a bonus to these things, lwan now offers <a class="reference external" href="https://en.wikipedia.org/wiki/Deflate">deflated</a> content for the files
+in the cache when asked.</p>
+</div>
+        <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/c.html">C</a>, <a href="tags/linux.html">linux</a></span>
+        </div>
+        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
             <span>29 September 2012</span>
         </div>
         <div class="section" id="asynchronous-i-o-in-c-with-coroutines">
@@ -535,43 +581,6 @@ leave the cleanup to <a class="reference external" href="http://github.com/lpere
                 Tags:
                 <a href="tags/trick.html">trick</a>, <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/c.html">C</a></span>
         </div>
-        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
-            <span>10 August 2012</span>
-        </div>
-        <div class="section" id="hash-trie">
-<h1><a href="2012/08/10/hash_trie.html">Hash trie</a></h1>
-<p><a class="reference external" href="https://en.wikipedia.org/wiki/Trie">Tries</a> are very useful data structures if you need to perform longest
-subprefix matching. Unfortunately, simple implementations uses a lot of
-memory, which is often solved by collapsing common prefixes in a single node
-(like a <a class="reference external" href="https://en.wikipedia.org/wiki/Radix_tree">Radix tree</a>). However, this adds to the implementation complexity,
-which is something I like to avoid.</p>
-<p><a class="reference external" href="http://github.com/lpereira/lwan">Lwan</a>’s original trie implementation required 256 pointers per trie node
-(one per possible byte). This is not only wasteful, but also meant lwan would
-get a lot of cache misses.</p>
-<p>Instead of just using a <a class="reference external" href="https://en.wikipedia.org/wiki/Radix_tree">Radix tree</a>, I decided to keep the same basic
-implementation but lower the number of pointers per node to just 8 – and hash
-each key byte by calculating <span class="docutils literal"><span class="pre">MOD</span> <span class="pre">8</span></span>. This was a very cheap optimization,
-which works pretty well.</p>
-<p>But this optimization leads to the same problem found in <a class="reference external" href="https://en.wikipedia.org/wiki/Hash_table">hash tables</a>:
-<a class="reference external" href="https://en.wikipedia.org/wiki/Collision_(computer_science)">collisions</a>. The problem is minimized by the fact that collisions can only
-happen when using keys with the same length – which is uncommon in the basic
-use case for these tries in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>: matching URLs by their prefix to
-determine which handler to call.</p>
-<p>Nonetheless, this is easily fixed by adding a linked list to each leaf node.
-To avoid having to perform one last string comparison if there’s just one
-node in this linked list (and hence no collisions), <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>’s trie assume it
-was a match.</p>
-</div>
-        <div class="postmeta">
-        <div class="author">
-            <span>Posted by Leandro Pereira</span>
-        </div>
-        
-        <div class="tags">
-            <span>
-                Tags:
-                <a href="tags/data_structure.html">data-structure</a>, <a href="tags/programming.html">programming</a>, <a href="tags/lwan.html">lwan</a></span>
-        </div>
         </div><div class="archive_link">
         <a href="archive.html"> &mdash; Blog Archive &mdash; </a>
     </div><ul class="related clearfix">
@@ -586,6 +595,8 @@ was a match.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage</a>
+        </li><li>
             <a href="2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a>
         </li><li>
             <a href="2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a>
@@ -603,8 +614,6 @@ was a match.</p>
             <a href="2012/08/12/file_serving_with_few_system_calls.html">File serving with few system calls</a>
         </li><li>
             <a href="2012/08/11/deferred_statements_in_c.html">Deferred statements in C</a>
-        </li><li>
-            <a href="2012/08/10/hash_trie.html">Hash trie</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
