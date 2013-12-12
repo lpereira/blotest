@@ -149,6 +149,14 @@ be able to answer that in a few months.</p>
 request/connection abstraction and removing an integer from the request
 structure so all request-related flags would be set in the connection
 structure.</p>
+<p><strong>Update (11 Dec):</strong> I’ve found another way to remove these two structure
+members; I’ve committed this code on a <a class="reference external" href="https://github.com/lpereira/lwan/tree/32-byte-connection-struct">separate branch</a> as further tests
+must be performed.  In the same circumstances as the other tests, the server
+is now using 2MiB less memory.  Basically:</p>
+<ol class="arabic simple">
+<li>The remote IP address can be obtained through the <span class="docutils literal"><span class="pre">getpeername()</span></span> function; since it’s not usually required, the need to keep this information around is reduced.</li>
+<li>The socket file descriptor can be calculated by pointer arithmetic. Each connection has a reference to the huge connection array that it is part of; subtracting this from the connection pointer yields the file descriptor.</li>
+</ol>
 </div>
 </div>
         <div class="postmeta">
@@ -159,7 +167,7 @@ structure.</p>
         <div class="tags">
             <span>
                 Tags:
-                <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a></span>
+                <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/trick.html">trick</a></span>
         </div>
         </div><div class="separator post_separator"></div><div class="timestamp postmeta">
             <span>26 September 2013</span>
@@ -630,7 +638,7 @@ to join me for some beers, don’t hesitate to contact me!)</p>
       <a href="tags/strace.html" style="font-size: 8pt">strace</a>&nbsp;&nbsp;
       <a href="tags/template.html" style="font-size: 8pt">template</a>&nbsp;&nbsp;
       <a href="tags/tizen.html" style="font-size: 8pt">tizen</a>&nbsp;&nbsp;
-      <a href="tags/trick.html" style="font-size: 12pt">trick</a>&nbsp;&nbsp;
+      <a href="tags/trick.html" style="font-size: 13pt">trick</a>&nbsp;&nbsp;
       <a href="tags/tricks.html" style="font-size: 8pt">tricks</a>
 </div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
 

@@ -104,11 +104,20 @@ request/connection abstraction and removing an integer from the request
 structure so all request-related flags would be set in the connection
 structure.
 
+**Update (11 Dec):** I've found another way to remove these two structure
+members; I've committed this code on a `separate branch`_ as further tests
+must be performed.  In the same circumstances as the other tests, the server
+is now using 2MiB less memory.  Basically:
+
+1. The remote IP address can be obtained through the ``getpeername()`` function; since it's not usually required, the need to keep this information around is reduced.
+2. The socket file descriptor can be calculated by pointer arithmetic. Each connection has a reference to the huge connection array that it is part of; subtracting this from the connection pointer yields the file descriptor.
+
 .. author:: default
 .. categories:: none
-.. tags:: lwan,programming
+.. tags:: lwan,programming,trick
 .. comments::
 
 .. _my toy web server: http://github.com/lpereira/lwan
 .. _never get things right the first time: https://www.youtube.com/watch?v=csyL9EC0S0c
 .. _Todd Smith: http://www.flickr.com/photos/tsdesign/
+.. _separate branch: https://github.com/lpereira/lwan/tree/32-byte-connection-struct
