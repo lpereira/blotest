@@ -4,6 +4,7 @@ Sitemap
 .. toctree::
    :maxdepth: 1
 
+   2014/06/23/integer_to_string_conversion
    2013/12/08/reducing_lwan_memory_usage
    2013/09/26/implementing_sequences_in_lwan_template_engine
    2013/07/20/partial_functions_in_c

@@ -4,16 +4,15 @@ About
 Who is this guy anyway?
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-.. image:: http://a0.twimg.com/profile_images/54637340/Adium_Icon.png
+.. image:: https://pbs.twimg.com/profile_images/54637340/Adium_Icon.png
     :alt: me
     :align: right
 
 
 Leandro A. F. Pereira tinkers with computers since 8 years old. He has a
 bachelor's degree in Computer Engineering by `PUC Campinas`_, is a Senior
-Developer at `Intel Open Source Technology Center`_ (where he hacks on
-`Crosswalk`_, a HTML5 Runtime based on Chromium), and a co-founding member
-of `Laboratório Hacker de Campinas`_, a hackerspace in São Paulo
+Developer at `Intel Open Source Technology Center`_, and a co-founding
+member of `Laboratório Hacker de Campinas`_, a hackerspace in São Paulo
 countryside.
 
 He wrote some assorted utilities, with the most known being `HardInfo`_,
@@ -23,7 +22,8 @@ Libraries`_.  He has recently gained interest in writing a `web server`_ and
 eventually blogs about it.
 
 While online, he usually hangs out in `IRC`_, as ``acidx``. He can also be
-found on `LinkedIn`_ or `Twitter`_.
+found on `LinkedIn`_ or `Twitter`_.  His email address is
+``$FIRSTNAME@tia.mat.br``.
 
 This is a `personal blog`_. The opinions expressed here represent his own and
 not those of his employer.

@@ -65,6 +65,53 @@
                 </li>
               </ul>
           </nav><div class="main-container"><div class="main wrapper clearfix"><article><div class="timestamp postmeta">
+            <span>27 October 2012</span>
+        </div>
+        <div class="section" id="programming-on-an-arduino-without-a-pc">
+<h1><a href="2012/10/27/programming_on_an_arduino_without_a_pc.html">Programming on an Arduino without a PC</a></h1>
+<p>I’ve attended this year’s <a class="reference external" href="http://softwarelivre.org/fisl13">FISL</a>, both as a booth attendee (at
+<a class="reference external" href="http://profusion.mobi">ProFUSION</a>’s booth, demonstrating a few of our end-user-visible projects),
+and as a speaker for my old <a class="reference external" href="http://github.com/lpereira/finf">FINF</a> project.</p>
+<p>FINF is a <a class="reference external" href="http://en.wikipedia.org/wiki/Forth_(programming_language)">Forth</a>-like programming environment that I’ve written in my first
+year at the college. It’s not the first compiler I wrote, but it was the
+first that was actually fun to write. Some years later, I’ve decided to
+rewrite it so that it would work on the <a class="reference external" href="http://www.arduino.cc">Arduino</a> – and that’s what I went
+to FISL to talk about.</p>
+<img alt="audience" class="align-center" src="http://i.imgur.com/AsCOr.jpg"/>
+<p>Arduinos are traditionally programmed by using its IDE, in a language that
+resembles C++. In fact, it is C++, but some of the (boring) details are
+hidden. But, being C++, it’s bound to the slow write-compile-upload-test
+procedures; there’s no interactive prompt, such as you have with Python or
+the venerable 8-bit Microsoft Basic. And since Arduino is all about
+experimentation, an interactive prompt is a must.</p>
+<p>FINF is there to fill this gap. It is not a full <a class="reference external" href="http://en.wikipedia.org/wiki/Forth_(programming_language)">FORTH</a> implementation;
+only a small subset of it is there, but it’s enough to blink some LEDs, make
+some noise, and – if a video output shield is used – use the Arduino as an
+8-bit computer! But, since user code actually runs on top of a very simple
+virtual machine due to the <a class="reference external" href="http://en.wikipedia.org/wiki/Harvard_architecture">Harvard architecture</a> used by the AVR
+microcontroller, it’s not possible to expand the interpreter without getting
+dirt in your hands. Add that to the quite messy code, mix it with myself not
+being a good marketer, and you have yet another failed open source project of
+mine! :)</p>
+<p>In any case, the <a class="reference external" href="https://docs.google.com/presentation/d/1w23aLeFgbvjztjtDIFcGTAl7ghlfxsxH_lW4Fyw8lzw/edit">slides</a> (in Portuguese) are available online.
+Unfortunately, the presentation was not recorded, so if you were not there,
+you’ve missed the great opportunity of seeing myself making a LED blink in
+front of an audience.</p>
+<p>(By the way, I’ll be talking during EFL Developer Day in Barcelona early next
+month. If you’re there for LinuxCon/Embedded Linux Conference and would like
+to join me for some beers, don’t hesitate to contact me!)</p>
+</div>
+        <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="tags/profusion.html">profusion</a>, <a href="tags/finf.html">finf</a>, <a href="tags/conferences.html">conferences</a>, <a href="tags/arduino.html">arduino</a></span>
+        </div>
+        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
             <span>14 October 2012</span>
         </div>
         <div class="section" id="vectored-i-o-with-mmap-to-serve-files">
@@ -530,57 +577,6 @@ keep-alive – the performance drop even comparing the I/O involved is about
                 Tags:
                 <a href="tags/strace.html">strace</a>, <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/c.html">C</a>, <a href="tags/linux.html">linux</a></span>
         </div>
-        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
-            <span>11 August 2012</span>
-        </div>
-        <div class="section" id="deferred-statements-in-c">
-<h1><a href="2012/08/11/deferred_statements_in_c.html">Deferred statements in C</a></h1>
-<p><a class="reference external" href="http://golang.org">Golang</a> has a lot of nice features – and one I found pretty interesting is
-called <a class="reference external" href="http://blog.golang.org/2010/08/defer-panic-and-recover.html">deferred statements</a>. This can be implemented in C++ pretty easily
-through <a class="reference external" href="https://en.wikipedia.org/wiki/Resource_Acquisition_Is_Initialization">RAII</a>, but in C we’re pretty much out of luck. Or are we?</p>
-<p>In <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>, I’m using my own home-cooked <a class="reference external" href="https://en.wikipedia.org/wiki/Coroutine">coroutine</a> implementation. All
-requests are handled by coroutines, so that it makes easy to condition the
-execution of deferred statements with the cleanup of a coroutine. And that’s
-what I did, by implementing <span class="docutils literal"><span class="pre">coro_defer()</span></span>, which adds hooks that will be
-called sequentially by <span class="docutils literal"><span class="pre">coro_free()</span></span>.</p>
-<p>This can be used for various purposes, including garbage collection and other
-miscellaneous cleanup code:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="kt">void</span><span class="o">*</span> <span class="nf">coro_malloc</span><span class="p">(</span><span class="kt">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">sz</span><span class="p">)</span> <span class="p">{</span>
-    <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="n">sz</span><span class="p">);</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">ptr</span><span class="p">)</span>
-            <span class="n">coro_defer</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="n">free</span><span class="p">,</span> <span class="n">ptr</span><span class="p">);</span>
-    <span class="k">return</span> <span class="n">ptr</span><span class="p">;</span>
-<span class="p">}</span>
-
-<span class="kt">void</span><span class="o">*</span> <span class="nf">coro_strdup</span><span class="p">(</span><span class="kt">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">str</span><span class="p">)</span> <span class="p">{</span>
-    <span class="kt">char</span> <span class="o">*</span><span class="n">dup</span> <span class="o">=</span> <span class="n">strdup</span><span class="p">(</span><span class="n">str</span><span class="p">);</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">dup</span><span class="p">)</span>
-            <span class="n">coro_defer</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="n">free</span><span class="p">,</span> <span class="n">ptr</span><span class="p">);</span>
-    <span class="k">return</span> <span class="n">dup</span><span class="p">;</span>
-<span class="p">}</span>
-
-<span class="kt">int</span> <span class="nf">coro_open</span><span class="p">(</span><span class="kt">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">path</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">)</span>
-<span class="p">{</span>
-    <span class="kt">int</span> <span class="n">fd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">flags</span><span class="p">);</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">fd</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span>
-            <span class="n">coro_defer</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="n">close</span><span class="p">,</span> <span class="n">INT_TO_PTR</span><span class="p">(</span><span class="n">fd</span><span class="p">));</span>
-    <span class="k">return</span> <span class="n">fd</span><span class="p">;</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-<p>This way, one can easily allocate memory, lock mutexes, open files – and
-leave the cleanup to <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>.</p>
-</div>
-        <div class="postmeta">
-        <div class="author">
-            <span>Posted by Leandro Pereira</span>
-        </div>
-        
-        <div class="tags">
-            <span>
-                Tags:
-                <a href="tags/trick.html">trick</a>, <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/c.html">C</a></span>
-        </div>
         </div><div class="archive_link">
         <a href="archive.html"> &mdash; Blog Archive &mdash; </a>
     </div><ul class="related clearfix">
@@ -595,6 +591,8 @@ leave the cleanup to <a class="reference external" href="http://github.com/lpere
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
+        </li><li>
             <a href="2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage by 2670%</a>
         </li><li>
             <a href="2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a>
@@ -612,8 +610,6 @@ leave the cleanup to <a class="reference external" href="http://github.com/lpere
             <a href="2012/09/21/presenting_easyui.html">Presenting EasyUI</a>
         </li><li>
             <a href="2012/08/12/file_serving_with_few_system_calls.html">File serving with few system calls</a>
-        </li><li>
-            <a href="2012/08/11/deferred_statements_in_c.html">Deferred statements in C</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
