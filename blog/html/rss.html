@@ -42,7 +42,7 @@ me.  Why not just write the string backwards already?</p>
 trick of multiplying the size of an integer in bytes by <span class="docutils literal"><span class="pre">3</span></span> to obtain an
 approximation of the number of digits for <span class="docutils literal"><span class="pre">MAX_INT</span></span>, including the zero
 terminator, regardless of what <span class="docutils literal"><span class="pre">sizeof(int)</span></span> is.</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="cp">#define INT_TO_STR_BUFFER_SIZE (3 * sizeof(int32_t))</span>
+<div class="highlight-c"><div class="highlight"><pre><span class="cp">#define INT_TO_STR_BUFFER_SIZE (3 * sizeof(int))</span>
 
 <span class="kt">char</span> <span class="o">*</span><span class="nf">lwan_uint32_to_str</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">value</span><span class="p">,</span>
             <span class="kt">char</span> <span class="n">buffer</span><span class="p">[</span><span class="k">static</span> <span class="n">INT_TO_STR_BUFFER_SIZE</span><span class="p">],</span>
@@ -72,7 +72,7 @@ idea of avoiding having to reverse the string after they’re done converting
 each digit, and they use a lookup table as well.</p>
 <p>But the nice trick is that, instead of having a lookup table for 10 digits,
 there’s a table for all pair of digits, from <cite>00</cite> to <cite>99</cite>.  This cuts the
-amount of divisions by two, yielding a significantly faster algorithm:
+amount of divisions by half, yielding a significantly faster algorithm:
 around 31% faster than the above snippet:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="kt">size_t</span> <span class="nf">facebook_uint32_to_str</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">value</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">dst</span><span class="p">)</span>
 <span class="p">{</span>

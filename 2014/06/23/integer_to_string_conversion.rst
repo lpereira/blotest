@@ -38,7 +38,7 @@ terminator, regardless of what ``sizeof(int)`` is.
 
 .. code-block:: c
 
-    #define INT_TO_STR_BUFFER_SIZE (3 * sizeof(int32_t))
+    #define INT_TO_STR_BUFFER_SIZE (3 * sizeof(int))
 
     char *lwan_uint32_to_str(uint32_t value,
 		char buffer[static INT_TO_STR_BUFFER_SIZE],
@@ -69,7 +69,7 @@ each digit, and they use a lookup table as well.
 
 But the nice trick is that, instead of having a lookup table for 10 digits,
 there's a table for all pair of digits, from `00` to `99`.  This cuts the
-amount of divisions by two, yielding a significantly faster algorithm:
+amount of divisions by half, yielding a significantly faster algorithm:
 around 31% faster than the above snippet:
 
 .. code-block:: c
@@ -150,6 +150,6 @@ had this idea first.  My go-to source of this kind of thing is usually
 
 .. author:: default
 .. categories:: none
-.. tags:: none
+.. tags:: lwan,programming,trick,C
 .. comments::
 
