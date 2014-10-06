@@ -22,7 +22,7 @@
             <link rel="stylesheet" href="_static/flat.css" type="text/css">
             <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
             <link rel="stylesheet" href="_static/webfont.css" type="text/css">
-        <link rel="shortcut icon" href="_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
+        <link rel="stylesheet" href="_static/style.css" type="text/css" /><link rel="shortcut icon" href="_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
         <script src="_static/vendor/modernizr-2.6.2.min.js"></script>
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
         <script>window.jQuery || document.write('<script src="_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
@@ -65,6 +65,913 @@
                 </li>
               </ul>
           </nav><div class="main-container"><div class="main wrapper clearfix"><article><div class="timestamp postmeta">
+            <span>06 October 2014</span>
+        </div>
+        <div class="section" id="life-of-a-http-request-as-seen-by-my-toy-web-server">
+<h1><a href="2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a></h1>
+<p>When learning a new programming language, I tend to write two things with
+it: a language interpreter (usually a FORTH-like language or Brainfuck if
+I’m feeling lazy), and a HTTP server.  Sometimes, just as a challenge or a
+way to quench my boredom, I do this even though I’ve been working with a
+particular language for some time, as is the case with C.</p>
+<p>None of these projects I’ve written over the years have been as complex as
+<a class="reference external" href="http://lwan.ws">Lwan</a> ended up being: most of them were nothing but weekend hacks and were
+never able to hold my attention for more than a few dozen hours.</p>
+<p>It’s to be expected, then, that I might have a thing or two to say about it.
+In fact, I’ve been <a class="reference external" href="http://tia.mat.br/blog/html/tags/lwan.html">doing this in homeopathic doses</a> over the almost two years
+since I’ve started the project.  Never actually connected all the dots,
+leaving out important details.</p>
+<p>This article is an attempt to describe, from the perspective of Lwan, the
+life of a HTTP request — from the socket being accepted to the response
+being sent — and explaining details and reasoning behind the implementation.</p>
+<div class="section" id="creating-the-listening-socket-accepting-connections">
+<h2>Creating the listening socket &amp; accepting connections</h2>
+<p>There’s nothing really special here: sockets are either created using the
+<a class="reference external" href="http://linux.die.net/man/2/socket">standard POSIX stuff</a>, or are passed down from <a class="reference external" href="http://0pointer.net/blog/projects/socket-activation.html">systemd</a>.  In either case, TCP
+<a class="reference external" href="http://lwn.net/Articles/508865">Fastopen</a> and <a class="reference external" href="http://linux.die.net/man/7/tcp#TCP_QUICKACK">Quickack</a> are enabled, in addition to socket lingering.  The
+socket is left in its default, blocking mode. The <a class="reference external" href="http://www.linuxjournal.com/files/linuxjournal.com/linuxjournal/articles/023/2333/2333s2.html">listen() backlog</a> is the
+maximum allowed by the system.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">int</span>
+<span class="nf">_get_backlog_size</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="cp">#ifdef SOMAXCONN</span>
+    <span class="kt">int</span> <span class="n">backlog</span> <span class="o">=</span> <span class="n">SOMAXCONN</span><span class="p">;</span>
+<span class="cp">#else</span>
+    <span class="kt">int</span> <span class="n">backlog</span> <span class="o">=</span> <span class="mi">128</span><span class="p">;</span>
+<span class="cp">#endif</span>
+    <span class="kt">FILE</span> <span class="o">*</span><span class="n">somaxconn</span><span class="p">;</span>
+
+    <span class="n">somaxconn</span> <span class="o">=</span> <span class="n">fopen</span><span class="p">(</span><span class="s">&quot;/proc/sys/net/core/somaxconn&quot;</span><span class="p">,</span> <span class="s">&quot;r&quot;</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">somaxconn</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kt">int</span> <span class="n">tmp</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">fscanf</span><span class="p">(</span><span class="n">somaxconn</span><span class="p">,</span> <span class="s">&quot;%d&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">tmp</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">backlog</span> <span class="o">=</span> <span class="n">tmp</span><span class="p">;</span>
+        <span class="n">fclose</span><span class="p">(</span><span class="n">somaxconn</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">backlog</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>It’s a blocking file descriptor since the main thread (responsible for
+accepting all the sockets and scheduling clients) blocks on a call to
+<a class="reference external" href="http://linux.die.net/man/2/accept4">accept4()</a> instead of something like <a class="reference external" href="http://linux.die.net/man/4/epoll">Epoll</a>.  This <a class="reference external" href="http://linux.die.net/man/2/accept">accept()</a> variant is
+Linux-only and, among other things, lets one specify flags in sockets
+without requiring an additional round trip to the kernel; the only flag that
+interests Lwan is <span class="docutils literal"><span class="pre">SOCK_NONBLOCK</span></span>.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="kt">void</span>
+<span class="nf">lwan_main_loop</span><span class="p">(</span><span class="kt">lwan_t</span> <span class="o">*</span><span class="n">l</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">setjmp</span><span class="p">(</span><span class="n">cleanup_jmp_buf</span><span class="p">))</span>
+        <span class="k">return</span><span class="p">;</span>
+
+    <span class="n">signal</span><span class="p">(</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">_signal_handler</span><span class="p">);</span>
+
+    <span class="n">lwan_status_info</span><span class="p">(</span><span class="s">&quot;Ready to serve&quot;</span><span class="p">);</span>
+
+    <span class="k">for</span> <span class="p">(;;)</span> <span class="p">{</span>
+        <span class="kt">int</span> <span class="n">client_fd</span> <span class="o">=</span> <span class="n">accept4</span><span class="p">(</span><span class="n">l</span><span class="o">-&gt;</span><span class="n">main_socket</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span>
+                                <span class="n">SOCK_NONBLOCK</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">UNLIKELY</span><span class="p">(</span><span class="n">client_fd</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">))</span> <span class="p">{</span>
+            <span class="n">lwan_status_perror</span><span class="p">(</span><span class="s">&quot;accept&quot;</span><span class="p">);</span>
+            <span class="k">continue</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="n">_schedule_client</span><span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="n">client_fd</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>File descriptor limits are raised to the <a class="reference external" href="https://github.com/lpereira/lwan/blob/e660ab753bfc83eb428c5b7de98bd40341589614/common/lwan.c#L415-L432">maximum allowed by system
+settings</a> — at which time, Lwan pre-allocates an array of structures to hold
+connection state for all possible file descriptors.</p>
+</div>
+<div class="section" id="scheduling-connection">
+<h2>Scheduling connection</h2>
+<p>In order to multiplex connections, Lwan spawns one thread per logical CPU,
+and uses Epoll to determine which socket is ready to be written to or read
+from.  Once a connection is scheduled to one of these threads, it stays
+there until it is explicitly closed or a timeout occurs.</p>
+<p>All threads share the preallocated connection array, and there are no
+explicit locks.  The index to this array is the connection file descriptor,
+which makes lookup very quick. This exploits the notion that file
+descriptors are always allocated from the lowest possible number.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">struct</span> <span class="n">lwan_connection_t_</span> <span class="p">{</span>
+    <span class="cm">/* This structure is exactly 32-bytes on x86-64. If it is</span>
+<span class="cm">     * changed, make sure the scheduler (lwan.c) is updated as</span>
+<span class="cm">     * well. */</span>
+    <span class="kt">lwan_connection_flags_t</span> <span class="n">flags</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">time_to_die</span><span class="p">;</span> <span class="cm">/* In seconds since DQ epoch */</span>
+    <span class="kt">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">;</span>
+    <span class="kt">lwan_thread_t</span> <span class="o">*</span><span class="kr">thread</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">prev</span><span class="p">,</span> <span class="n">next</span><span class="p">;</span>           <span class="cm">/* For death queue */</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Since this structure is quite small, this leads to a form of implicit
+lock called <a class="reference external" href="https://en.wikipedia.org/wiki/False_sharing">false sharing</a>, which is solved with a scheduler that is
+aware of that problem and groups two connection structures per cache
+line.  It’s simpler than it sounds:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="kt">int</span> <span class="kr">thread</span> <span class="o">=</span> <span class="p">((</span><span class="n">fd</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">%</span> <span class="n">n_threads</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>A <a class="reference external" href="https://en.wikipedia.org/wiki/Round-robin_scheduling">round robin scheduler</a> is used on other architectures.</p>
+<p>An interesting curiosity about the connection structure is that it doesn’t
+store the file descriptor: pointer arithmetic is performed to obtain it, as
+the the base address for the connection array is known.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="n">ALWAYS_INLINE</span> <span class="kt">int</span>
+<span class="nf">lwan_connection_get_fd</span><span class="p">(</span><span class="kt">lwan_connection_t</span> <span class="o">*</span><span class="n">conn</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">return</span> <span class="p">(</span><span class="kt">int</span><span class="p">)(</span><span class="kt">ptrdiff_t</span><span class="p">)(</span><span class="n">conn</span> <span class="o">-</span> <span class="n">conn</span><span class="o">-&gt;</span><span class="kr">thread</span><span class="o">-&gt;</span><span class="n">lwan</span><span class="o">-&gt;</span><span class="n">conns</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>After a thread has been chosen by the scheduler, the file descriptor number
+is sent to a <a class="reference external" href="https://en.wikipedia.org/wiki/Unix_domain_socket">Unix domain socket</a> created with <a class="reference external" href="http://linux.die.net/man/2/socketpair">socketpair()</a> to that particular
+thread’s Epoll. This part used to use <a class="reference external" href="http://linux.die.net/man/2/epoll_ctl">epoll_ctl()</a> directly — which, although
+threadsafe, had a problem: <a class="reference external" href="http://linux.die.net/man/2/epoll_wait">epoll_wait()</a> will never timeout on a socket if
+nothing was read from it previously. By writing to that socketpair, Epoll
+awakens, the file descriptor is added to it, and that thread’s death queue
+can handle the timeout by itself.</p>
+<p>The sole purpose of each thread is to react to Epoll events, such as:</p>
+<ul class="simple">
+<li>Timeouts (in which case the death queue iterates, potentially
+terminating connections)</li>
+<li>Epoll errors (in which case the thread finishes gracefully);</li>
+<li>Readiness events (can read, can write);</li>
+<li>Hung up.</li>
+</ul>
+<p>Epoll events are used as signals to create, destroy, resume, and reset
+coroutines: there’s one for each connection, and they’re used both as
+lightweight threads and as resource management facilities.</p>
+</div>
+<div class="section" id="coroutines">
+<h2>Coroutines</h2>
+<p><a class="reference internal" href="2014/10/06/life_of_a_http_request.html#coroutines">Coroutines</a> provides a reasonably simple model for asynchronous I/O handling
+that’s less convoluted than the dreaded <a class="reference external" href="https://developer.gnome.org/gio/stable">callback idiom</a> prevalent in C. They
+also require a lot less stack space than a thread and their creation is
+pretty efficient: essentially just a call to <span class="docutils literal"><span class="pre">malloc()</span></span>.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="kt">coro_t</span> <span class="o">*</span>
+<span class="nf">coro_new</span><span class="p">(</span><span class="kt">coro_switcher_t</span> <span class="o">*</span><span class="n">switcher</span><span class="p">,</span>
+         <span class="kt">coro_function_t</span> <span class="n">function</span><span class="p">,</span>
+         <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">coro_t</span> <span class="o">*</span><span class="n">coro</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="o">*</span><span class="n">coro</span><span class="p">)</span> <span class="o">+</span> <span class="n">CORO_STACK_MIN</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">coro</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+
+    <span class="n">coro</span><span class="o">-&gt;</span><span class="n">switcher</span> <span class="o">=</span> <span class="n">switcher</span><span class="p">;</span>
+    <span class="n">coro</span><span class="o">-&gt;</span><span class="n">defer</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+
+    <span class="cm">/* coro_reset() is just a few assignments on x86-64 */</span>
+    <span class="n">coro_reset</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="n">function</span><span class="p">,</span> <span class="n">data</span><span class="p">);</span>
+
+<span class="cp">#if !defined(NDEBUG) &amp;&amp; defined(USE_VALGRIND)</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">stack</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)(</span><span class="n">coro</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span>
+    <span class="n">coro</span><span class="o">-&gt;</span><span class="n">vg_stack_id</span> <span class="o">=</span> <span class="n">VALGRIND_STACK_REGISTER</span><span class="p">(</span><span class="n">stack</span><span class="p">,</span>
+                                   <span class="n">stack</span> <span class="o">+</span> <span class="n">CORO_STACK_MIN</span><span class="p">);</span>
+<span class="cp">#endif</span>
+
+    <span class="k">return</span> <span class="n">coro</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Request handlers can be written using an API that’s completely synchronous
+on the surface but behind the curtains, I/O happens in the background
+(client sockets are non-blocking) and control is given to the next coroutine
+as commanded by each thread’s loop.</p>
+<p>Execution resumes where the coroutine left off. This saves a lot of code,
+not only making things easier to reason about, but also simplifying resource
+management by having a single cleanup point.</p>
+<p>To provide a synchronous-looking API, Lwan provides a few wrappers for
+common operations, such as <a class="reference external" href="http://linux.die.net/man/2/writev">writev()</a> or <a class="reference external" href="http://linux.die.net/man/2/sendfile">sendfile()</a>. Unlike the functions
+these wrap, they return no error:</p>
+<ul class="simple">
+<li>On success, the same return code is returned</li>
+<li>Recoverable errors (such as <span class="docutils literal"><span class="pre">EINTR</span></span>) are handled by trying them again a
+few times before giving up</li>
+<li>When giving up, or on unrecoverable errors, coroutines are aborted</li>
+</ul>
+<div class="highlight-c"><div class="highlight"><pre><span class="kt">int</span>
+<span class="nf">lwan_openat</span><span class="p">(</span><span class="kt">lwan_request_t</span> <span class="o">*</span><span class="n">request</span><span class="p">,</span>
+            <span class="kt">int</span> <span class="n">dirfd</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">pathname</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">tries</span> <span class="o">=</span> <span class="n">max_failed_tries</span><span class="p">;</span> <span class="n">tries</span><span class="p">;</span> <span class="n">tries</span><span class="o">--</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kt">int</span> <span class="n">fd</span> <span class="o">=</span> <span class="n">openat</span><span class="p">(</span><span class="n">dirfd</span><span class="p">,</span> <span class="n">pathname</span><span class="p">,</span> <span class="n">flags</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">LIKELY</span><span class="p">(</span><span class="n">fd</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">))</span> <span class="p">{</span>
+            <span class="cm">/*</span>
+<span class="cm">             * close() will be called as soon as the</span>
+<span class="cm">             * coroutine ends</span>
+<span class="cm">             */</span>
+            <span class="n">coro_defer</span><span class="p">(</span><span class="n">request</span><span class="o">-&gt;</span><span class="n">conn</span><span class="o">-&gt;</span><span class="n">coro</span><span class="p">,</span> <span class="n">CORO_DEFER</span><span class="p">(</span><span class="n">close</span><span class="p">),</span>
+                       <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)(</span><span class="kt">intptr_t</span><span class="p">)</span><span class="n">fd</span><span class="p">);</span>
+            <span class="k">return</span> <span class="n">fd</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="k">switch</span> <span class="p">(</span><span class="n">errno</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">case</span> <span class="n">EINTR</span>:
+        <span class="k">case</span> <span class="n">EMFILE</span>:
+        <span class="k">case</span> <span class="n">ENFILE</span>:
+        <span class="k">case</span> <span class="n">ENOMEM</span>:
+            <span class="n">coro_yield</span><span class="p">(</span><span class="n">request</span><span class="o">-&gt;</span><span class="n">conn</span><span class="o">-&gt;</span><span class="n">coro</span><span class="p">,</span>
+                       <span class="n">CONN_CORO_MAY_RESUME</span><span class="p">);</span>
+            <span class="k">break</span><span class="p">;</span>
+        <span class="nl">default:</span>
+            <span class="k">return</span> <span class="o">-</span><span class="n">errno</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="o">-</span><span class="n">ENFILE</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>When a coroutine is destroyed, user-defined callbacks are executed. These
+include callbacks set by the wrapper functions, to close files, free memory,
+and perform many other cleanup tasks. This ensures resources are released
+regardless if the coroutine ended normally or an unrecoverable error has
+been detected.</p>
+<div class="figure align-center">
+<img alt="coroutines" src="https://i.imgur.com/7sHL2ZH.png"/>
+<p class="caption">Diagram of main loop plus two coroutines</p>
+</div>
+<p>On supported architectures, coroutine context switching is almost as cheap
+as a function call.  This is possible because hand-written assembly routines
+are used, which only performs the essential register exchange, as mandated
+by the <a class="reference external" href="http://www.x86-64.org/documentation/abi.pdf">ABI</a>.  There is still some work to do in order to speed up this;
+tricks used by <a class="reference external" href="http://byuu.org/programming/libco">libco</a>, for instance, might be used in the future to reduce
+some of the overhead.</p>
+<p>On every other architecture, <a class="reference external" href="http://linux.die.net/man/3/swapcontext">swapcontext()</a> is used and this usually incurs
+in saving and restoring the signal mask, in addition to swapping every
+register (including those not required by the calling convention); this
+might change to setjmp() in the future to avoid at least the two system
+calls.</p>
+<p>Another use for coroutines in Lwan is inside the Mustache templating engine,
+described in more depth below.</p>
+</div>
+<div class="section" id="reading-requests">
+<h2>Reading requests</h2>
+<p>The loop within each I/O thread is <a class="reference external" href="https://github.com/lpereira/lwan/blob/e660ab753bfc83eb428c5b7de98bd40341589614/common/lwan-thread.c#L278-L342">quite crude</a>.</p>
+<p>Essentially, a coroutine will only be resumed for reading once per request:
+once it yields, Epoll will only be interested in write events. Because of
+this, reading a request uses a purpose-built <a class="reference external" href="https://github.com/lpereira/lwan/blob/e660ab753bfc83eb428c5b7de98bd40341589614/common/lwan-request.c#L459-L514">read() wrapper</a> that tricks the
+scheduler to still be interested in read events, unless the request has been
+fully received (by ending with the “␍␊␍␊” separator).</p>
+<p>As soon as the whole request has been received, it is then parsed and acted
+upon.</p>
+</div>
+<div class="section" id="parsing-request">
+<h2>Parsing request</h2>
+<p>Request parsing in Lwan is quite efficient: there are no copies, no memory
+allocations from the heap.  The buffer is modified in place by slicing and
+storing pointers to stuff the server might be interested in.  Parsing of
+HTTP request headers is delayed until needed (and they might not be needed).</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">struct</span> <span class="n">lwan_request_parse_t_</span> <span class="p">{</span>
+    <span class="kt">lwan_value_t</span> <span class="n">buffer</span><span class="p">;</span>            <span class="cm">/* The whole buffer */</span>
+    <span class="kt">lwan_value_t</span> <span class="n">query_string</span><span class="p">;</span>      <span class="cm">/* Stuff after URLs ? */</span>
+    <span class="kt">lwan_value_t</span> <span class="n">if_modified_since</span><span class="p">;</span> <span class="cm">/* If-Modified-Since: */</span>
+    <span class="kt">lwan_value_t</span> <span class="n">range</span><span class="p">;</span>             <span class="cm">/* Range: */</span>
+    <span class="kt">lwan_value_t</span> <span class="n">accept_encoding</span><span class="p">;</span>   <span class="cm">/* Accept-Encoding: */</span>
+    <span class="kt">lwan_value_t</span> <span class="n">fragment</span><span class="p">;</span>          <span class="cm">/* Stuff after URLs # */</span>
+    <span class="kt">lwan_value_t</span> <span class="n">content_length</span><span class="p">;</span>    <span class="cm">/* Content-Length: */</span>
+    <span class="kt">lwan_value_t</span> <span class="n">post_data</span><span class="p">;</span>         <span class="cm">/* POST data */</span>
+    <span class="kt">lwan_value_t</span> <span class="n">content_type</span><span class="p">;</span>      <span class="cm">/* Content-Type: */</span>
+    <span class="kt">lwan_value_t</span> <span class="n">authorization</span><span class="p">;</span>     <span class="cm">/* Authorization: */</span>
+    <span class="kt">char</span> <span class="n">connection</span><span class="p">;</span>                <span class="cm">/* k=keep-alive, c=close */</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Among other things, one that often receives comments is how headers are
+parsed.  Two tricks are involved: avoiding <a class="reference external" href="https://en.wikipedia.org/wiki/Register_allocation#Spilling">spilling/filling registers</a> to
+compare strings with <span class="docutils literal"><span class="pre">strncmp()</span></span>, and applying a heuristic to avoid
+reading (and comparing) more than necessary.  Both tricks are intertwined
+into a “string prefix switch”:</p>
+<ul class="simple">
+<li>Four bytes are read from memory, and are cast to a 32-bit integer pointer</li>
+<li>That pointer is then dereferenced</li>
+<li>A standard switch statement is used to perform cheap comparisons on a 32-bit
+integer</li>
+<li>When a header prefix is matched, a simple heuristic of finding the
+separating colon and space character where they’re supposed to be is used<ul>
+<li>This might give false positives, although that’s very unlikely in practice</li>
+</ul>
+</li>
+</ul>
+<p>Once the request has been parsed, it is time to look up what is going to
+handle it.</p>
+</div>
+<div class="section" id="looking-up-handler">
+<h2>Looking up handler</h2>
+<p>A <a class="reference external" href="https://en.wikipedia.org/wiki/Trie">prefix tree</a> is used to look up handlers. It is a modified trie data
+structure that has only eight pointers per node, so that on x86-64, each
+node fills one cache line exactly. This is achieved by hashing each
+character used to build up a node by taking the 3 least significant bits.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">struct</span> <span class="n">lwan_trie_node_t_</span> <span class="p">{</span>
+    <span class="kt">lwan_trie_node_t</span> <span class="o">*</span><span class="n">next</span><span class="p">[</span><span class="mi">8</span><span class="p">];</span>
+    <span class="kt">lwan_trie_leaf_t</span> <span class="o">*</span><span class="n">leaf</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">ref_count</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>The canonical and naïve alternative to the hashed trie is having <a class="reference external" href="https://github.com/lpereira/lwan/blob/b2c9b37e63c7ffedfcbd00c25349ab9501dc4985/lwan-trie.c#L27-L31">256
+pointers per node</a>, which puts too much virtual memory pressure: the approach
+used in Lwan is a good compromise between keeping this pressure low and
+implementation complexity.</p>
+<p>Another alternative (which might be considered in the future) is to reduce
+the amount of nodes by <a class="reference external" href="https://en.wikipedia.org/wiki/Trie#Compressing_tries">coalescing common prefixes</a>; this significantly
+increases implementation complexity, though, but combined with the string
+switch trick, this might yield a good performance boost.</p>
+<p>Yet another technique investigated was to <a class="reference external" href="https://gist.github.com/lpereira/c744c08c74ca600e58ff">generate machine code to perform
+lookup</a>: essentially turning a data structure into executable code. The idea
+works but the instruction cache pressure isn’t worth the trouble. I’m still
+partial to this solution, though, so I might revisit it later: <a class="reference external" href="http://www.varnish-cache.org">Varnish</a> does
+something remotely similar with VCL and it seems to work, so this deserves a
+little bit more research.</p>
+<p>After a handler is found, a second round of parsing might happen. Each
+handler contains a set of flags that signal if headers (which were sliced in
+the request parsing stage) should be actually parsed. This include headers
+such as Range, Accept-Encoding, If-Modified-Since, and authorization stuff.
+Handlers that do not require parsing these headers will not trigger
+potentially expensive string crunching.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
+    <span class="n">HANDLER_PARSE_QUERY_STRING</span> <span class="o">=</span> <span class="mi">1</span><span class="o">&lt;&lt;</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">HANDLER_PARSE_IF_MODIFIED_SINCE</span> <span class="o">=</span> <span class="mi">1</span><span class="o">&lt;&lt;</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">HANDLER_PARSE_RANGE</span> <span class="o">=</span> <span class="mi">1</span><span class="o">&lt;&lt;</span><span class="mi">2</span><span class="p">,</span>
+    <span class="n">HANDLER_PARSE_ACCEPT_ENCODING</span> <span class="o">=</span> <span class="mi">1</span><span class="o">&lt;&lt;</span><span class="mi">3</span><span class="p">,</span>
+    <span class="n">HANDLER_PARSE_POST_DATA</span> <span class="o">=</span> <span class="mi">1</span><span class="o">&lt;&lt;</span><span class="mi">4</span><span class="p">,</span>
+    <span class="n">HANDLER_MUST_AUTHORIZE</span> <span class="o">=</span> <span class="mi">1</span><span class="o">&lt;&lt;</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">HANDLER_REMOVE_LEADING_SLASH</span> <span class="o">=</span> <span class="mi">1</span><span class="o">&lt;&lt;</span><span class="mi">6</span><span class="p">,</span>
+
+    <span class="n">HANDLER_PARSE_MASK</span> <span class="o">=</span> <span class="mi">1</span><span class="o">&lt;&lt;</span><span class="mi">0</span> <span class="o">|</span> <span class="mi">1</span><span class="o">&lt;&lt;</span><span class="mi">1</span> <span class="o">|</span> <span class="mi">1</span><span class="o">&lt;&lt;</span><span class="mi">2</span> <span class="o">|</span> <span class="mi">1</span><span class="o">&lt;&lt;</span><span class="mi">3</span> <span class="o">|</span> <span class="mi">1</span><span class="o">&lt;&lt;</span><span class="mi">4</span>
+<span class="p">}</span> <span class="kt">lwan_handler_flags_t</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>To reduce the amount of boilerplate necessary to declare a handler, there’s
+a shortcut that parses almost everything; these are the “request handlers”,
+such as the “Hello world handler” example shown below.</p>
+<p>Modules, on the other hand, provide much more fine-grained control of how
+the request will be handled; an example is the static file serving feature,
+also discussed further down.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="k">const</span> <span class="kt">lwan_module_t</span> <span class="n">serve_files</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;serve_files&quot;</span><span class="p">,</span>
+    <span class="p">.</span><span class="n">init</span> <span class="o">=</span> <span class="n">serve_files_init</span><span class="p">,</span>
+    <span class="p">.</span><span class="n">init_from_hash</span> <span class="o">=</span> <span class="n">serve_files_init_from_hash</span><span class="p">,</span>
+    <span class="p">.</span><span class="n">shutdown</span> <span class="o">=</span> <span class="n">serve_files_shutdown</span><span class="p">,</span>
+    <span class="p">.</span><span class="n">handle</span> <span class="o">=</span> <span class="n">serve_files_handle_cb</span><span class="p">,</span>
+    <span class="p">.</span><span class="n">flags</span> <span class="o">=</span> <span class="n">HANDLER_REMOVE_LEADING_SLASH</span>
+        <span class="o">|</span> <span class="n">HANDLER_PARSE_IF_MODIFIED_SINCE</span>
+        <span class="o">|</span> <span class="n">HANDLER_PARSE_RANGE</span>
+        <span class="o">|</span> <span class="n">HANDLER_PARSE_ACCEPT_ENCODING</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<div class="section" id="hello-world-handler">
+<h3>Hello world handler</h3>
+<p>The simplest handler possible is a “Hello, World!“. This tests the raw
+read-parse-write capacity of Lwan, without requiring more system calls than
+absolutely necessary.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="kt">lwan_http_status_t</span>
+<span class="nf">hello_world</span><span class="p">(</span><span class="kt">lwan_request_t</span> <span class="o">*</span><span class="n">request</span> <span class="n">__attribute__</span><span class="p">((</span><span class="n">unused</span><span class="p">)),</span>
+            <span class="kt">lwan_response_t</span> <span class="o">*</span><span class="n">response</span><span class="p">,</span>
+            <span class="kt">void</span> <span class="o">*</span><span class="n">data</span> <span class="n">__attribute__</span><span class="p">((</span><span class="n">unused</span><span class="p">)))</span>
+<span class="p">{</span>
+    <span class="k">static</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">hello_world</span> <span class="o">=</span> <span class="s">&quot;Hello, world!&quot;</span><span class="p">;</span>
+
+    <span class="n">response</span><span class="o">-&gt;</span><span class="n">mime_type</span> <span class="o">=</span> <span class="s">&quot;text/plain&quot;</span><span class="p">;</span>
+    <span class="n">strbuf_set_static</span><span class="p">(</span><span class="n">response</span><span class="o">-&gt;</span><span class="n">buffer</span><span class="p">,</span> <span class="n">hello_world</span><span class="p">,</span>
+                      <span class="n">strlen</span><span class="p">(</span><span class="n">hello_world</span><span class="p">));</span>
+
+    <span class="k">return</span> <span class="n">HTTP_OK</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>These simple handlers will use whatever is inside their respective string
+buffers (which is an array that grows automatically when needed, with some
+bookkeeping attached). In the “Hello, World!” case, however, the string
+buffer acts merely as a pointer to some read-only string stored in the text
+section; this simplifies the interface a little bit, while avoiding string
+copies and unneeded heap allocations.</p>
+</div>
+<div class="section" id="chunked-encoding-and-server-sent-events">
+<h3>Chunked encoding and Server-sent events</h3>
+<p>Supported also is the <a class="reference external" href="https://en.wikipedia.org/wiki/Chunked_transfer_encoding">Chunked Encoding</a>. Using it is very simple: just set
+the response MIME Type, fill the string buffer, and call
+<span class="docutils literal"><span class="pre">lwan_response_send_chunk()</span></span>. From this point on, the response headers will be
+sent alongside the first chunk, the string buffer will be cleared, and the
+coroutine will yield. To send the next chunk, just fill the string buffer
+again and send another chunk, until your handler is complete.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="kt">lwan_http_status_t</span>
+<span class="nf">test_chunked_encoding</span><span class="p">(</span><span class="kt">lwan_request_t</span> <span class="o">*</span><span class="n">request</span><span class="p">,</span>
+            <span class="kt">lwan_response_t</span> <span class="o">*</span><span class="n">response</span><span class="p">,</span>
+            <span class="kt">void</span> <span class="o">*</span><span class="n">data</span> <span class="n">__attribute__</span><span class="p">((</span><span class="n">unused</span><span class="p">)))</span>
+<span class="p">{</span>
+    <span class="n">response</span><span class="o">-&gt;</span><span class="n">mime_type</span> <span class="o">=</span> <span class="s">&quot;text/plain&quot;</span><span class="p">;</span>
+
+    <span class="n">strbuf_printf</span><span class="p">(</span><span class="n">response</span><span class="o">-&gt;</span><span class="n">buffer</span><span class="p">,</span> <span class="s">&quot;First chunk</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="n">lwan_response_send_chunk</span><span class="p">(</span><span class="n">request</span><span class="p">);</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;=</span> <span class="mi">10</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">strbuf_printf</span><span class="p">(</span><span class="n">response</span><span class="o">-&gt;</span><span class="n">buffer</span><span class="p">,</span> <span class="s">&quot;*Chunk #%d*</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">);</span>
+        <span class="n">lwan_response_send_chunk</span><span class="p">(</span><span class="n">request</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="n">strbuf_printf</span><span class="p">(</span><span class="n">response</span><span class="o">-&gt;</span><span class="n">buffer</span><span class="p">,</span> <span class="s">&quot;Last chunk</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="n">lwan_response_send_chunk</span><span class="p">(</span><span class="n">request</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="n">HTTP_OK</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The same general idea is used by <a class="reference external" href="https://en.wikipedia.org/wiki/Server-sent_events">Server-sent events</a>; however, one uses
+<span class="docutils literal"><span class="pre">lwan_response_send_event()</span></span>, and passes the event name as well.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="kt">lwan_http_status_t</span>
+<span class="nf">test_server_sent_event</span><span class="p">(</span><span class="kt">lwan_request_t</span> <span class="o">*</span><span class="n">request</span><span class="p">,</span>
+            <span class="kt">lwan_response_t</span> <span class="o">*</span><span class="n">response</span><span class="p">,</span>
+            <span class="kt">void</span> <span class="o">*</span><span class="n">data</span> <span class="n">__attribute__</span><span class="p">((</span><span class="n">unused</span><span class="p">)))</span>
+<span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;=</span> <span class="mi">10</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">strbuf_printf</span><span class="p">(</span><span class="n">response</span><span class="o">-&gt;</span><span class="n">buffer</span><span class="p">,</span> <span class="s">&quot;{n: %d}&quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">);</span>
+        <span class="n">lwan_response_send_event</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="s">&quot;currval&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">HTTP_OK</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The implementation inside Lwan is as straightforward as it looks: coroutines
+saved the day.</p>
+</div>
+<div class="section" id="file-serving-module">
+<h3>File serving module</h3>
+<p>Since files can be served using the <span class="docutils literal"><span class="pre">sendfile()</span></span> system call, the kind of
+handlers used by Hello World can’t be used: responses are sent using
+<span class="docutils literal"><span class="pre">writev()</span></span> to send both response headers and contents in one kernel roundtrip.
+Because of this, there’s a different kind of handler that gives more control
+as to how the response is sent: the (for the lack of a better name)
+streaming handlers. Streaming handlers are expected to send the whole
+response themselves.</p>
+<p>To convert a “normal” handler into a streaming handler is simple: just set a
+few pointers in the “normal” handler and return. With the exception of
+producing error responses automatically — streaming handlers function
+exactly the same as a “normal” handler that does not send the response
+headers automatically.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">lwan_http_status_t</span>
+<span class="nf">serve_files_handle_cb</span><span class="p">(</span><span class="kt">lwan_request_t</span> <span class="o">*</span><span class="n">request</span><span class="p">,</span>
+                      <span class="kt">lwan_response_t</span> <span class="o">*</span><span class="n">response</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">lwan_http_status_t</span> <span class="n">return_status</span> <span class="o">=</span> <span class="n">HTTP_NOT_FOUND</span><span class="p">;</span>
+    <span class="kt">serve_files_priv_t</span> <span class="o">*</span><span class="n">priv</span> <span class="o">=</span> <span class="n">data</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="kt">cache_entry_t</span> <span class="o">*</span><span class="n">ce</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">UNLIKELY</span><span class="p">(</span><span class="o">!</span><span class="n">priv</span><span class="p">))</span> <span class="p">{</span>
+        <span class="n">return_status</span> <span class="o">=</span> <span class="n">HTTP_INTERNAL_ERROR</span><span class="p">;</span>
+        <span class="k">goto</span> <span class="n">fail</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="n">ce</span> <span class="o">=</span> <span class="n">cache_coro_get_and_ref_entry</span><span class="p">(</span><span class="n">priv</span><span class="o">-&gt;</span><span class="n">cache</span><span class="p">,</span>
+                <span class="n">request</span><span class="o">-&gt;</span><span class="n">conn</span><span class="o">-&gt;</span><span class="n">coro</span><span class="p">,</span> <span class="n">request</span><span class="o">-&gt;</span><span class="n">url</span><span class="p">.</span><span class="n">value</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">LIKELY</span><span class="p">(</span><span class="n">ce</span><span class="p">))</span> <span class="p">{</span>
+        <span class="kt">file_cache_entry_t</span> <span class="o">*</span><span class="n">fce</span> <span class="o">=</span> <span class="p">(</span><span class="kt">file_cache_entry_t</span> <span class="o">*</span><span class="p">)</span><span class="n">ce</span><span class="p">;</span>
+        <span class="n">response</span><span class="o">-&gt;</span><span class="n">mime_type</span> <span class="o">=</span> <span class="n">fce</span><span class="o">-&gt;</span><span class="n">mime_type</span><span class="p">;</span>
+        <span class="n">response</span><span class="o">-&gt;</span><span class="n">stream</span><span class="p">.</span><span class="n">callback</span> <span class="o">=</span> <span class="n">fce</span><span class="o">-&gt;</span><span class="n">funcs</span><span class="o">-&gt;</span><span class="n">serve</span><span class="p">;</span>
+        <span class="n">response</span><span class="o">-&gt;</span><span class="n">stream</span><span class="p">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">ce</span><span class="p">;</span>
+        <span class="n">response</span><span class="o">-&gt;</span><span class="n">stream</span><span class="p">.</span><span class="n">priv</span> <span class="o">=</span> <span class="n">priv</span><span class="p">;</span>
+
+        <span class="k">return</span> <span class="n">HTTP_OK</span><span class="p">;</span>
+    <span class="p">}</span>
+
+<span class="nl">fail:</span>
+    <span class="n">response</span><span class="o">-&gt;</span><span class="n">stream</span><span class="p">.</span><span class="n">callback</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="k">return</span> <span class="n">return_status</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>To avoid having to obtain information about a file for every request, this
+information is cached for a few seconds. The caching mechanism itself is
+discussed in detail further down.</p>
+<p>While caching file information, the file size is considered while picking
+the way to serve it.  Files larger than 16KiB are served with <span class="docutils literal"><span class="pre">sendfile()</span></span>
+to allow zero (or fewer) copy transfers, and smaller files are mapped in
+memory using <span class="docutils literal"><span class="pre">mmap()</span></span>.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="k">const</span> <span class="kt">cache_funcs_t</span> <span class="o">*</span>
+<span class="nf">_get_funcs</span><span class="p">(</span><span class="kt">serve_files_priv_t</span> <span class="o">*</span><span class="n">priv</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span>
+           <span class="kt">char</span> <span class="o">*</span><span class="n">full_path</span><span class="p">,</span> <span class="k">struct</span> <span class="n">stat</span> <span class="o">*</span><span class="n">st</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">char</span> <span class="n">index_html_path_buf</span><span class="p">[</span><span class="n">PATH_MAX</span><span class="p">];</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">index_html_path</span> <span class="o">=</span> <span class="n">index_html_path_buf</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">S_ISDIR</span><span class="p">(</span><span class="n">st</span><span class="o">-&gt;</span><span class="n">st_mode</span><span class="p">))</span> <span class="p">{</span>
+        <span class="cm">/* It is a directory. It might be the root directory</span>
+<span class="cm">         * (empty key), or something else.  In either case,</span>
+<span class="cm">         * tack priv-&gt;index_html to the path.  */</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">*</span><span class="n">key</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">index_html_path</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="n">priv</span><span class="o">-&gt;</span><span class="n">index_html</span><span class="p">;</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="cm">/* Redirect /path to /path/. This is to help</span>
+<span class="cm">             * cases where there's something like &lt;img</span>
+<span class="cm">             * src=&quot;../foo.png&quot;&gt;, so that actually</span>
+<span class="cm">             * /path/../foo.png is served instead of</span>
+<span class="cm">             * /path../foo.png.  */</span>
+            <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key_end</span> <span class="o">=</span> <span class="n">rawmemchr</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="sc">'\0'</span><span class="p">);</span>
+            <span class="k">if</span> <span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">key_end</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="sc">'/'</span><span class="p">)</span>
+                <span class="k">return</span> <span class="o">&amp;</span><span class="n">redir_funcs</span><span class="p">;</span>
+
+            <span class="k">if</span> <span class="p">(</span><span class="n">UNLIKELY</span><span class="p">(</span><span class="n">snprintf</span><span class="p">(</span><span class="n">index_html_path</span><span class="p">,</span> <span class="n">PATH_MAX</span><span class="p">,</span>
+                                  <span class="s">&quot;%s%s&quot;</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span>
+                                  <span class="n">priv</span><span class="o">-&gt;</span><span class="n">index_html</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">))</span>
+                <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="cm">/* See if it exists. */</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">fstatat</span><span class="p">(</span><span class="n">priv</span><span class="o">-&gt;</span><span class="n">root</span><span class="p">.</span><span class="n">fd</span><span class="p">,</span> <span class="n">index_html_path</span><span class="p">,</span> <span class="n">st</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">UNLIKELY</span><span class="p">(</span><span class="n">errno</span> <span class="o">!=</span> <span class="n">ENOENT</span><span class="p">))</span>
+                <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+
+            <span class="cm">/* If it doesn't, generate a directory list. */</span>
+            <span class="k">return</span> <span class="o">&amp;</span><span class="n">dirlist_funcs</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="cm">/* If it does, we want its full path. */</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">UNLIKELY</span><span class="p">(</span><span class="n">priv</span><span class="o">-&gt;</span><span class="n">root</span><span class="p">.</span><span class="n">path_len</span> <span class="o">+</span> <span class="mi">1</span> <span class="cm">/* slash */</span> <span class="o">+</span>
+                     <span class="n">strlen</span><span class="p">(</span><span class="n">index_html_path</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">&gt;=</span> <span class="n">PATH_MAX</span><span class="p">))</span>
+            <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+
+        <span class="n">full_path</span><span class="p">[</span><span class="n">priv</span><span class="o">-&gt;</span><span class="n">root</span><span class="p">.</span><span class="n">path_len</span><span class="p">]</span> <span class="o">=</span> <span class="sc">'/'</span><span class="p">;</span>
+        <span class="n">strncpy</span><span class="p">(</span><span class="n">full_path</span> <span class="o">+</span> <span class="n">priv</span><span class="o">-&gt;</span><span class="n">root</span><span class="p">.</span><span class="n">path_len</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="n">index_html_path</span><span class="p">,</span>
+                <span class="n">PATH_MAX</span> <span class="o">-</span> <span class="n">priv</span><span class="o">-&gt;</span><span class="n">root</span><span class="p">.</span><span class="n">path_len</span> <span class="o">-</span> <span class="mi">1</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="cm">/* It's not a directory: choose the fastest way to serve the</span>
+<span class="cm">     * file judging by its size.  */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">st</span><span class="o">-&gt;</span><span class="n">st_size</span> <span class="o">&lt;</span> <span class="mi">16384</span><span class="p">)</span>
+        <span class="k">return</span> <span class="o">&amp;</span><span class="n">mmap_funcs</span><span class="p">;</span>
+
+    <span class="k">return</span> <span class="o">&amp;</span><span class="n">sendfile_funcs</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Small files may also be compressed, unless compressed data ends up being
+larger than the original data. Especially if the response header is
+considered. Because of this, small files are only compressed if it’s worth
+the trouble. The 16KiB threshold has been chosen empirically: larger values
+did not yield substantial performance gains compared to using <span class="docutils literal"><span class="pre">sendfile()</span></span>.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">void</span>
+<span class="nf">_compress_cached_entry</span><span class="p">(</span><span class="kt">mmap_cache_data_t</span> <span class="o">*</span><span class="n">md</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">static</span> <span class="k">const</span> <span class="kt">size_t</span> <span class="n">deflated_header_size</span> <span class="o">=</span>
+            <span class="k">sizeof</span><span class="p">(</span><span class="s">&quot;Content-Encoding: deflate&quot;</span><span class="p">);</span>
+
+    <span class="n">md</span><span class="o">-&gt;</span><span class="n">compressed</span><span class="p">.</span><span class="n">size</span> <span class="o">=</span> <span class="n">compressBound</span><span class="p">(</span><span class="n">md</span><span class="o">-&gt;</span><span class="n">uncompressed</span><span class="p">.</span><span class="n">size</span><span class="p">);</span>
+
+    <span class="n">md</span><span class="o">-&gt;</span><span class="n">compressed</span><span class="p">.</span><span class="n">contents</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="n">md</span><span class="o">-&gt;</span><span class="n">compressed</span><span class="p">.</span><span class="n">size</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">UNLIKELY</span><span class="p">(</span><span class="o">!</span><span class="n">md</span><span class="o">-&gt;</span><span class="n">compressed</span><span class="p">.</span><span class="n">contents</span><span class="p">))</span>
+        <span class="k">goto</span> <span class="n">error_zero_out</span><span class="p">;</span>
+
+    <span class="kt">int</span> <span class="n">ret</span> <span class="o">=</span> <span class="n">compress</span><span class="p">(</span><span class="n">md</span><span class="o">-&gt;</span><span class="n">compressed</span><span class="p">.</span><span class="n">contents</span><span class="p">,</span>
+                       <span class="o">&amp;</span><span class="n">md</span><span class="o">-&gt;</span><span class="n">compressed</span><span class="p">.</span><span class="n">size</span><span class="p">,</span>
+                       <span class="n">md</span><span class="o">-&gt;</span><span class="n">uncompressed</span><span class="p">.</span><span class="n">contents</span><span class="p">,</span>
+                       <span class="n">md</span><span class="o">-&gt;</span><span class="n">uncompressed</span><span class="p">.</span><span class="n">size</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">UNLIKELY</span><span class="p">(</span><span class="n">ret</span> <span class="o">!=</span> <span class="n">Z_OK</span><span class="p">))</span>
+        <span class="k">goto</span> <span class="n">error_free_compressed</span><span class="p">;</span>
+
+    <span class="kt">size_t</span> <span class="n">total_size</span> <span class="o">=</span> <span class="n">md</span><span class="o">-&gt;</span><span class="n">compressed</span><span class="p">.</span><span class="n">size</span>
+            <span class="o">+</span> <span class="n">deflated_header_size</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">total_size</span> <span class="o">&lt;</span> <span class="n">md</span><span class="o">-&gt;</span><span class="n">uncompressed</span><span class="p">.</span><span class="n">size</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">;</span>
+
+<span class="nl">error_free_compressed:</span>
+    <span class="n">free</span><span class="p">(</span><span class="n">md</span><span class="o">-&gt;</span><span class="n">compressed</span><span class="p">.</span><span class="n">contents</span><span class="p">);</span>
+    <span class="n">md</span><span class="o">-&gt;</span><span class="n">compressed</span><span class="p">.</span><span class="n">contents</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+<span class="nl">error_zero_out:</span>
+    <span class="n">md</span><span class="o">-&gt;</span><span class="n">compressed</span><span class="p">.</span><span class="n">size</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>For directories, the template engine is used to create the listing. The
+contents are cached using the same mechanism files are. Templating is
+discussed below.</p>
+<p>An interesting optimization is that, to obtain the full path, a special
+version of <a class="reference external" href="http://linux.die.net/man/3/realpath">realpath()</a>, forked from the GNU libc implementation, is used.
+This version uses the <a class="reference external" href="http://lwn.net/Articles/164887">lighter “-at()” variants</a> of system calls that operates
+on paths; they do not need to perform path-to-inode conversion for the whole
+path, only from a path pointed to by a directory file descriptor.</p>
+<p>The file server is a module. It is a simple way to keep per instance state,
+such as the file descriptor for the root directory, the directory list
+template, and a few other things.</p>
+</div>
+</div>
+<div class="section" id="mustache-templating-engine">
+<h2>Mustache templating engine</h2>
+<p>Not all features from <a class="reference external" href="http://mustache.github.io">Mustache</a> are implemented: some are pretty much only
+practical if using a language that’s more expressive than C. However,
+without requiring (too much) boilerplate, a substantial amount of its
+specification is implemented, in a pretty efficient way, and suits all Lwan
+uses pretty well. (Being performant <a class="reference external" href="http://blog.codinghorror.com/the-sad-tragedy-of-micro-optimization-theater">might not matter</a>, though, but I’m
+here to have fun, not solve problems.)</p>
+<p>Not everything is implemented exactly as in the standard, though: that’s
+mostly for laziness reasons, but the non-dynamic nature of C would make
+certain things needlessly difficult to implement and use, anyway. The
+templating engine supports the basic stuff. In no particular order:</p>
+<ul class="simple">
+<li>Variables of different types</li>
+<li>Checking the emptiness of variables</li>
+<li>Iteration on lists (and any kind of sequences)</li>
+<li>Partials</li>
+<li>Comments</li>
+<li>Inverted sections</li>
+</ul>
+<p>Setting the delimiters, triple mustaches (for escaping HTML output),
+ampersand to unescape strings — and possibly other things — are not
+implemented, but could be implemented with relatively minimal effort. String
+escaping is supported by using a special string type and should <a class="reference external" href="https://www.owasp.org/index.php/XSS_%28Cross_Site_Scripting%29_Prevention_Cheat_Sheet#RULE_.231_-_HTML_Escape_Before_Inserting_Untrusted_Data_into_HTML_Element_Content">conform to
+best practices</a>.</p>
+<p>Templates are pre-processed. This pre-processing step uses a state machine
+parser to break down its text representation into a series of actions that
+can be performed by the engine very efficiently. Actions include things like
+“append string”, “append variable”, “start iteration”, and so on.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
+    <span class="n">TPL_ACTION_APPEND</span><span class="p">,</span>
+    <span class="n">TPL_ACTION_APPEND_CHAR</span><span class="p">,</span>
+    <span class="n">TPL_ACTION_VARIABLE</span><span class="p">,</span>
+    <span class="n">TPL_ACTION_LIST_START_ITER</span><span class="p">,</span>
+    <span class="n">TPL_ACTION_LIST_END_ITER</span><span class="p">,</span>
+    <span class="n">TPL_ACTION_IF_VARIABLE_NOT_EMPTY</span><span class="p">,</span>
+    <span class="n">TPL_ACTION_END_IF_VARIABLE_NOT_EMPTY</span><span class="p">,</span>
+    <span class="n">TPL_ACTION_APPLY_TPL</span><span class="p">,</span>
+    <span class="n">TPL_ACTION_LAST</span>
+<span class="p">}</span> <span class="kt">lwan_tpl_action_t</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>For instance, a stack of hash tables is used during this pre-processing step
+to act as a symbol table; this table can be thrown away as soon as the
+pre-processing step is complete, as all variables have been resolved and a
+much more efficient value lookup mechanism can be used instead.</p>
+<div class="section" id="obtaining-variables">
+<h3>Obtaining variables</h3>
+<p>To use the templating mechanism, one should have a structure for each
+template. Structures are cheap and provide some welcome compile-time type
+checking that wouldn’t be possible otherwise.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">typedef</span> <span class="k">struct</span> <span class="kt">hello_t</span> <span class="p">{</span>
+  <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">;</span>
+  <span class="kt">int</span> <span class="n">age</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>In addition to a structure, due to the lack of introspection in C, an array
+of variable descriptors should be declared. A variable descriptor contains a
+string representation of a variable name, the offset in bytes of that
+variable within the structure, and pointers to functions to test the
+emptiness of that kind of variable and to append the variable to the string
+buffer; macros help alleviate boilerplate headaches.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="kt">lwan_var_descriptor_t</span> <span class="n">hello_descriptor</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="n">TPL_VAR_STR</span><span class="p">(</span><span class="kt">hello_t</span><span class="p">,</span> <span class="n">name</span><span class="p">),</span>
+  <span class="n">TPL_VAR_INT</span><span class="p">(</span><span class="kt">hello_t</span><span class="p">,</span> <span class="n">age</span><span class="p">),</span>
+  <span class="n">TPL_VAR_SENTINEL</span>
+<span class="p">};</span>
+
+<span class="kt">lwan_tpl_t</span> <span class="o">*</span><span class="n">hello</span> <span class="o">=</span> <span class="n">lwan_tpl_compile</span><span class="p">(</span><span class="s">&quot;hello.tpl&quot;</span><span class="p">,</span>
+                                     <span class="n">hello_descriptor</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>A structure containing all the variables can then be supplied by some sort
+of database layer, caching layer, or be declared on the spot: compound
+literals with designated initializers make this use case pretty
+straightforward.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="kt">strbuf_t</span> <span class="o">*</span><span class="n">rendered</span> <span class="o">=</span> <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="p">(</span><span class="kt">hello_t</span><span class="p">[])</span> <span class="p">{{</span>
+  <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;World&quot;</span><span class="p">,</span>
+  <span class="p">.</span><span class="n">age</span> <span class="o">=</span> <span class="mi">42</span>
+<span class="p">}});</span>
+
+<span class="cm">/* Do something with `rendered` */</span>
+
+<span class="n">strbuf_free</span><span class="p">(</span><span class="n">rendered</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Appending a variable is then just the matter of calling the
+appropriate callback function (conveniently in the descriptor), passing the
+base address of that structure plus the byte offset within it.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">void</span>
+<span class="nf">append_var_to_strbuf</span><span class="p">(</span><span class="kt">lwan_tpl_chunk_t</span> <span class="o">*</span><span class="n">chunk</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">variables</span><span class="p">,</span>
+                     <span class="kt">strbuf_t</span> <span class="o">*</span><span class="n">buf</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">lwan_var_descriptor_t</span> <span class="o">*</span><span class="n">descriptor</span> <span class="o">=</span> <span class="n">chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">LIKELY</span><span class="p">(</span><span class="n">descriptor</span><span class="p">))</span>
+        <span class="n">descriptor</span><span class="o">-&gt;</span><span class="n">append_to_strbuf</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span>
+                      <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="n">variables</span> <span class="o">+</span> <span class="n">descriptor</span><span class="o">-&gt;</span><span class="n">offset</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="sequences">
+<h3>Sequences</h3>
+<p>To avoid creating potentially lots of small, temporary objects, for lists
+and sequences a coroutine is created and is used as a makeshift generator
+function. Another option was to implement iterators using a structure to
+hold state plus a few callbacks — I gave up while imagining the amount of
+boilerplate necessary. A function is simple to write on the other hand, and
+can include initialization, iteration, and cleanup.</p>
+<div class="figure align-center">
+<img alt="sequences" src="https://i.imgur.com/VsAfnsC.png"/>
+<p class="caption">How sequences are evaluated by the templating engine</p>
+</div>
+<p>The only user of sequences in templates within Lwan is the file listing
+feature in the file serving module. The generator function is pretty
+straightforward, and is responsible for opening the directory, obtaining
+information for each entry, and then closing the directory. A shorter
+version of it is described in the original blog post about <a class="reference external" href="http://tia.mat.br/blog/html/2013/09/26/implementing_sequences_in_lwan_template_engine.html">sequences in the
+templating engine</a>.</p>
+</div>
+</div>
+<div class="section" id="caching">
+<h2>Caching</h2>
+<p>I’ve used and implemented a few caching infrastructures over the years, and
+I believe that the one in Lwan is, so far, the simplest one I’ve used. Most
+caches will require items to be created — and then added manually to the
+cache. Not only clumsy, but could also lead to race conditions.</p>
+<p>The one in Lwan knows how to create and destroy a cache entry: one just asks
+the cache to obtain a value for a given key. If it’s not there, the entry is
+created and returned. The lifetime of a cache entry is controlled
+automatically, and a low priority thread kicks in every now and then to
+prune old entries.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">struct</span> <span class="kt">cache_t</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="p">{</span>
+        <span class="k">struct</span> <span class="n">hash</span> <span class="o">*</span><span class="n">table</span><span class="p">;</span>
+        <span class="kt">pthread_rwlock_t</span> <span class="n">lock</span><span class="p">;</span>
+    <span class="p">}</span> <span class="n">hash</span><span class="p">;</span>
+
+    <span class="k">struct</span> <span class="p">{</span>
+        <span class="k">struct</span> <span class="n">list_head</span> <span class="n">list</span><span class="p">;</span>
+        <span class="kt">pthread_rwlock_t</span> <span class="n">lock</span><span class="p">;</span>
+    <span class="p">}</span> <span class="n">queue</span><span class="p">;</span>
+
+    <span class="k">struct</span> <span class="p">{</span>
+        <span class="n">CreateEntryCallback</span> <span class="n">create_entry</span><span class="p">;</span>
+        <span class="n">DestroyEntryCallback</span> <span class="n">destroy_entry</span><span class="p">;</span>
+        <span class="kt">void</span> <span class="o">*</span><span class="n">context</span><span class="p">;</span>
+    <span class="p">}</span> <span class="n">cb</span><span class="p">;</span>
+
+    <span class="k">struct</span> <span class="p">{</span>
+        <span class="kt">time_t</span> <span class="n">time_to_live</span><span class="p">;</span>
+        <span class="kt">clockid_t</span> <span class="n">clock_id</span><span class="p">;</span>
+    <span class="p">}</span> <span class="n">settings</span><span class="p">;</span>
+
+    <span class="kt">unsigned</span> <span class="n">flags</span><span class="p">;</span>
+
+<span class="cp">#ifndef NDEBUG</span>
+    <span class="k">struct</span> <span class="p">{</span>
+        <span class="kt">unsigned</span> <span class="n">hits</span><span class="p">;</span>
+        <span class="kt">unsigned</span> <span class="n">misses</span><span class="p">;</span>
+        <span class="kt">unsigned</span> <span class="n">evicted</span><span class="p">;</span>
+    <span class="p">}</span> <span class="n">stats</span><span class="p">;</span>
+<span class="cp">#endif</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Unlike most caches, the one in Lwan isn’t limited by size: items stay in the
+cache for a predetermined amount of time.</p>
+<p>Cache entries are reference-counted, and they’re not automatically reaped if
+something is holding on a reference: these items are marked as floating when
+this happens, and the last one to give up the reference will also destroy
+the entry.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">struct</span> <span class="kt">cache_entry_t</span> <span class="p">{</span>
+  <span class="k">struct</span> <span class="n">list_node</span> <span class="n">entries</span><span class="p">;</span>
+  <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">;</span>
+  <span class="kt">unsigned</span> <span class="n">refs</span><span class="p">;</span>
+  <span class="kt">unsigned</span> <span class="n">flags</span><span class="p">;</span>
+  <span class="k">struct</span> <span class="n">timespec</span> <span class="n">time_to_die</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="k">struct</span> <span class="n">file_cache_entry_t_</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="kt">cache_entry_t</span> <span class="n">base</span><span class="p">;</span>
+
+    <span class="k">struct</span> <span class="p">{</span>
+        <span class="kt">char</span> <span class="n">string</span><span class="p">[</span><span class="mi">31</span><span class="p">];</span>
+        <span class="kt">time_t</span> <span class="n">integer</span><span class="p">;</span>
+    <span class="p">}</span> <span class="n">last_modified</span><span class="p">;</span>
+
+    <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">mime_type</span><span class="p">;</span>
+    <span class="k">const</span> <span class="kt">cache_funcs_t</span> <span class="o">*</span><span class="n">funcs</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>When used within a coroutine, two things can happen: ➀ the coroutine might
+yield if the cache lock were to become contended and ➁ automatically
+releasing a reference when a coroutine is destroyed.</p>
+<p>In addition to floating entries, there are also temporary entries. The cache
+uses read-write locks, but most of the time, locks are only obtained using
+the “trylock” primitive: if a lock can’t be obtained for a reason, Lwan
+tries to move on to something else. This could be attending to another
+request (by yielding the coroutine), or merely returning an off-the-books
+entry that will be destroyed as soon as its sole user releases its
+reference. The difference to floating entries is merely an implementation
+detail, so that an atomic decrement (and its accompanying memory barrier)
+isn’t used.</p>
+<p>The cache tries to avoid keeping the locks locked. As an example, while an
+item is being created, no locks are held. This can, of course, lead to
+multiple entries being created concurrently, but if caching would be useful
+anyway, having a few temporary entries lying around isn’t a problem, as at
+least one will be cached for future access.</p>
+<p>As nice as the cache subsystem ended up being, there is a lot of room for
+improvement.  Reducing the amount of concurrent reference counting is high
+on the list.  Reducing the latency is also in consideration.  Making HTTP
+responses cacheable without special code in the handler is there as well.</p>
+</div>
+<div class="section" id="keep-alive-connections-death-queue">
+<h2>Keep-alive connections, death queue</h2>
+<p>Connection lifetime is managed by a per-thread queue.</p>
+<p>Each time a connection is scheduled to a certain thread, it is pushed to the
+queue, and a time to die is set. When there are connections in this queue,
+Epoll will timeout every second to iterate through it and kill connections
+when their time has come. Timeouts are infinite when the queue is empty, to
+avoid waking the process unnecessarily. Every time a coroutine is resumed,
+the time to die is updated, and the connection is pushed to the end of the
+queue.</p>
+<p>Each death queue has its own epoch, which starts at zero and increments at
+every timeout. Whenever the last connection is removed from a queue, the
+epoch restarts. Keeping the epoch a small number will help shave a few bytes
+from each connection in the future.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">struct</span> <span class="kt">death_queue_t</span> <span class="p">{</span>
+    <span class="kt">lwan_connection_t</span> <span class="o">*</span><span class="n">conns</span><span class="p">;</span>
+    <span class="kt">lwan_connection_t</span> <span class="n">head</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="n">time</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">short</span> <span class="n">keep_alive_timeout</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>The same timeout value is used for keep-alive connections and coroutines.
+This ensures coroutines will not linger indefinitely when not performing any
+kind of work.</p>
+<p>The death queue is so important that almost a third of the connection
+structure is dedicated to its existence. Three integers keep state for the
+death queue: the time to die (as an unsigned int), and two integers as
+pointers to a doubly linked list.</p>
+<p>Integers were used instead of pointers in order to save memory. This was
+possible since in reality they are indices to the connection array. A doubly
+linked list was also chosen since removing a connection from the middle of
+the queue should be efficient, as it is done very frequently to move the
+entry to the end. The list is also circular, in order to avoid branching to
+handle empty queue cases. Maintaining the queue inline with the connection
+structures help reducing cache pressure.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kr">inline</span> <span class="kt">int</span> <span class="nf">_death_queue_node_to_idx</span><span class="p">(</span>
+            <span class="k">struct</span> <span class="kt">death_queue_t</span> <span class="o">*</span><span class="n">dq</span><span class="p">,</span> <span class="kt">lwan_connection_t</span> <span class="o">*</span><span class="n">conn</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">conn</span> <span class="o">==</span> <span class="o">&amp;</span><span class="n">dq</span><span class="o">-&gt;</span><span class="n">head</span><span class="p">)</span> <span class="o">?</span>
+            <span class="o">-</span><span class="mi">1</span> <span class="o">:</span> <span class="p">(</span><span class="kt">int</span><span class="p">)(</span><span class="kt">ptrdiff_t</span><span class="p">)(</span><span class="n">conn</span> <span class="o">-</span> <span class="n">dq</span><span class="o">-&gt;</span><span class="n">conns</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="kr">inline</span> <span class="kt">lwan_connection_t</span> <span class="o">*</span><span class="nf">_death_queue_idx_to_node</span><span class="p">(</span>
+            <span class="k">struct</span> <span class="kt">death_queue_t</span> <span class="o">*</span><span class="n">dq</span><span class="p">,</span> <span class="kt">int</span> <span class="n">idx</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">idx</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">?</span> <span class="o">&amp;</span><span class="n">dq</span><span class="o">-&gt;</span><span class="n">head</span> <span class="o">:</span> <span class="o">&amp;</span><span class="n">dq</span><span class="o">-&gt;</span><span class="n">conns</span><span class="p">[</span><span class="n">idx</span><span class="p">];</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">_death_queue_insert</span><span class="p">(</span><span class="k">struct</span> <span class="kt">death_queue_t</span> <span class="o">*</span><span class="n">dq</span><span class="p">,</span>
+    <span class="kt">lwan_connection_t</span> <span class="o">*</span><span class="n">new_node</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">new_node</span><span class="o">-&gt;</span><span class="n">next</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+    <span class="n">new_node</span><span class="o">-&gt;</span><span class="n">prev</span> <span class="o">=</span> <span class="n">dq</span><span class="o">-&gt;</span><span class="n">head</span><span class="p">.</span><span class="n">prev</span><span class="p">;</span>
+    <span class="kt">lwan_connection_t</span> <span class="o">*</span><span class="n">prev</span> <span class="o">=</span> <span class="n">_death_queue_idx_to_node</span><span class="p">(</span><span class="n">dq</span><span class="p">,</span>
+                                           <span class="n">dq</span><span class="o">-&gt;</span><span class="n">head</span><span class="p">.</span><span class="n">prev</span><span class="p">);</span>
+    <span class="n">dq</span><span class="o">-&gt;</span><span class="n">head</span><span class="p">.</span><span class="n">prev</span> <span class="o">=</span> <span class="n">prev</span><span class="o">-&gt;</span><span class="n">next</span> <span class="o">=</span> <span class="n">_death_queue_node_to_idx</span><span class="p">(</span><span class="n">dq</span><span class="p">,</span>
+                                                   <span class="n">new_node</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">_death_queue_remove</span><span class="p">(</span>
+            <span class="k">struct</span> <span class="kt">death_queue_t</span> <span class="o">*</span><span class="n">dq</span><span class="p">,</span> <span class="kt">lwan_connection_t</span> <span class="o">*</span><span class="n">node</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">lwan_connection_t</span> <span class="o">*</span><span class="n">prev</span> <span class="o">=</span> <span class="n">_death_queue_idx_to_node</span><span class="p">(</span><span class="n">dq</span><span class="p">,</span>
+                                              <span class="n">node</span><span class="o">-&gt;</span><span class="n">prev</span><span class="p">);</span>
+    <span class="kt">lwan_connection_t</span> <span class="o">*</span><span class="n">next</span> <span class="o">=</span> <span class="n">_death_queue_idx_to_node</span><span class="p">(</span><span class="n">dq</span><span class="p">,</span>
+                                              <span class="n">node</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">);</span>
+    <span class="n">next</span><span class="o">-&gt;</span><span class="n">prev</span> <span class="o">=</span> <span class="n">node</span><span class="o">-&gt;</span><span class="n">prev</span><span class="p">;</span>
+    <span class="n">prev</span><span class="o">-&gt;</span><span class="n">next</span> <span class="o">=</span> <span class="n">node</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="closing-words">
+<h2>Closing words</h2>
+<p>That’s pretty much it: when a response has been sent, the connection can
+either be closed, or a new request can be serviced in the same connection.
+Repeat ad infinitum and there’s the <a class="reference external" href="http://lwan.ws">HTTP server</a>.</p>
+<p>If you’ve made this far, I invite you to take a look at the <a class="reference external" href="https://github.com/lpereira/lwan">full source code</a>.
+There are things that were not mentioned in this article. It’s also a young
+Free Software project with no entry barrier: just fork and issue a pull
+request.</p>
+</div>
+</div>
+        <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/c.html">C</a></span>
+        </div>
+        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
             <span>23 June 2014</span>
         </div>
         <div class="section" id="integer-to-string-conversion">
@@ -552,128 +1459,6 @@ is available in this <a class="reference external" href="https://gist.github.com
                 Tags:
                 <a href="tags/c.html">c</a>, <a href="tags/trick.html">trick</a>, <a href="tags/programming.html">programming</a></span>
         </div>
-        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
-            <span>11 November 2012</span>
-        </div>
-        <div class="section" id="mustache-templates-in-c">
-<h1><a href="2012/11/11/mustache_templates_in_c.html">Mustache templates in C</a></h1>
-<p>Generating textual output is a lot easier with templates than it is with
-handcrafted functions. And it is a lot easier in languages such as Python,
-where things like introspection are easy and cheap. But that doesn’t
-necessarily mean we can’t do that in C if we know where to look.</p>
-<p>I’ve implemented a subset of <a class="reference external" href="http://mustache.github.com">Mustache</a> templates in C that leverages some
-tricks that makes template rendering both convenient and efficient. For
-instance, if you have a template such as this:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="n">Hello</span><span class="p">,</span> <span class="p">{{</span><span class="n">name</span><span class="p">}}</span><span class="o">!</span>
-</pre></div>
-</div>
-<p>It can easily be rendered with the following code:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="kt">hello_t</span> <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
-  <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;World&quot;</span>
-<span class="p">};</span>
-<span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">data</span><span class="p">);</span>
-</pre></div>
-</div>
-<p>Where <span class="docutils literal"><span class="pre">hello</span></span> is the template that was previously compiled into a series of
-simple instructions (such as <strong>append text</strong> or <strong>append the value of a
-variable</strong>), and the second parameter is a structure containing the data
-needed by the renderer.</p>
-<p>My first thought to render these templates would involve the use of a hash
-table. While reasonably efficient (even considering the overhead to create
-and destroy the table every time the template had to be rendered), they’re
-not first class citizens in C, and the usage would be pretty clumsy, to say
-the least:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="n">hash_table</span> <span class="o">*</span><span class="n">ht</span> <span class="o">=</span> <span class="n">hash_table_new</span><span class="p">();</span>
-<span class="n">hash_table_add</span><span class="p">(</span><span class="n">ht</span><span class="p">,</span> <span class="s">&quot;name&quot;</span><span class="p">,</span> <span class="s">&quot;World&quot;</span><span class="p">);</span>
-
-<span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="n">ht</span><span class="p">);</span>
-
-<span class="n">hash_table_free</span><span class="p">(</span><span class="n">ht</span><span class="p">);</span>
-</pre></div>
-</div>
-<p>Instead, I’ve decided to go on another road: use standard C structures to
-store the values in their native form, and then find a way to lookup these
-values whenever necessary to render the template.</p>
-<p>The first trick, then, was to use a C99 feature called <a class="reference external" href="http://gcc.gnu.org/onlinedocs/gcc-3.3.1/gcc/Compound-Literals.html">compound literals</a>,
-which is supported by GCC even in C89 mode. This trick allows the use of
-<a class="reference external" href="http://www.run.montefiore.ulg.ac.be/~martin/resources/kung-f00.html">anonymous arrays</a>, among other things, and provides enough syntactic sugar
-to conveniently group the template variables:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="p">(</span><span class="kt">hello_t</span><span class="p">[])</span> <span class="p">{{</span>
-  <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;World&quot;</span>
-<span class="p">}});</span>
-</pre></div>
-</div>
-<p>Without a way to lookup which value to obtain from the structure, however,
-this would not help much. Enter the second trick: the <span class="docutils literal"><span class="pre">offsetof(3)</span></span> macro,
-which computes the offset of a field in a given structure. By storing this
-offset alongside data type information, the value lookup is not only possible
-but can also work with types different than strings:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="k">typedef</span> <span class="k">struct</span> <span class="kt">hello_t</span> <span class="p">{</span>
-  <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">;</span>
-  <span class="kt">int</span> <span class="n">age</span><span class="p">;</span>
-<span class="p">};</span>
-<span class="cm">/*</span>
-<span class="cm"> * The TPL_VAR_??? macros provides some convenience to declare each</span>
-<span class="cm"> * descriptor. These expand to a declaration containing the name of</span>
-<span class="cm"> * the variable as a string (used to validate the template during</span>
-<span class="cm"> * compile time), the field offset, and pointers to functions that</span>
-<span class="cm"> * convert the values to string and check if they're empty.</span>
-<span class="cm"> *</span>
-<span class="cm"> * The SENTINEL type is there so the template compiler knows when to</span>
-<span class="cm"> * stop looking for descriptors, since of course you can have as</span>
-<span class="cm"> many</span>
-<span class="cm"> * fields as necessary.</span>
-<span class="cm"> */</span>
-<span class="kt">lwan_var_descriptor_t</span> <span class="n">hello_descriptor</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
-  <span class="n">TPL_VAR_STR</span><span class="p">(</span><span class="kt">hello_t</span><span class="p">,</span> <span class="n">name</span><span class="p">),</span>
-  <span class="n">TPL_VAR_INT</span><span class="p">(</span><span class="kt">hello_t</span><span class="p">,</span> <span class="n">age</span><span class="p">),</span>
-  <span class="n">TPL_VAR_SENTINEL</span>
-<span class="p">};</span>
-<span class="kt">lwan_tpl_t</span> <span class="o">*</span><span class="n">hello</span><span class="p">;</span>
-<span class="kt">strbuf_t</span> <span class="o">*</span><span class="n">rendered</span><span class="p">;</span>
-
-<span class="cm">/*</span>
-<span class="cm"> * ``hello'' would usually be compiled once and kept around for</span>
-<span class="cm"> * the whole duration of the program.</span>
-<span class="cm"> */</span>
-<span class="n">hello</span> <span class="o">=</span> <span class="n">lwan_tpl_compile</span><span class="p">(</span><span class="s">&quot;hello.tpl&quot;</span><span class="p">,</span> <span class="n">hello_descriptor</span><span class="p">);</span>
-
-<span class="cm">/*</span>
-<span class="cm"> * Rendering the template then would be just the matter of calling</span>
-<span class="cm"> * this function, which will output a ``strbuf_t''. The template</span>
-<span class="cm"> * compiler estimates the starting size of this string buffer, so</span>
-<span class="cm"> * rendering will incur in very few expensive reallocations, if</span>
-<span class="cm"> * there are reallocations at all.</span>
-<span class="cm"> */</span>
-<span class="n">rendered</span> <span class="o">=</span> <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="p">(</span><span class="kt">hello_t</span><span class="p">[])</span> <span class="p">{{</span>
-  <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;World&quot;</span><span class="p">,</span>
-  <span class="p">.</span><span class="n">age</span> <span class="o">=</span> <span class="mi">42</span>
-<span class="p">}});</span>
-
-<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">strbuf_get_buffer</span><span class="p">(</span><span class="n">rendered</span><span class="p">));</span>
-<span class="n">strbuf_free</span><span class="p">(</span><span class="n">rendered</span><span class="p">);</span>
-</pre></div>
-</div>
-<p><a class="reference external" href="https://github.com/lpereira/lwan/blob/wip/template.c">Code for this engine</a> is available in the <a class="reference external" href="https://github.com/lpereira/lwan/tree/wip">wip branch</a> of my toy web
-server, lwan. It is not currently used there, but it is built alongside the
-main program and can be tested by invoking the generated <span class="docutils literal"><span class="pre">template</span></span>
-executable.</p>
-<p>Before using that in lwan, though, I’ll try to employ this <a class="reference external" href="http://dginasa.blogspot.com.br/2012/10/brainfuck-jit-compiler-in-around-155.html">nifty trick</a> to
-JIT-compile the template and avoid some of the overhead where it really
-matters. While at the same time possibly opening a whole can of worms from
-the security standpoint, though – but it wouldn’t be fun without some risk,
-would it? :)</p>
-</div>
-        <div class="postmeta">
-        <div class="author">
-            <span>Posted by Leandro Pereira</span>
-        </div>
-        
-        <div class="tags">
-            <span>
-                Tags:
-                <a href="tags/lwan.html">lwan</a>, <a href="tags/c.html">C</a>, <a href="tags/tricks.html">tricks</a>, <a href="tags/template.html">template</a></span>
-        </div>
         </div><div class="archive_link">
         <a href="archive.html"> &mdash; Blog Archive &mdash; </a>
     </div><ul class="related clearfix">
@@ -688,6 +1473,8 @@ would it? :)</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
+        </li><li>
             <a href="2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
         </li><li>
             <a href="2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage by 2670%</a>
@@ -705,8 +1492,6 @@ would it? :)</p>
             <a href="2012/09/29/asynchronous_i_o_in_c_with_coroutines.html">Asynchronous I/O in C with Coroutines</a>
         </li><li>
             <a href="2012/09/21/presenting_easyui.html">Presenting EasyUI</a>
-        </li><li>
-            <a href="2012/08/12/file_serving_with_few_system_calls.html">File serving with few system calls</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
@@ -727,11 +1512,11 @@ would it? :)</p>
       <a href="tags/strace.html" style="font-size: 8pt">strace</a>&nbsp;&nbsp;
       <a href="tags/template.html" style="font-size: 8pt">template</a>&nbsp;&nbsp;
       <a href="tags/tizen.html" style="font-size: 8pt">tizen</a>&nbsp;&nbsp;
-      <a href="tags/trick.html" style="font-size: 14pt">trick</a>&nbsp;&nbsp;
+      <a href="tags/trick.html" style="font-size: 13pt">trick</a>&nbsp;&nbsp;
       <a href="tags/tricks.html" style="font-size: 8pt">tricks</a>
 </div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
 
-        <div class="footer-container"><footer class="wrapper">&copy; Copyright 2013, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
+        <div class="footer-container"><footer class="wrapper">&copy; Copyright 2012-2014, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
 
       </div> <!--! end of #container --><!--[if lt IE 7 ]>
           <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"></script>
