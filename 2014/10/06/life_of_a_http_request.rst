@@ -171,10 +171,10 @@ can handle the timeout by itself.
 The sole purpose of each thread is to react to Epoll events, such as:
 
 * Timeouts (in which case the death queue iterates, potentially
-  terminating connections)
+  terminating connections);
 * Epoll errors (in which case the thread finishes gracefully);
 * Readiness events (can read, can write);
-* Hung up.
+* Connection hung up.
 
 Epoll events are used as signals to create, destroy, resume, and reset
 coroutines: there's one for each connection, and they're used both as
@@ -188,7 +188,7 @@ that’s less convoluted than the dreaded `callback idiom`_ prevalent in C. They
 also require a lot less stack space than a thread and their creation is
 pretty efficient: essentially just a call to ``malloc()``.
 
-.. _`Coroutine`: https://en.wikipedia.org/wiki/Coroutine
+.. _`Coroutines`: https://en.wikipedia.org/wiki/Coroutine
 .. _`callback idiom`: https://developer.gnome.org/gio/stable/
 
 .. code-block:: c
@@ -233,10 +233,10 @@ these wrap, they return no error:
 .. _`writev()`: http://linux.die.net/man/2/writev
 .. _`sendfile()`: http://linux.die.net/man/2/sendfile
 
-* On success, the same return code is returned
+* On success, the same return code is returned;
 * Recoverable errors (such as ``EINTR``) are handled by trying them again a
-  few times before giving up
-* When giving up, or on unrecoverable errors, coroutines are aborted
+  few times before giving up;
+* When giving up, or on unrecoverable errors, coroutines are aborted.
 
 .. code-block:: c
 
@@ -356,14 +356,14 @@ into a “string prefix switch”:
 
 .. _`spilling/filling registers`: https://en.wikipedia.org/wiki/Register_allocation#Spilling
 
-* Four bytes are read from memory, and are cast to a 32-bit integer pointer
-* That pointer is then dereferenced
+* Four bytes are read from memory, and are cast to a 32-bit integer pointer;
+* That pointer is then dereferenced;
 * A standard switch statement is used to perform cheap comparisons on a 32-bit
-  integer
+  integer;
 * When a header prefix is matched, a simple heuristic of finding the
-  separating colon and space character where they’re supposed to be is used
+  separating colon and space character where they’re supposed to be is used.
 
-  * This might give false positives, although that’s very unlikely in practice
+  * This might give false positives, although that’s very unlikely in practice.
 
 Once the request has been parsed, it is time to look up what is going to
 handle it.
@@ -735,12 +735,12 @@ mostly for laziness reasons, but the non-dynamic nature of C would make
 certain things needlessly difficult to implement and use, anyway. The
 templating engine supports the basic stuff. In no particular order:
 
-* Variables of different types
-* Checking the emptiness of variables
-* Iteration on lists (and any kind of sequences)
-* Partials
-* Comments
-* Inverted sections
+* Variables of different types;
+* Checking the emptiness of variables;
+* Iteration on lists (and any kind of sequences);
+* Partials;
+* Comments;
+* Inverted sections.
 
 Setting the delimiters, triple mustaches (for escaping HTML output),
 ampersand to unescape strings — and possibly other things — are not
