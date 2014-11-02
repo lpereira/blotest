@@ -3,7 +3,7 @@ Hybrid C/Pascal Strings
 
 I've been thinking for a while on how to reduce the overhead in `Lwan`_'s
 string buffer, when the strings are small. There are a number of
-accomplishing this.
+ways of accomplishing this.
 
 .. _`Lwan`: http://lwan.ws
 
@@ -12,11 +12,11 @@ reserved for `effective string length`, `allocated buffer size`, and
 `pointer to buffer` to store the string contents inline.
 
 A `clever improvement`_ is, when the string is small, to turn the
-`effective string length` counter to a `bytes remaining counter`, and put
-it after the buffer that's storing the string; this way, when the
-string is empty, this serves as a ``\0`` terminator, which is very useful
-for compatibility with C. And, of course, as a result, one more byte
-can be stored in that string.
+`effective string length` counter to a `bytes remaining counter`, and
+put it after the buffer that's storing the string; this way, when the
+string is at full capacity, this serves as a ``\0`` terminator, which
+is very useful for compatibility with C.  And, of course, as a result,
+one more byte can be stored in that string.
 
 .. _`clever improvement`: http://tulrich.com/rants-2009.html#d2009-01-03T00:00:00Z
 
@@ -32,8 +32,8 @@ routines present in the standard library would be then rendered useless.
 Or would it?
 
 I'm sure I'm not the first person to come up with the idea of having a
-C/Pascal String hybrid. At least the `Wikipedia`_ article on Strings
-doesn't seem to mention this variant I just came up with:
+C/Pascal String hybrid.  But at least the `Wikipedia`_ article on
+Strings doesn't seem to mention this variant I just came up with:
 
 .. _`Wikipedia`: https://en.wikipedia.org/wiki/String_(computer_science)
 
@@ -42,8 +42,8 @@ doesn't seem to mention this variant I just came up with:
   very fast, hand-tuned functions
 * The first byte tells the size, not in bytes, but in 8-byte blocks.
   To calculate the string length, one just jumps that amount of 8-byte
-  blocks and find the position of the ``\0`` terminator. Larger blocks
-  could be considered if `SIMD`_ instructions were available.
+  blocks and find the position of the ``\0`` terminator.
+* Larger blocks could be considered if `SIMD`_ instructions were available.
 
 .. _`SIMD`: https://en.wikipedia.org/wiki/SIMD
 
