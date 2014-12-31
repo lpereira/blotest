@@ -1,4 +1,4 @@
-\Life of a HTTP request, as seen by my toy web server
+Life of a HTTP request, as seen by my toy web server
 ====================================================
 
 When learning a new programming language, I tend to write two things with
