@@ -21,7 +21,7 @@
             <link rel="stylesheet" href="../../../_static/main.css" type="text/css">
             <link rel="stylesheet" href="../../../_static/flat.css" type="text/css">
             <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
-            <link rel="stylesheet" href="../../../_static/webfont.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/font-awesome.min.css" type="text/css">
         <link rel="shortcut icon" href="../../../_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
         <script src="../../../_static/vendor/modernizr-2.6.2.min.js"></script>
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
@@ -31,7 +31,7 @@
         <link rel="next" title="FOSDEM 2012" href="../../02/13/fosdem_2012.html" /><link rel="prev" title="Hash trie" href="../10/hash_trie.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     '1.2.1',
+        VERSION:     '1.5',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -39,16 +39,16 @@
     </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
 <style type="text/css">img {max-width: 100%;}</style>
 </head>
-    <body>
+    <body role="document">
         <!--[if lt IE 7]>
             <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
         <![endif]-->
 
-      <div id="container"><header>
+      <div id="container"><header role="banner">
             <hgroup>
               <h1><a href="../../../index.html">Leandro Pereira</a></h1><h2>Geek in training</h2></hgroup>
           </header>
-      <nav>
+      <nav role="navigation">
             <ul><li class="main-nav">
                   <a href="../../../index.html">Home</a>
                 </li>
@@ -56,8 +56,8 @@
                   <a href="../../../pages/about.html">About</a>
                 </li>
               </ul>
-          </nav><div class="main-container"><div class="main wrapper clearfix"><article><div class="timestamp postmeta">
-            <span>09 August 2012</span>
+          </nav><div class="main-container" role="main"><div class="main wrapper body clearfix"><article><div class="timestamp postmeta">
+            <span>August 09, 2012</span>
         </div>
     <div class="section" id="string-switch-in-c">
 <h1>String switch in C</h1>
@@ -97,15 +97,15 @@ these constants. My solution was to just use a macro in conjuntion with an
         <span class="k">goto</span> <span class="n">fallback</span><span class="p">;</span>
 
     <span class="n">STRING_SWITCH_L</span><span class="p">(</span><span class="n">last_dot</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">case</span> <span class="n">EXT_CSS</span>: <span class="k">return</span> <span class="s">&quot;text/css&quot;</span><span class="p">;</span>
-    <span class="k">case</span> <span class="n">EXT_HTM</span>: <span class="k">return</span> <span class="s">&quot;text/html&quot;</span><span class="p">;</span>
-    <span class="k">case</span> <span class="n">EXT_JPG</span>: <span class="k">return</span> <span class="s">&quot;image/jpeg&quot;</span><span class="p">;</span>
-    <span class="k">case</span> <span class="n">EXT_JS</span>:  <span class="k">return</span> <span class="s">&quot;application/javascript&quot;</span><span class="p">;</span>
-    <span class="k">case</span> <span class="n">EXT_PNG</span>: <span class="k">return</span> <span class="s">&quot;image/png&quot;</span><span class="p">;</span>
-    <span class="k">case</span> <span class="n">EXT_TXT</span>: <span class="k">return</span> <span class="s">&quot;text/plain&quot;</span><span class="p">;</span>
+    <span class="k">case</span> <span class="nl">EXT_CSS</span><span class="p">:</span> <span class="k">return</span> <span class="s">&quot;text/css&quot;</span><span class="p">;</span>
+    <span class="k">case</span> <span class="nl">EXT_HTM</span><span class="p">:</span> <span class="k">return</span> <span class="s">&quot;text/html&quot;</span><span class="p">;</span>
+    <span class="k">case</span> <span class="nl">EXT_JPG</span><span class="p">:</span> <span class="k">return</span> <span class="s">&quot;image/jpeg&quot;</span><span class="p">;</span>
+    <span class="k">case</span> <span class="nl">EXT_JS</span><span class="p">:</span>  <span class="k">return</span> <span class="s">&quot;application/javascript&quot;</span><span class="p">;</span>
+    <span class="k">case</span> <span class="nl">EXT_PNG</span><span class="p">:</span> <span class="k">return</span> <span class="s">&quot;image/png&quot;</span><span class="p">;</span>
+    <span class="k">case</span> <span class="nl">EXT_TXT</span><span class="p">:</span> <span class="k">return</span> <span class="s">&quot;text/plain&quot;</span><span class="p">;</span>
     <span class="p">}</span>
 
-<span class="nl">fallback:</span>
+<span class="nl">fallback</span><span class="p">:</span>
     <span class="k">return</span> <span class="s">&quot;application/octet-stream&quot;</span><span class="p">;</span>
 <span class="p">}</span>
 </pre></div>
@@ -130,11 +130,11 @@ shown above.</p>
         </div><ul class="related clearfix">
             <li class="left"> &laquo; <a href="../10/hash_trie.html">Hash trie</a></li>
             <li class="right"><a href="../../02/13/fosdem_2012.html">FOSDEM 2012</a> &raquo; </li>
-        </ul></article><aside class="sidebar"><section><div class="widget" id="searchbox">
-    <h1>Search</h1>
+        </ul></article><aside class="sidebar"><section><div class="widget" id="searchbox" role="search">
+    <h1><a href="#searchbox">Search</a></h1>
     <form action="../../../search.html" method="get">
         <input type="text" name="q" />
-        <button type="submit"><span class="webfont">L</span></button>
+        <button type="submit"><span class="fa fa-search"></span></button>
     </form>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
@@ -183,7 +183,7 @@ shown above.</p>
       <a href="../../../tags/tricks.html" style="font-size: 8pt">tricks</a>
 </div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
 
-        <div class="footer-container"><footer class="wrapper">&copy; Copyright 2012-2014, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
+        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012 &amp;emdash; 2015, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
 
       </div> <!--! end of #container --><!--[if lt IE 7 ]>
           <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"></script>

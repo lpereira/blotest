@@ -21,7 +21,7 @@
             <link rel="stylesheet" href="_static/main.css" type="text/css">
             <link rel="stylesheet" href="_static/flat.css" type="text/css">
             <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-            <link rel="stylesheet" href="_static/webfont.css" type="text/css">
+            <link rel="stylesheet" href="_static/font-awesome.min.css" type="text/css">
         <link rel="shortcut icon" href="_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
         <script src="_static/vendor/modernizr-2.6.2.min.js"></script>
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
@@ -31,7 +31,7 @@
         <link rel="next" title="Older" href="page3.html" /><link rel="prev" title="Newer" href="index.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '1.2.1',
+        VERSION:     '1.5',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -39,16 +39,16 @@
     </script><script type="text/javascript" src="_static/underscore.js"></script><script type="text/javascript" src="_static/doctools.js"></script>
 <style type="text/css">img {max-width: 100%;}</style>
 </head>
-    <body>
+    <body role="document">
         <!--[if lt IE 7]>
             <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
         <![endif]-->
 
-      <div id="container"><header>
+      <div id="container"><header role="banner">
             <hgroup>
               <h1><a href="index.html">Leandro Pereira</a></h1><h2>Geek in training</h2></hgroup>
           </header>
-      <nav>
+      <nav role="navigation">
             <ul><li class="main-nav">
                   <a href="index.html">Home</a>
                 </li>
@@ -56,11 +56,11 @@
                   <a href="pages/about.html">About</a>
                 </li>
               </ul>
-          </nav><div class="main-container"><div class="main wrapper clearfix"><article><div class="timestamp postmeta">
-            <span>20 July 2013</span>
+          </nav><div class="main-container" role="main"><div class="main wrapper body clearfix"><article><div class="timestamp postmeta">
+            <span>July 20, 2013</span>
         </div>
-        <div class="section" id="partially-applied-functions-in-c">
-<h1><a href="2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a></h1>
+        <div class="section">
+            <h1><a href="2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a></h1>
 <p>There are some functions in the standard C library that takes a function
 pointer to be used as a callback later on.  Examples include <span class="docutils literal"><span class="pre">atexit()</span></span>
 and <span class="docutils literal"><span class="pre">signal()</span></span>.  However, these functions can’t receive an arbitrary
@@ -178,7 +178,7 @@ which will magically call another function with a given parameter:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">void</span>
 <span class="nf">test</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">)</span>
 <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Test called with data=%p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"Test called with data=%p</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">data</span><span class="p">);</span>
 <span class="p">}</span>
 
 <span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
@@ -201,7 +201,8 @@ which will magically call another function with a given parameter:</p>
 Interesting?  I think so.  Fun?  Yup.</p>
 <p>If you’d like to try, the full source code, with comments and error recovery
 is available in this <a class="reference external" href="https://gist.github.com/lpereira/5062388">gist</a>.</p>
-</div>
+
+        </div>
         <div class="postmeta">
         <div class="author">
             <span>Posted by Leandro Pereira</span>
@@ -213,15 +214,15 @@ is available in this <a class="reference external" href="https://gist.github.com
                 <a href="tags/c.html">c</a>, <a href="tags/trick.html">trick</a>, <a href="tags/programming.html">programming</a></span>
         </div>
         </div><div class="separator post_separator"></div><div class="timestamp postmeta">
-            <span>11 November 2012</span>
+            <span>November 11, 2012</span>
         </div>
-        <div class="section" id="mustache-templates-in-c">
-<h1><a href="2012/11/11/mustache_templates_in_c.html">Mustache templates in C</a></h1>
+        <div class="section">
+            <h1><a href="2012/11/11/mustache_templates_in_c.html">Mustache templates in C</a></h1>
 <p>Generating textual output is a lot easier with templates than it is with
 handcrafted functions. And it is a lot easier in languages such as Python,
 where things like introspection are easy and cheap. But that doesn’t
 necessarily mean we can’t do that in C if we know where to look.</p>
-<p>I’ve implemented a subset of <a class="reference external" href="http://mustache.github.com">Mustache</a> templates in C that leverages some
+<p>I’ve implemented a subset of <a class="reference external" href="http://mustache.github.com/">Mustache</a> templates in C that leverages some
 tricks that makes template rendering both convenient and efficient. For
 instance, if you have a template such as this:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="n">Hello</span><span class="p">,</span> <span class="p">{{</span><span class="n">name</span><span class="p">}}</span><span class="o">!</span>
@@ -229,7 +230,7 @@ instance, if you have a template such as this:</p>
 </div>
 <p>It can easily be rendered with the following code:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="kt">hello_t</span> <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
-  <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;World&quot;</span>
+  <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">"World"</span>
 <span class="p">};</span>
 <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">data</span><span class="p">);</span>
 </pre></div>
@@ -244,7 +245,7 @@ and destroy the table every time the template had to be rendered), they’re
 not first class citizens in C, and the usage would be pretty clumsy, to say
 the least:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="n">hash_table</span> <span class="o">*</span><span class="n">ht</span> <span class="o">=</span> <span class="n">hash_table_new</span><span class="p">();</span>
-<span class="n">hash_table_add</span><span class="p">(</span><span class="n">ht</span><span class="p">,</span> <span class="s">&quot;name&quot;</span><span class="p">,</span> <span class="s">&quot;World&quot;</span><span class="p">);</span>
+<span class="n">hash_table_add</span><span class="p">(</span><span class="n">ht</span><span class="p">,</span> <span class="s">"name"</span><span class="p">,</span> <span class="s">"World"</span><span class="p">);</span>
 
 <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="n">ht</span><span class="p">);</span>
 
@@ -259,7 +260,7 @@ which is supported by GCC even in C89 mode. This trick allows the use of
 <a class="reference external" href="http://www.run.montefiore.ulg.ac.be/~martin/resources/kung-f00.html">anonymous arrays</a>, among other things, and provides enough syntactic sugar
 to conveniently group the template variables:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="p">(</span><span class="kt">hello_t</span><span class="p">[])</span> <span class="p">{{</span>
-  <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;World&quot;</span>
+  <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">"World"</span>
 <span class="p">}});</span>
 </pre></div>
 </div>
@@ -296,7 +297,7 @@ but can also work with types different than strings:</p>
 <span class="cm"> * ``hello'' would usually be compiled once and kept around for</span>
 <span class="cm"> * the whole duration of the program.</span>
 <span class="cm"> */</span>
-<span class="n">hello</span> <span class="o">=</span> <span class="n">lwan_tpl_compile</span><span class="p">(</span><span class="s">&quot;hello.tpl&quot;</span><span class="p">,</span> <span class="n">hello_descriptor</span><span class="p">);</span>
+<span class="n">hello</span> <span class="o">=</span> <span class="n">lwan_tpl_compile</span><span class="p">(</span><span class="s">"hello.tpl"</span><span class="p">,</span> <span class="n">hello_descriptor</span><span class="p">);</span>
 
 <span class="cm">/*</span>
 <span class="cm"> * Rendering the template then would be just the matter of calling</span>
@@ -306,15 +307,15 @@ but can also work with types different than strings:</p>
 <span class="cm"> * there are reallocations at all.</span>
 <span class="cm"> */</span>
 <span class="n">rendered</span> <span class="o">=</span> <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="p">(</span><span class="kt">hello_t</span><span class="p">[])</span> <span class="p">{{</span>
-  <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;World&quot;</span><span class="p">,</span>
+  <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">"World"</span><span class="p">,</span>
   <span class="p">.</span><span class="n">age</span> <span class="o">=</span> <span class="mi">42</span>
 <span class="p">}});</span>
 
-<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">strbuf_get_buffer</span><span class="p">(</span><span class="n">rendered</span><span class="p">));</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">"%s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">strbuf_get_buffer</span><span class="p">(</span><span class="n">rendered</span><span class="p">));</span>
 <span class="n">strbuf_free</span><span class="p">(</span><span class="n">rendered</span><span class="p">);</span>
 </pre></div>
 </div>
-<p><a class="reference external" href="https://github.com/lpereira/lwan/blob/wip/template.c">Code for this engine</a> is available in the <a class="reference external" href="https://github.com/lpereira/lwan/tree/wip">wip branch</a> of my toy web
+<p><a class="reference external" href="https://github.com/lpereira/lwan/blob/wip/template.c">Code for this engine</a> is available in the <a class="reference external" href="https://github.com/lpereira/lwan/tree/wip/">wip branch</a> of my toy web
 server, lwan. It is not currently used there, but it is built alongside the
 main program and can be tested by invoking the generated <span class="docutils literal"><span class="pre">template</span></span>
 executable.</p>
@@ -323,7 +324,8 @@ JIT-compile the template and avoid some of the overhead where it really
 matters. While at the same time possibly opening a whole can of worms from
 the security standpoint, though – but it wouldn’t be fun without some risk,
 would it? :)</p>
-</div>
+
+        </div>
         <div class="postmeta">
         <div class="author">
             <span>Posted by Leandro Pereira</span>
@@ -335,10 +337,10 @@ would it? :)</p>
                 <a href="tags/lwan.html">lwan</a>, <a href="tags/c.html">C</a>, <a href="tags/tricks.html">tricks</a>, <a href="tags/template.html">template</a></span>
         </div>
         </div><div class="separator post_separator"></div><div class="timestamp postmeta">
-            <span>27 October 2012</span>
+            <span>October 27, 2012</span>
         </div>
-        <div class="section" id="programming-on-an-arduino-without-a-pc">
-<h1><a href="2012/10/27/programming_on_an_arduino_without_a_pc.html">Programming on an Arduino without a PC</a></h1>
+        <div class="section">
+            <h1><a href="2012/10/27/programming_on_an_arduino_without_a_pc.html">Programming on an Arduino without a PC</a></h1>
 <p>I’ve attended this year’s <a class="reference external" href="http://softwarelivre.org/fisl13">FISL</a>, both as a booth attendee (at
 <a class="reference external" href="http://profusion.mobi">ProFUSION</a>’s booth, demonstrating a few of our end-user-visible projects),
 and as a speaker for my old <a class="reference external" href="http://github.com/lpereira/finf">FINF</a> project.</p>
@@ -370,7 +372,8 @@ front of an audience.</p>
 <p>(By the way, I’ll be talking during EFL Developer Day in Barcelona early next
 month. If you’re there for LinuxCon/Embedded Linux Conference and would like
 to join me for some beers, don’t hesitate to contact me!)</p>
-</div>
+
+        </div>
         <div class="postmeta">
         <div class="author">
             <span>Posted by Leandro Pereira</span>
@@ -382,11 +385,11 @@ to join me for some beers, don’t hesitate to contact me!)</p>
                 <a href="tags/profusion.html">profusion</a>, <a href="tags/finf.html">finf</a>, <a href="tags/conferences.html">conferences</a>, <a href="tags/arduino.html">arduino</a></span>
         </div>
         </div><div class="separator post_separator"></div><div class="timestamp postmeta">
-            <span>14 October 2012</span>
+            <span>October 14, 2012</span>
         </div>
-        <div class="section" id="vectored-i-o-with-mmap-to-serve-files">
-<h1><a href="2012/10/14/vectored_i_o_with_mmap___to_serve_files.html">Vectored I/O with mmap() to serve files</a></h1>
-<p>Previously, I’ve <a class="reference external" href="/posts/file_serving_with_few_syscalls">improved file serving performance</a> in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a> by
+        <div class="section">
+            <h1><a href="2012/10/14/vectored_i_o_with_mmap___to_serve_files.html">Vectored I/O with mmap() to serve files</a></h1>
+<p>Previously, I’ve <a class="reference external" href="/posts/file_serving_with_few_syscalls/">improved file serving performance</a> in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a> by
 dramatially cutting down on the number of system calls performed to serve a
 file. However, for small files (&lt; 16KiB), the throughput drop from the
 <span class="docutils literal"><span class="pre">hello</span></span> handler (which merely responds “Hello, World!”) was significant,
@@ -416,7 +419,8 @@ protected by mutexes, of course, but I’m not sure if I got it right. One more
 reason to <strong>not</strong> use lwan in production.</p>
 <p>As a bonus to these things, lwan now offers <a class="reference external" href="https://en.wikipedia.org/wiki/Deflate">deflated</a> content for the files
 in the cache when asked.</p>
-</div>
+
+        </div>
         <div class="postmeta">
         <div class="author">
             <span>Posted by Leandro Pereira</span>
@@ -428,10 +432,10 @@ in the cache when asked.</p>
                 <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/c.html">C</a>, <a href="tags/linux.html">linux</a></span>
         </div>
         </div><div class="separator post_separator"></div><div class="timestamp postmeta">
-            <span>29 September 2012</span>
+            <span>September 29, 2012</span>
         </div>
-        <div class="section" id="asynchronous-i-o-in-c-with-coroutines">
-<h1><a href="2012/09/29/asynchronous_i_o_in_c_with_coroutines.html">Asynchronous I/O in C with Coroutines</a></h1>
+        <div class="section">
+            <h1><a href="2012/09/29/asynchronous_i_o_in_c_with_coroutines.html">Asynchronous I/O in C with Coroutines</a></h1>
 <p>Writing asynchronous I/O code in C is kind of tedious, and often leads to a
 callback hell. But it doesn’t have to be this way; if you have a main loop,
 it’s quite simple to use <a class="reference external" href="https://en.wikipedia.org/wiki/Coroutine">coroutines</a> and write code in a soothing, old
@@ -569,7 +573,7 @@ two roundtrips to the kernel), and does not save the floating point
 registers.</li>
 <li>Also, on 64-bit, resuming a coroutine is orders of magnitude faster,
 since not everything is copied when switching contexts.</li>
-<li>Swapping stacks makes tools like <a class="reference external" href="http://valgrind.org">Valgrind</a> get pretty crazy. Lwan’s
+<li>Swapping stacks makes tools like <a class="reference external" href="http://valgrind.org/">Valgrind</a> get pretty crazy. Lwan’s
 implementation uses Valgrind-provided macros that marks the newly-
 allocated blocks (from the heap) as stacks.</li>
 <li>The real implementation has a <span class="docutils literal"><span class="pre">coro_switcher_t</span></span> data structure.
@@ -603,7 +607,8 @@ fairly trivial to write (even in assembly language) – actually, encouraged,
 given that <span class="docutils literal"><span class="pre">swapcontext()</span></span> and <span class="docutils literal"><span class="pre">getcontext()</span></span> makes often unnecessary
 system calls.</p>
 </div>
-</div>
+
+        </div>
         <div class="postmeta">
         <div class="author">
             <span>Posted by Leandro Pereira</span>
@@ -619,11 +624,11 @@ system calls.</p>
     </div><ul class="related clearfix">
             <li class="left"> &laquo; <a href="index.html">Newer</a></li>
             <li class="right"><a href="page3.html">Older</a> &raquo; </li>
-        </ul></article><aside class="sidebar"><section><div class="widget" id="searchbox">
-    <h1>Search</h1>
+        </ul></article><aside class="sidebar"><section><div class="widget" id="searchbox" role="search">
+    <h1><a href="#searchbox">Search</a></h1>
     <form action="search.html" method="get">
         <input type="text" name="q" />
-        <button type="submit"><span class="webfont">L</span></button>
+        <button type="submit"><span class="fa fa-search"></span></button>
     </form>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
@@ -672,7 +677,7 @@ system calls.</p>
       <a href="tags/tricks.html" style="font-size: 8pt">tricks</a>
 </div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
 
-        <div class="footer-container"><footer class="wrapper">&copy; Copyright 2012-2014, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
+        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012 &amp;emdash; 2015, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
 
       </div> <!--! end of #container --><!--[if lt IE 7 ]>
           <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"></script>

@@ -11,8 +11,7 @@
             <link>http://tia.mat.br/blog/html/2014/11/02/hybrid_c_pascal_strings.html</link>
             <guid>http://tia.mat.br/blog/html/2014/11/02/hybrid_c_pascal_strings.html</guid>
             <title><![CDATA[Hybrid C/Pascal Strings]]></title>
-            <description><![CDATA[<div class="section" id="hybrid-c-pascal-strings">
-<h1>Hybrid C/Pascal Strings</h1>
+            <description><![CDATA[<h1>Hybrid C/Pascal Strings</h1>
 <p>I’ve been thinking for a while on how to reduce the overhead in <a class="reference external" href="http://lwan.ws">Lwan</a>‘s
 string buffer, when the strings are small. There are a number of
 ways of accomplishing this.</p>
@@ -53,7 +52,7 @@ string optimization performed by <span class="docutils literal"><span class="pre
 convinced this is the way to go. This is one of the reasons I haven’t
 yet implemented this, but I might use the fact that I’m currently
 enjoying some vacation time and write a prototype.</p>
-</div>]]></description>
+]]></description>
              <pubDate>Sun, 02 Nov 2014 00:00:00 -0200</pubDate>
         </item>
     
@@ -61,8 +60,7 @@ enjoying some vacation time and write a prototype.</p>
             <link>http://tia.mat.br/blog/html/2014/10/06/life_of_a_http_request.html</link>
             <guid>http://tia.mat.br/blog/html/2014/10/06/life_of_a_http_request.html</guid>
             <title><![CDATA[Life of a HTTP request, as seen by my toy web server]]></title>
-            <description><![CDATA[<div class="section" id="life-of-a-http-request-as-seen-by-my-toy-web-server">
-<h1>Life of a HTTP request, as seen by my toy web server</h1>
+            <description><![CDATA[<h1>Life of a HTTP request, as seen by my toy web server</h1>
 <p>When learning a new programming language, I tend to write two things with
 it: a language interpreter (usually a FORTH-like language or Brainfuck if
 I’m feeling lazy), and a HTTP server.  Sometimes, just as a challenge or a
@@ -82,7 +80,7 @@ being sent — and explaining details and reasoning behind the implementation.</
 <h2>Creating the listening socket &amp; accepting connections</h2>
 <p>There’s nothing really special here: sockets are either created using the
 <a class="reference external" href="http://linux.die.net/man/2/socket">standard POSIX stuff</a>, or are passed down from <a class="reference external" href="http://0pointer.net/blog/projects/socket-activation.html">systemd</a>.  In either case, TCP
-<a class="reference external" href="http://lwn.net/Articles/508865">Fastopen</a> and <a class="reference external" href="http://linux.die.net/man/7/tcp#TCP_QUICKACK">Quickack</a> are enabled, in addition to socket lingering.  The
+<a class="reference external" href="http://lwn.net/Articles/508865/">Fastopen</a> and <a class="reference external" href="http://linux.die.net/man/7/tcp#TCP_QUICKACK">Quickack</a> are enabled, in addition to socket lingering.  The
 socket is left in its default, blocking mode. The <a class="reference external" href="http://www.linuxjournal.com/files/linuxjournal.com/linuxjournal/articles/023/2333/2333s2.html">listen() backlog</a> is the
 maximum allowed by the system.</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">int</span>
@@ -95,10 +93,10 @@ maximum allowed by the system.</p>
 <span class="cp">#endif</span>
     <span class="kt">FILE</span> <span class="o">*</span><span class="n">somaxconn</span><span class="p">;</span>
 
-    <span class="n">somaxconn</span> <span class="o">=</span> <span class="n">fopen</span><span class="p">(</span><span class="s">&quot;/proc/sys/net/core/somaxconn&quot;</span><span class="p">,</span> <span class="s">&quot;r&quot;</span><span class="p">);</span>
+    <span class="n">somaxconn</span> <span class="o">=</span> <span class="n">fopen</span><span class="p">(</span><span class="s">"/proc/sys/net/core/somaxconn"</span><span class="p">,</span> <span class="s">"r"</span><span class="p">);</span>
     <span class="k">if</span> <span class="p">(</span><span class="n">somaxconn</span><span class="p">)</span> <span class="p">{</span>
         <span class="kt">int</span> <span class="n">tmp</span><span class="p">;</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">fscanf</span><span class="p">(</span><span class="n">somaxconn</span><span class="p">,</span> <span class="s">&quot;%d&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">tmp</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">fscanf</span><span class="p">(</span><span class="n">somaxconn</span><span class="p">,</span> <span class="s">"%d"</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">tmp</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
             <span class="n">backlog</span> <span class="o">=</span> <span class="n">tmp</span><span class="p">;</span>
         <span class="n">fclose</span><span class="p">(</span><span class="n">somaxconn</span><span class="p">);</span>
     <span class="p">}</span>
@@ -121,13 +119,13 @@ interests Lwan is <span class="docutils literal"><span class="pre">SOCK_NONBLOCK
 
     <span class="n">signal</span><span class="p">(</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">_signal_handler</span><span class="p">);</span>
 
-    <span class="n">lwan_status_info</span><span class="p">(</span><span class="s">&quot;Ready to serve&quot;</span><span class="p">);</span>
+    <span class="n">lwan_status_info</span><span class="p">(</span><span class="s">"Ready to serve"</span><span class="p">);</span>
 
     <span class="k">for</span> <span class="p">(;;)</span> <span class="p">{</span>
         <span class="kt">int</span> <span class="n">client_fd</span> <span class="o">=</span> <span class="n">accept4</span><span class="p">(</span><span class="n">l</span><span class="o">-&gt;</span><span class="n">main_socket</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span>
                                 <span class="n">SOCK_NONBLOCK</span><span class="p">);</span>
         <span class="k">if</span> <span class="p">(</span><span class="n">UNLIKELY</span><span class="p">(</span><span class="n">client_fd</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">))</span> <span class="p">{</span>
-            <span class="n">lwan_status_perror</span><span class="p">(</span><span class="s">&quot;accept&quot;</span><span class="p">);</span>
+            <span class="n">lwan_status_perror</span><span class="p">(</span><span class="s">"accept"</span><span class="p">);</span>
             <span class="k">continue</span><span class="p">;</span>
         <span class="p">}</span>
 
@@ -202,7 +200,7 @@ lightweight threads and as resource management facilities.</p>
 <div class="section" id="coroutines">
 <h2>Coroutines</h2>
 <p><a class="reference external" href="https://en.wikipedia.org/wiki/Coroutine">Coroutines</a> provides a reasonably simple model for asynchronous I/O handling
-that’s less convoluted than the dreaded <a class="reference external" href="https://developer.gnome.org/gio/stable">callback idiom</a> prevalent in C. They
+that’s less convoluted than the dreaded <a class="reference external" href="https://developer.gnome.org/gio/stable/">callback idiom</a> prevalent in C. They
 also require a lot less stack space than a thread and their creation is
 pretty efficient: essentially just a call to <span class="docutils literal"><span class="pre">malloc()</span></span>.</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="kt">coro_t</span> <span class="o">*</span>
@@ -263,14 +261,14 @@ few times before giving up;</li>
         <span class="p">}</span>
 
         <span class="k">switch</span> <span class="p">(</span><span class="n">errno</span><span class="p">)</span> <span class="p">{</span>
-        <span class="k">case</span> <span class="n">EINTR</span>:
-        <span class="k">case</span> <span class="n">EMFILE</span>:
-        <span class="k">case</span> <span class="n">ENFILE</span>:
-        <span class="k">case</span> <span class="n">ENOMEM</span>:
+        <span class="k">case</span> <span class="nl">EINTR</span><span class="p">:</span>
+        <span class="k">case</span> <span class="nl">EMFILE</span><span class="p">:</span>
+        <span class="k">case</span> <span class="nl">ENFILE</span><span class="p">:</span>
+        <span class="k">case</span> <span class="nl">ENOMEM</span><span class="p">:</span>
             <span class="n">coro_yield</span><span class="p">(</span><span class="n">request</span><span class="o">-&gt;</span><span class="n">conn</span><span class="o">-&gt;</span><span class="n">coro</span><span class="p">,</span>
                        <span class="n">CONN_CORO_MAY_RESUME</span><span class="p">);</span>
             <span class="k">break</span><span class="p">;</span>
-        <span class="nl">default:</span>
+        <span class="k">default</span><span class="o">:</span>
             <span class="k">return</span> <span class="o">-</span><span class="n">errno</span><span class="p">;</span>
         <span class="p">}</span>
     <span class="p">}</span>
@@ -292,7 +290,7 @@ been detected.</p>
 as a function call.  This is possible because hand-written assembly routines
 are used, which only performs the essential register exchange, as mandated
 by the <a class="reference external" href="http://www.x86-64.org/documentation/abi.pdf">ABI</a>.  There is still some work to do in order to speed up this;
-tricks used by <a class="reference external" href="http://byuu.org/programming/libco">libco</a>, for instance, might be used in the future to reduce
+tricks used by <a class="reference external" href="http://byuu.org/programming/libco/">libco</a>, for instance, might be used in the future to reduce
 some of the overhead.</p>
 <p>On every other architecture, <a class="reference external" href="http://linux.die.net/man/3/swapcontext">swapcontext()</a> is used and this usually incurs
 in saving and restoring the signal mask, in addition to swapping every
@@ -406,7 +404,7 @@ such as the “Hello world handler” example shown below.</p>
 the request will be handled; an example is the static file serving feature,
 also discussed further down.</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="k">const</span> <span class="kt">lwan_module_t</span> <span class="n">serve_files</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;serve_files&quot;</span><span class="p">,</span>
+    <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">"serve_files"</span><span class="p">,</span>
     <span class="p">.</span><span class="n">init</span> <span class="o">=</span> <span class="n">serve_files_init</span><span class="p">,</span>
     <span class="p">.</span><span class="n">init_from_hash</span> <span class="o">=</span> <span class="n">serve_files_init_from_hash</span><span class="p">,</span>
     <span class="p">.</span><span class="n">shutdown</span> <span class="o">=</span> <span class="n">serve_files_shutdown</span><span class="p">,</span>
@@ -428,9 +426,9 @@ absolutely necessary.</p>
             <span class="kt">lwan_response_t</span> <span class="o">*</span><span class="n">response</span><span class="p">,</span>
             <span class="kt">void</span> <span class="o">*</span><span class="n">data</span> <span class="n">__attribute__</span><span class="p">((</span><span class="n">unused</span><span class="p">)))</span>
 <span class="p">{</span>
-    <span class="k">static</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">hello_world</span> <span class="o">=</span> <span class="s">&quot;Hello, world!&quot;</span><span class="p">;</span>
+    <span class="k">static</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">hello_world</span> <span class="o">=</span> <span class="s">"Hello, world!"</span><span class="p">;</span>
 
-    <span class="n">response</span><span class="o">-&gt;</span><span class="n">mime_type</span> <span class="o">=</span> <span class="s">&quot;text/plain&quot;</span><span class="p">;</span>
+    <span class="n">response</span><span class="o">-&gt;</span><span class="n">mime_type</span> <span class="o">=</span> <span class="s">"text/plain"</span><span class="p">;</span>
     <span class="n">strbuf_set_static</span><span class="p">(</span><span class="n">response</span><span class="o">-&gt;</span><span class="n">buffer</span><span class="p">,</span> <span class="n">hello_world</span><span class="p">,</span>
                       <span class="n">strlen</span><span class="p">(</span><span class="n">hello_world</span><span class="p">));</span>
 
@@ -458,17 +456,17 @@ again and send another chunk, until your handler is complete.</p>
             <span class="kt">lwan_response_t</span> <span class="o">*</span><span class="n">response</span><span class="p">,</span>
             <span class="kt">void</span> <span class="o">*</span><span class="n">data</span> <span class="n">__attribute__</span><span class="p">((</span><span class="n">unused</span><span class="p">)))</span>
 <span class="p">{</span>
-    <span class="n">response</span><span class="o">-&gt;</span><span class="n">mime_type</span> <span class="o">=</span> <span class="s">&quot;text/plain&quot;</span><span class="p">;</span>
+    <span class="n">response</span><span class="o">-&gt;</span><span class="n">mime_type</span> <span class="o">=</span> <span class="s">"text/plain"</span><span class="p">;</span>
 
-    <span class="n">strbuf_printf</span><span class="p">(</span><span class="n">response</span><span class="o">-&gt;</span><span class="n">buffer</span><span class="p">,</span> <span class="s">&quot;First chunk</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="n">strbuf_printf</span><span class="p">(</span><span class="n">response</span><span class="o">-&gt;</span><span class="n">buffer</span><span class="p">,</span> <span class="s">"First chunk</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
     <span class="n">lwan_response_send_chunk</span><span class="p">(</span><span class="n">request</span><span class="p">);</span>
 
     <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;=</span> <span class="mi">10</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
-        <span class="n">strbuf_printf</span><span class="p">(</span><span class="n">response</span><span class="o">-&gt;</span><span class="n">buffer</span><span class="p">,</span> <span class="s">&quot;*Chunk #%d*</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">);</span>
+        <span class="n">strbuf_printf</span><span class="p">(</span><span class="n">response</span><span class="o">-&gt;</span><span class="n">buffer</span><span class="p">,</span> <span class="s">"*Chunk #%d*</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">i</span><span class="p">);</span>
         <span class="n">lwan_response_send_chunk</span><span class="p">(</span><span class="n">request</span><span class="p">);</span>
     <span class="p">}</span>
 
-    <span class="n">strbuf_printf</span><span class="p">(</span><span class="n">response</span><span class="o">-&gt;</span><span class="n">buffer</span><span class="p">,</span> <span class="s">&quot;Last chunk</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="n">strbuf_printf</span><span class="p">(</span><span class="n">response</span><span class="o">-&gt;</span><span class="n">buffer</span><span class="p">,</span> <span class="s">"Last chunk</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
     <span class="n">lwan_response_send_chunk</span><span class="p">(</span><span class="n">request</span><span class="p">);</span>
 
     <span class="k">return</span> <span class="n">HTTP_OK</span><span class="p">;</span>
@@ -483,8 +481,8 @@ again and send another chunk, until your handler is complete.</p>
             <span class="kt">void</span> <span class="o">*</span><span class="n">data</span> <span class="n">__attribute__</span><span class="p">((</span><span class="n">unused</span><span class="p">)))</span>
 <span class="p">{</span>
     <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;=</span> <span class="mi">10</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
-        <span class="n">strbuf_printf</span><span class="p">(</span><span class="n">response</span><span class="o">-&gt;</span><span class="n">buffer</span><span class="p">,</span> <span class="s">&quot;{n: %d}&quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">);</span>
-        <span class="n">lwan_response_send_event</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="s">&quot;currval&quot;</span><span class="p">);</span>
+        <span class="n">strbuf_printf</span><span class="p">(</span><span class="n">response</span><span class="o">-&gt;</span><span class="n">buffer</span><span class="p">,</span> <span class="s">"{n: %d}"</span><span class="p">,</span> <span class="n">i</span><span class="p">);</span>
+        <span class="n">lwan_response_send_event</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="s">"currval"</span><span class="p">);</span>
     <span class="p">}</span>
 
     <span class="k">return</span> <span class="n">HTTP_OK</span><span class="p">;</span>
@@ -533,7 +531,7 @@ headers automatically.</p>
         <span class="k">return</span> <span class="n">HTTP_OK</span><span class="p">;</span>
     <span class="p">}</span>
 
-<span class="nl">fail:</span>
+<span class="nl">fail</span><span class="p">:</span>
     <span class="n">response</span><span class="o">-&gt;</span><span class="n">stream</span><span class="p">.</span><span class="n">callback</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
     <span class="k">return</span> <span class="n">return_status</span><span class="p">;</span>
 <span class="p">}</span>
@@ -562,7 +560,7 @@ memory using <span class="docutils literal"><span class="pre">mmap()</span></spa
         <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
             <span class="cm">/* Redirect /path to /path/. This is to help</span>
 <span class="cm">             * cases where there's something like &lt;img</span>
-<span class="cm">             * src=&quot;../foo.png&quot;&gt;, so that actually</span>
+<span class="cm">             * src="../foo.png"&gt;, so that actually</span>
 <span class="cm">             * /path/../foo.png is served instead of</span>
 <span class="cm">             * /path../foo.png.  */</span>
             <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key_end</span> <span class="o">=</span> <span class="n">rawmemchr</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="sc">'\0'</span><span class="p">);</span>
@@ -570,7 +568,7 @@ memory using <span class="docutils literal"><span class="pre">mmap()</span></spa
                 <span class="k">return</span> <span class="o">&amp;</span><span class="n">redir_funcs</span><span class="p">;</span>
 
             <span class="k">if</span> <span class="p">(</span><span class="n">UNLIKELY</span><span class="p">(</span><span class="n">snprintf</span><span class="p">(</span><span class="n">index_html_path</span><span class="p">,</span> <span class="n">PATH_MAX</span><span class="p">,</span>
-                                  <span class="s">&quot;%s%s&quot;</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span>
+                                  <span class="s">"%s%s"</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span>
                                   <span class="n">priv</span><span class="o">-&gt;</span><span class="n">index_html</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">))</span>
                 <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
         <span class="p">}</span>
@@ -614,7 +612,7 @@ did not yield substantial performance gains compared to using <span class="docut
 <span class="nf">_compress_cached_entry</span><span class="p">(</span><span class="kt">mmap_cache_data_t</span> <span class="o">*</span><span class="n">md</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="k">static</span> <span class="k">const</span> <span class="kt">size_t</span> <span class="n">deflated_header_size</span> <span class="o">=</span>
-            <span class="k">sizeof</span><span class="p">(</span><span class="s">&quot;Content-Encoding: deflate&quot;</span><span class="p">);</span>
+            <span class="k">sizeof</span><span class="p">(</span><span class="s">"Content-Encoding: deflate"</span><span class="p">);</span>
 
     <span class="n">md</span><span class="o">-&gt;</span><span class="n">compressed</span><span class="p">.</span><span class="n">size</span> <span class="o">=</span> <span class="n">compressBound</span><span class="p">(</span><span class="n">md</span><span class="o">-&gt;</span><span class="n">uncompressed</span><span class="p">.</span><span class="n">size</span><span class="p">);</span>
 
@@ -634,10 +632,10 @@ did not yield substantial performance gains compared to using <span class="docut
     <span class="k">if</span> <span class="p">(</span><span class="n">total_size</span> <span class="o">&lt;</span> <span class="n">md</span><span class="o">-&gt;</span><span class="n">uncompressed</span><span class="p">.</span><span class="n">size</span><span class="p">)</span>
         <span class="k">return</span><span class="p">;</span>
 
-<span class="nl">error_free_compressed:</span>
+<span class="nl">error_free_compressed</span><span class="p">:</span>
     <span class="n">free</span><span class="p">(</span><span class="n">md</span><span class="o">-&gt;</span><span class="n">compressed</span><span class="p">.</span><span class="n">contents</span><span class="p">);</span>
     <span class="n">md</span><span class="o">-&gt;</span><span class="n">compressed</span><span class="p">.</span><span class="n">contents</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-<span class="nl">error_zero_out:</span>
+<span class="nl">error_zero_out</span><span class="p">:</span>
     <span class="n">md</span><span class="o">-&gt;</span><span class="n">compressed</span><span class="p">.</span><span class="n">size</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
 <span class="p">}</span>
 </pre></div>
@@ -647,7 +645,7 @@ contents are cached using the same mechanism files are. Templating is
 discussed below.</p>
 <p>An interesting optimization is that, to obtain the full path, a special
 version of <a class="reference external" href="http://linux.die.net/man/3/realpath">realpath()</a>, forked from the GNU libc implementation, is used.
-This version uses the <a class="reference external" href="http://lwn.net/Articles/164887">lighter “-at()” variants</a> of system calls that operates
+This version uses the <a class="reference external" href="http://lwn.net/Articles/164887/">lighter “-at()” variants</a> of system calls that operates
 on paths; they do not need to perform path-to-inode conversion for the whole
 path, only from a path pointed to by a directory file descriptor.</p>
 <p>The file server is a module. It is a simple way to keep per instance state,
@@ -657,11 +655,11 @@ template, and a few other things.</p>
 </div>
 <div class="section" id="mustache-templating-engine">
 <h2>Mustache templating engine</h2>
-<p>Not all features from <a class="reference external" href="http://mustache.github.io">Mustache</a> are implemented: some are pretty much only
+<p>Not all features from <a class="reference external" href="http://mustache.github.io/">Mustache</a> are implemented: some are pretty much only
 practical if using a language that’s more expressive than C. However,
 without requiring (too much) boilerplate, a substantial amount of its
 specification is implemented, in a pretty efficient way, and suits all Lwan
-uses pretty well. (Being performant <a class="reference external" href="http://blog.codinghorror.com/the-sad-tragedy-of-micro-optimization-theater">might not matter</a>, though, but I’m
+uses pretty well. (Being performant <a class="reference external" href="http://blog.codinghorror.com/the-sad-tragedy-of-micro-optimization-theater/">might not matter</a>, though, but I’m
 here to have fun, not solve problems.)</p>
 <p>Not everything is implemented exactly as in the standard, though: that’s
 mostly for laziness reasons, but the non-dynamic nature of C would make
@@ -724,7 +722,7 @@ buffer; macros help alleviate boilerplate headaches.</p>
   <span class="n">TPL_VAR_SENTINEL</span>
 <span class="p">};</span>
 
-<span class="kt">lwan_tpl_t</span> <span class="o">*</span><span class="n">hello</span> <span class="o">=</span> <span class="n">lwan_tpl_compile</span><span class="p">(</span><span class="s">&quot;hello.tpl&quot;</span><span class="p">,</span>
+<span class="kt">lwan_tpl_t</span> <span class="o">*</span><span class="n">hello</span> <span class="o">=</span> <span class="n">lwan_tpl_compile</span><span class="p">(</span><span class="s">"hello.tpl"</span><span class="p">,</span>
                                      <span class="n">hello_descriptor</span><span class="p">);</span>
 </pre></div>
 </div>
@@ -733,7 +731,7 @@ of database layer, caching layer, or be declared on the spot: compound
 literals with designated initializers make this use case pretty
 straightforward.</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="kt">strbuf_t</span> <span class="o">*</span><span class="n">rendered</span> <span class="o">=</span> <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="p">(</span><span class="kt">hello_t</span><span class="p">[])</span> <span class="p">{{</span>
-  <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;World&quot;</span><span class="p">,</span>
+  <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">"World"</span><span class="p">,</span>
   <span class="p">.</span><span class="n">age</span> <span class="o">=</span> <span class="mi">42</span>
 <span class="p">}});</span>
 
@@ -917,7 +915,7 @@ structures help reducing cache pressure.</p>
 <span class="k">static</span> <span class="kr">inline</span> <span class="kt">lwan_connection_t</span> <span class="o">*</span><span class="nf">_death_queue_idx_to_node</span><span class="p">(</span>
             <span class="k">struct</span> <span class="kt">death_queue_t</span> <span class="o">*</span><span class="n">dq</span><span class="p">,</span> <span class="kt">int</span> <span class="n">idx</span><span class="p">)</span>
 <span class="p">{</span>
-    <span class="k">return</span> <span class="p">(</span><span class="n">idx</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">?</span> <span class="o">&amp;</span><span class="n">dq</span><span class="o">-&gt;</span><span class="n">head</span> <span class="o">:</span> <span class="o">&amp;</span><span class="n">dq</span><span class="o">-&gt;</span><span class="n">conns</span><span class="p">[</span><span class="n">idx</span><span class="p">];</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">idx</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">?</span> <span class="o">&amp;</span><span class="n">dq</span><span class="o">-&gt;</span><span class="nl">head</span> <span class="p">:</span> <span class="o">&amp;</span><span class="n">dq</span><span class="o">-&gt;</span><span class="n">conns</span><span class="p">[</span><span class="n">idx</span><span class="p">];</span>
 <span class="p">}</span>
 
 <span class="k">static</span> <span class="kt">void</span> <span class="nf">_death_queue_insert</span><span class="p">(</span><span class="k">struct</span> <span class="kt">death_queue_t</span> <span class="o">*</span><span class="n">dq</span><span class="p">,</span>
@@ -954,7 +952,7 @@ There are things that were not mentioned in this article. It’s also a young
 Free Software project with no entry barrier: just fork and issue a pull
 request.</p>
 </div>
-</div>]]></description>
+]]></description>
              <pubDate>Mon, 06 Oct 2014 00:00:00 -0300</pubDate>
         </item>
     
@@ -962,8 +960,7 @@ request.</p>
             <link>http://tia.mat.br/blog/html/2014/06/23/integer_to_string_conversion.html</link>
             <guid>http://tia.mat.br/blog/html/2014/06/23/integer_to_string_conversion.html</guid>
             <title><![CDATA[Integer to string conversion]]></title>
-            <description><![CDATA[<div class="section" id="integer-to-string-conversion">
-<h1>Integer to string conversion</h1>
+            <description><![CDATA[<h1>Integer to string conversion</h1>
 <p>There are various ways to convert integers to their string representation.
 These conversions are rarely a bottleneck, but they often show up while
 profiling certain applications.  For instance, they’re very common in
@@ -1002,7 +999,7 @@ terminator, regardless of what <span class="docutils literal"><span class="pre">
 
     <span class="o">*</span><span class="n">p</span> <span class="o">=</span> <span class="sc">'\0'</span><span class="p">;</span>
     <span class="k">do</span> <span class="p">{</span>
-        <span class="o">*--</span><span class="n">p</span> <span class="o">=</span> <span class="s">&quot;0123456789&quot;</span><span class="p">[</span><span class="n">value</span> <span class="o">%</span> <span class="mi">10</span><span class="p">];</span>
+        <span class="o">*--</span><span class="n">p</span> <span class="o">=</span> <span class="s">"0123456789"</span><span class="p">[</span><span class="n">value</span> <span class="o">%</span> <span class="mi">10</span><span class="p">];</span>
     <span class="p">}</span> <span class="k">while</span> <span class="p">(</span><span class="n">value</span> <span class="o">/=</span> <span class="mi">10</span><span class="p">);</span>
 
     <span class="kt">size_t</span> <span class="n">difference</span> <span class="o">=</span> <span class="p">(</span><span class="kt">size_t</span><span class="p">)(</span><span class="n">p</span> <span class="o">-</span> <span class="n">buffer</span><span class="p">);</span>
@@ -1028,11 +1025,11 @@ around 31% faster than the above snippet:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="kt">size_t</span> <span class="nf">facebook_uint32_to_str</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">value</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">dst</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="k">static</span> <span class="k">const</span> <span class="kt">char</span> <span class="n">digits</span><span class="p">[</span><span class="mi">201</span><span class="p">]</span> <span class="o">=</span>
-        <span class="s">&quot;0001020304050607080910111213141516171819&quot;</span>
-        <span class="s">&quot;2021222324252627282930313233343536373839&quot;</span>
-        <span class="s">&quot;4041424344454647484950515253545556575859&quot;</span>
-        <span class="s">&quot;6061626364656667686970717273747576777879&quot;</span>
-        <span class="s">&quot;8081828384858687888990919293949596979899&quot;</span><span class="p">;</span>
+        <span class="s">"0001020304050607080910111213141516171819"</span>
+        <span class="s">"2021222324252627282930313233343536373839"</span>
+        <span class="s">"4041424344454647484950515253545556575859"</span>
+        <span class="s">"6061626364656667686970717273747576777879"</span>
+        <span class="s">"8081828384858687888990919293949596979899"</span><span class="p">;</span>
     <span class="kt">size_t</span> <span class="k">const</span> <span class="n">length</span> <span class="o">=</span> <span class="n">digits10</span><span class="p">(</span><span class="n">value</span><span class="p">);</span>
     <span class="kt">size_t</span> <span class="n">next</span> <span class="o">=</span> <span class="n">length</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span>
     <span class="k">while</span> <span class="p">(</span><span class="n">value</span> <span class="o">&gt;=</span> <span class="mi">100</span><span class="p">)</span> <span class="p">{</span>
@@ -1083,8 +1080,8 @@ To compare with other methods, here’s the full chart:</p>
 Lwan.  The blog post doesn’t mention the license.  I’ve found this <a class="reference external" href="https://mail-archives.apache.org/mod_mbox/apr-dev/200704.mbox/%3C344-65769@sneakemail.com%3E">two-digit
 lookup table in places unrelated to Facebook</a> as well, so I’m not sure who
 had this idea first.  My go-to source of this kind of thing is usually
-<a class="reference external" href="http://www.hackersdelight.org">Hacker’s Delight</a>, but even then it’s not there.</p>
-</div>]]></description>
+<a class="reference external" href="http://www.hackersdelight.org/">Hacker’s Delight</a>, but even then it’s not there.</p>
+]]></description>
              <pubDate>Mon, 23 Jun 2014 00:00:00 -0300</pubDate>
         </item>
     
@@ -1092,8 +1089,7 @@ had this idea first.  My go-to source of this kind of thing is usually
             <link>http://tia.mat.br/blog/html/2013/12/08/reducing_lwan_memory_usage.html</link>
             <guid>http://tia.mat.br/blog/html/2013/12/08/reducing_lwan_memory_usage.html</guid>
             <title><![CDATA[Reducing Lwan memory usage by 94%]]></title>
-            <description><![CDATA[<div class="section" id="reducing-lwan-memory-usage-by-94">
-<h1>Reducing Lwan memory usage by 94%</h1>
+            <description><![CDATA[<h1>Reducing Lwan memory usage by 94%</h1>
 <p>One of the things that bothers me when I’m writing software is that I <a class="reference external" href="https://www.youtube.com/watch?v=csyL9EC0S0c">never
 get things right the first time</a>.  It takes me quite a few iterations to
 achieve a good result – be it performance, memory usage, or a good
@@ -1104,7 +1100,7 @@ thread is able to produce a thing or two, and I’m able to revisit these
 things.</p>
 <div class="figure align-center">
 <img alt="projectmovingforward" src="http://farm1.staticflickr.com/64/169229347_f554a9c9ea.jpg"/>
-<p class="caption">Project moving forward picture by <a class="reference external" href="http://www.flickr.com/photos/tsdesign">Todd Smith</a>. Sometimes you’re so
+<p class="caption">Project moving forward picture by <a class="reference external" href="http://www.flickr.com/photos/tsdesign/">Todd Smith</a>. Sometimes you’re so
 focused on the goal that you end up not appreciating the journey.</p>
 </div>
 <div class="section" id="background-toys">
@@ -1183,7 +1179,7 @@ is now using 2MiB less memory.  Basically:</p>
 <li>The socket file descriptor can be calculated by pointer arithmetic. Each connection has a reference to the huge connection array that it is part of; subtracting this from the connection pointer yields the file descriptor.</li>
 </ol>
 </div>
-</div>]]></description>
+]]></description>
              <pubDate>Sun, 08 Dec 2013 00:00:00 -0200</pubDate>
         </item>
     
@@ -1191,8 +1187,7 @@ is now using 2MiB less memory.  Basically:</p>
             <link>http://tia.mat.br/blog/html/2013/09/26/implementing_sequences_in_lwan_template_engine.html</link>
             <guid>http://tia.mat.br/blog/html/2013/09/26/implementing_sequences_in_lwan_template_engine.html</guid>
             <title><![CDATA[Implementing sequences in lwan template engine]]></title>
-            <description><![CDATA[<div class="section" id="implementing-sequences-in-lwan-template-engine">
-<h1>Implementing sequences in lwan template engine</h1>
+            <description><![CDATA[<h1>Implementing sequences in lwan template engine</h1>
 <p>When I wrote about lwan’s templating engine on a <a class="reference external" href="http://tia.mat.br/blog/html/2012/11/11/mustache_templates_in_c.html">blog post</a> last year, I
 purposedly ommitted the fact that it didn’t support sequences. Took me
 almost a year, but I’ve finally implemented it this week. (Lwan is usually a
@@ -1250,7 +1245,7 @@ reference to them can be obtained.</p>
 
     <span class="k">while</span> <span class="p">((</span><span class="n">ent</span> <span class="o">=</span> <span class="n">readdir</span><span class="p">(</span><span class="n">dir</span><span class="p">)))</span> <span class="p">{</span>
       <span class="n">fl</span><span class="o">-&gt;</span><span class="n">list</span><span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">ent</span><span class="o">-&gt;</span><span class="n">d_name</span><span class="p">;</span>
-      <span class="n">coro_yield</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>   <span class="cm">/* !0 means &quot;iter not done yet&quot; */</span>
+      <span class="n">coro_yield</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>   <span class="cm">/* !0 means "iter not done yet" */</span>
     <span class="p">}</span>
 
     <span class="n">closedir</span><span class="p">(</span><span class="n">dir</span><span class="p">);</span>
@@ -1268,7 +1263,7 @@ might be useful in the future, so I’m not completely discarding the idea.
 Although I’ve never written a single line of Go code, I’m reading a lot
 about it recently and it is sort of positively impacting the way I think
 about programming.  But I digress.</p>
-</div>]]></description>
+]]></description>
              <pubDate>Thu, 26 Sep 2013 00:00:00 -0300</pubDate>
         </item>
     
@@ -1276,8 +1271,7 @@ about programming.  But I digress.</p>
             <link>http://tia.mat.br/blog/html/2013/07/20/partial_functions_in_c.html</link>
             <guid>http://tia.mat.br/blog/html/2013/07/20/partial_functions_in_c.html</guid>
             <title><![CDATA[Partially Applied Functions in C]]></title>
-            <description><![CDATA[<div class="section" id="partially-applied-functions-in-c">
-<h1>Partially Applied Functions in C</h1>
+            <description><![CDATA[<h1>Partially Applied Functions in C</h1>
 <p>There are some functions in the standard C library that takes a function
 pointer to be used as a callback later on.  Examples include <span class="docutils literal"><span class="pre">atexit()</span></span>
 and <span class="docutils literal"><span class="pre">signal()</span></span>.  However, these functions can’t receive an arbitrary
@@ -1395,7 +1389,7 @@ which will magically call another function with a given parameter:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">void</span>
 <span class="nf">test</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">)</span>
 <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Test called with data=%p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"Test called with data=%p</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">data</span><span class="p">);</span>
 <span class="p">}</span>
 
 <span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
@@ -1418,7 +1412,7 @@ which will magically call another function with a given parameter:</p>
 Interesting?  I think so.  Fun?  Yup.</p>
 <p>If you’d like to try, the full source code, with comments and error recovery
 is available in this <a class="reference external" href="https://gist.github.com/lpereira/5062388">gist</a>.</p>
-</div>]]></description>
+]]></description>
              <pubDate>Sat, 20 Jul 2013 00:00:00 -0300</pubDate>
         </item>
     
@@ -1426,13 +1420,12 @@ is available in this <a class="reference external" href="https://gist.github.com
             <link>http://tia.mat.br/blog/html/2012/11/11/mustache_templates_in_c.html</link>
             <guid>http://tia.mat.br/blog/html/2012/11/11/mustache_templates_in_c.html</guid>
             <title><![CDATA[Mustache templates in C]]></title>
-            <description><![CDATA[<div class="section" id="mustache-templates-in-c">
-<h1>Mustache templates in C</h1>
+            <description><![CDATA[<h1>Mustache templates in C</h1>
 <p>Generating textual output is a lot easier with templates than it is with
 handcrafted functions. And it is a lot easier in languages such as Python,
 where things like introspection are easy and cheap. But that doesn’t
 necessarily mean we can’t do that in C if we know where to look.</p>
-<p>I’ve implemented a subset of <a class="reference external" href="http://mustache.github.com">Mustache</a> templates in C that leverages some
+<p>I’ve implemented a subset of <a class="reference external" href="http://mustache.github.com/">Mustache</a> templates in C that leverages some
 tricks that makes template rendering both convenient and efficient. For
 instance, if you have a template such as this:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="n">Hello</span><span class="p">,</span> <span class="p">{{</span><span class="n">name</span><span class="p">}}</span><span class="o">!</span>
@@ -1440,7 +1433,7 @@ instance, if you have a template such as this:</p>
 </div>
 <p>It can easily be rendered with the following code:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="kt">hello_t</span> <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
-  <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;World&quot;</span>
+  <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">"World"</span>
 <span class="p">};</span>
 <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">data</span><span class="p">);</span>
 </pre></div>
@@ -1455,7 +1448,7 @@ and destroy the table every time the template had to be rendered), they’re
 not first class citizens in C, and the usage would be pretty clumsy, to say
 the least:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="n">hash_table</span> <span class="o">*</span><span class="n">ht</span> <span class="o">=</span> <span class="n">hash_table_new</span><span class="p">();</span>
-<span class="n">hash_table_add</span><span class="p">(</span><span class="n">ht</span><span class="p">,</span> <span class="s">&quot;name&quot;</span><span class="p">,</span> <span class="s">&quot;World&quot;</span><span class="p">);</span>
+<span class="n">hash_table_add</span><span class="p">(</span><span class="n">ht</span><span class="p">,</span> <span class="s">"name"</span><span class="p">,</span> <span class="s">"World"</span><span class="p">);</span>
 
 <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="n">ht</span><span class="p">);</span>
 
@@ -1470,7 +1463,7 @@ which is supported by GCC even in C89 mode. This trick allows the use of
 <a class="reference external" href="http://www.run.montefiore.ulg.ac.be/~martin/resources/kung-f00.html">anonymous arrays</a>, among other things, and provides enough syntactic sugar
 to conveniently group the template variables:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="p">(</span><span class="kt">hello_t</span><span class="p">[])</span> <span class="p">{{</span>
-  <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;World&quot;</span>
+  <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">"World"</span>
 <span class="p">}});</span>
 </pre></div>
 </div>
@@ -1507,7 +1500,7 @@ but can also work with types different than strings:</p>
 <span class="cm"> * ``hello'' would usually be compiled once and kept around for</span>
 <span class="cm"> * the whole duration of the program.</span>
 <span class="cm"> */</span>
-<span class="n">hello</span> <span class="o">=</span> <span class="n">lwan_tpl_compile</span><span class="p">(</span><span class="s">&quot;hello.tpl&quot;</span><span class="p">,</span> <span class="n">hello_descriptor</span><span class="p">);</span>
+<span class="n">hello</span> <span class="o">=</span> <span class="n">lwan_tpl_compile</span><span class="p">(</span><span class="s">"hello.tpl"</span><span class="p">,</span> <span class="n">hello_descriptor</span><span class="p">);</span>
 
 <span class="cm">/*</span>
 <span class="cm"> * Rendering the template then would be just the matter of calling</span>
@@ -1517,15 +1510,15 @@ but can also work with types different than strings:</p>
 <span class="cm"> * there are reallocations at all.</span>
 <span class="cm"> */</span>
 <span class="n">rendered</span> <span class="o">=</span> <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="p">(</span><span class="kt">hello_t</span><span class="p">[])</span> <span class="p">{{</span>
-  <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;World&quot;</span><span class="p">,</span>
+  <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">"World"</span><span class="p">,</span>
   <span class="p">.</span><span class="n">age</span> <span class="o">=</span> <span class="mi">42</span>
 <span class="p">}});</span>
 
-<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">strbuf_get_buffer</span><span class="p">(</span><span class="n">rendered</span><span class="p">));</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">"%s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">strbuf_get_buffer</span><span class="p">(</span><span class="n">rendered</span><span class="p">));</span>
 <span class="n">strbuf_free</span><span class="p">(</span><span class="n">rendered</span><span class="p">);</span>
 </pre></div>
 </div>
-<p><a class="reference external" href="https://github.com/lpereira/lwan/blob/wip/template.c">Code for this engine</a> is available in the <a class="reference external" href="https://github.com/lpereira/lwan/tree/wip">wip branch</a> of my toy web
+<p><a class="reference external" href="https://github.com/lpereira/lwan/blob/wip/template.c">Code for this engine</a> is available in the <a class="reference external" href="https://github.com/lpereira/lwan/tree/wip/">wip branch</a> of my toy web
 server, lwan. It is not currently used there, but it is built alongside the
 main program and can be tested by invoking the generated <span class="docutils literal"><span class="pre">template</span></span>
 executable.</p>
@@ -1534,7 +1527,7 @@ JIT-compile the template and avoid some of the overhead where it really
 matters. While at the same time possibly opening a whole can of worms from
 the security standpoint, though – but it wouldn’t be fun without some risk,
 would it? :)</p>
-</div>]]></description>
+]]></description>
              <pubDate>Sun, 11 Nov 2012 00:00:00 -0200</pubDate>
         </item>
     
@@ -1542,8 +1535,7 @@ would it? :)</p>
             <link>http://tia.mat.br/blog/html/2012/10/27/programming_on_an_arduino_without_a_pc.html</link>
             <guid>http://tia.mat.br/blog/html/2012/10/27/programming_on_an_arduino_without_a_pc.html</guid>
             <title><![CDATA[Programming on an Arduino without a PC]]></title>
-            <description><![CDATA[<div class="section" id="programming-on-an-arduino-without-a-pc">
-<h1>Programming on an Arduino without a PC</h1>
+            <description><![CDATA[<h1>Programming on an Arduino without a PC</h1>
 <p>I’ve attended this year’s <a class="reference external" href="http://softwarelivre.org/fisl13">FISL</a>, both as a booth attendee (at
 <a class="reference external" href="http://profusion.mobi">ProFUSION</a>’s booth, demonstrating a few of our end-user-visible projects),
 and as a speaker for my old <a class="reference external" href="http://github.com/lpereira/finf">FINF</a> project.</p>
@@ -1575,7 +1567,7 @@ front of an audience.</p>
 <p>(By the way, I’ll be talking during EFL Developer Day in Barcelona early next
 month. If you’re there for LinuxCon/Embedded Linux Conference and would like
 to join me for some beers, don’t hesitate to contact me!)</p>
-</div>]]></description>
+]]></description>
              <pubDate>Sat, 27 Oct 2012 00:00:00 -0200</pubDate>
         </item>
     
@@ -1583,9 +1575,8 @@ to join me for some beers, don’t hesitate to contact me!)</p>
             <link>http://tia.mat.br/blog/html/2012/10/14/vectored_i_o_with_mmap___to_serve_files.html</link>
             <guid>http://tia.mat.br/blog/html/2012/10/14/vectored_i_o_with_mmap___to_serve_files.html</guid>
             <title><![CDATA[Vectored I/O with mmap() to serve files]]></title>
-            <description><![CDATA[<div class="section" id="vectored-i-o-with-mmap-to-serve-files">
-<h1>Vectored I/O with mmap() to serve files</h1>
-<p>Previously, I’ve <a class="reference external" href="/posts/file_serving_with_few_syscalls">improved file serving performance</a> in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a> by
+            <description><![CDATA[<h1>Vectored I/O with mmap() to serve files</h1>
+<p>Previously, I’ve <a class="reference external" href="/posts/file_serving_with_few_syscalls/">improved file serving performance</a> in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a> by
 dramatially cutting down on the number of system calls performed to serve a
 file. However, for small files (&lt; 16KiB), the throughput drop from the
 <span class="docutils literal"><span class="pre">hello</span></span> handler (which merely responds “Hello, World!”) was significant,
@@ -1615,7 +1606,7 @@ protected by mutexes, of course, but I’m not sure if I got it right. One more
 reason to <strong>not</strong> use lwan in production.</p>
 <p>As a bonus to these things, lwan now offers <a class="reference external" href="https://en.wikipedia.org/wiki/Deflate">deflated</a> content for the files
 in the cache when asked.</p>
-</div>]]></description>
+]]></description>
              <pubDate>Sun, 14 Oct 2012 00:00:00 -0300</pubDate>
         </item>
     
@@ -1623,8 +1614,7 @@ in the cache when asked.</p>
             <link>http://tia.mat.br/blog/html/2012/09/29/asynchronous_i_o_in_c_with_coroutines.html</link>
             <guid>http://tia.mat.br/blog/html/2012/09/29/asynchronous_i_o_in_c_with_coroutines.html</guid>
             <title><![CDATA[Asynchronous I/O in C with Coroutines]]></title>
-            <description><![CDATA[<div class="section" id="asynchronous-i-o-in-c-with-coroutines">
-<h1>Asynchronous I/O in C with Coroutines</h1>
+            <description><![CDATA[<h1>Asynchronous I/O in C with Coroutines</h1>
 <p>Writing asynchronous I/O code in C is kind of tedious, and often leads to a
 callback hell. But it doesn’t have to be this way; if you have a main loop,
 it’s quite simple to use <a class="reference external" href="https://en.wikipedia.org/wiki/Coroutine">coroutines</a> and write code in a soothing, old
@@ -1762,7 +1752,7 @@ two roundtrips to the kernel), and does not save the floating point
 registers.</li>
 <li>Also, on 64-bit, resuming a coroutine is orders of magnitude faster,
 since not everything is copied when switching contexts.</li>
-<li>Swapping stacks makes tools like <a class="reference external" href="http://valgrind.org">Valgrind</a> get pretty crazy. Lwan’s
+<li>Swapping stacks makes tools like <a class="reference external" href="http://valgrind.org/">Valgrind</a> get pretty crazy. Lwan’s
 implementation uses Valgrind-provided macros that marks the newly-
 allocated blocks (from the heap) as stacks.</li>
 <li>The real implementation has a <span class="docutils literal"><span class="pre">coro_switcher_t</span></span> data structure.
@@ -1796,7 +1786,7 @@ fairly trivial to write (even in assembly language) – actually, encouraged,
 given that <span class="docutils literal"><span class="pre">swapcontext()</span></span> and <span class="docutils literal"><span class="pre">getcontext()</span></span> makes often unnecessary
 system calls.</p>
 </div>
-</div>]]></description>
+]]></description>
              <pubDate>Sat, 29 Sep 2012 00:00:00 -0300</pubDate>
         </item>
     
@@ -1804,8 +1794,7 @@ system calls.</p>
             <link>http://tia.mat.br/blog/html/2012/09/21/presenting_easyui.html</link>
             <guid>http://tia.mat.br/blog/html/2012/09/21/presenting_easyui.html</guid>
             <title><![CDATA[Presenting EasyUI]]></title>
-            <description><![CDATA[<div class="section" id="presenting-easyui">
-<h1>Presenting EasyUI</h1>
+            <description><![CDATA[<h1>Presenting EasyUI</h1>
 <div class="section" id="introduction">
 <h2>Introduction</h2>
 <p>I’ve been working at <a class="reference external" href="http://profusion.mobi">ProFUSION</a> on a project called EasyUI for the past few
@@ -1865,8 +1854,8 @@ fruits were in the model, by writing a <span class="docutils literal"><span clas
 </ul>
 <div class="highlight-javascript"><div class="highlight"><pre><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
     <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">model</span><span class="p">.</span><span class="nx">length</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
-            <span class="k">return</span> <span class="s2">&quot;My Favorite Fruit&quot;</span><span class="p">;</span>
-    <span class="k">return</span> <span class="s2">&quot;My Favourite Fruits&quot;</span><span class="p">;</span>
+            <span class="k">return</span> <span class="s2">"My Favorite Fruit"</span><span class="p">;</span>
+    <span class="k">return</span> <span class="s2">"My Favourite Fruits"</span><span class="p">;</span>
 <span class="p">}</span>
 </pre></div>
 </div>
@@ -1884,7 +1873,7 @@ implement <span class="docutils literal"><span class="pre">selectedNavigationBar
 <p>Behind the scenes, the framework will initialize the EFL, create the window
 and required widgets, listen to callbacks – and call the application code in
 appropriate moments.</p>
-<p>The next post in this series will show the anatomy of a <a class="reference external" href="http://reddit.com">Reddit</a> client.</p>
+<p>The next post in this series will show the anatomy of a <a class="reference external" href="http://reddit.com/">Reddit</a> client.</p>
 </div>
 <div class="section" id="show-me-the-code">
 <h2>Show me the code</h2>
@@ -1892,7 +1881,7 @@ appropriate moments.</p>
 released as an open source project. As soon as this is cleared up, EasyUI
 should hit Enlightenment’s SVN repository.</p>
 </div>
-</div>]]></description>
+]]></description>
              <pubDate>Fri, 21 Sep 2012 00:00:00 -0300</pubDate>
         </item>
     
@@ -1900,8 +1889,7 @@ should hit Enlightenment’s SVN repository.</p>
             <link>http://tia.mat.br/blog/html/2012/08/12/file_serving_with_few_system_calls.html</link>
             <guid>http://tia.mat.br/blog/html/2012/08/12/file_serving_with_few_system_calls.html</guid>
             <title><![CDATA[File serving with few system calls]]></title>
-            <description><![CDATA[<div class="section" id="file-serving-with-few-system-calls">
-<h1>File serving with few system calls</h1>
+            <description><![CDATA[<h1>File serving with few system calls</h1>
 <p>When I first wrote <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>, file serving was not a primary goal. I’ve added
 this capability later, never giving much thought to the number of system
 calls required to serve one file. As a result, static file serving was quite
@@ -1911,41 +1899,41 @@ this as much as I could.</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="o">&lt;</span><span class="p">...</span> <span class="n">epoll_wait</span> <span class="n">resumed</span><span class="o">&gt;</span> <span class="p">{{</span><span class="n">EPOLLIN</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">8</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span>
 <span class="mi">4294967295</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span>
 <span class="n">rt_sigprocmask</span><span class="p">(</span><span class="n">SIG_BLOCK</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="p">[],</span> <span class="mi">8</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">read</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s">&quot;GET / HTTP/1.0</span><span class="se">\r\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">16</span>
-<span class="n">getcwd</span><span class="p">(</span><span class="s">&quot;/home/leandro/git/lwan/build&quot;</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">29</span>
-<span class="n">lstat</span><span class="p">(</span><span class="s">&quot;/home/leandro/git/lwan/build/files_root&quot;</span><span class="p">,</span>
+<span class="n">read</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s">"GET / HTTP/1.0</span><span class="se">\r\n</span><span class="s">"</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">16</span>
+<span class="n">getcwd</span><span class="p">(</span><span class="s">"/home/leandro/git/lwan/build"</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">29</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro/git/lwan/build/files_root"</span><span class="p">,</span>
 <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFLNK</span><span class="o">|</span><span class="mo">0777</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">33</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">readlink</span><span class="p">(</span><span class="s">&quot;/home/leandro/git/lwan/build/files_root&quot;</span><span class="p">,</span>
-<span class="s">&quot;/home/leandro/git/blotest/output/&quot;</span><span class="p">,</span> <span class="mi">4095</span><span class="p">)</span> <span class="o">=</span> <span class="mi">33</span>
-<span class="n">lstat</span><span class="p">(</span><span class="s">&quot;/home&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">lstat</span><span class="p">(</span><span class="s">&quot;/home/leandro&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">lstat</span><span class="p">(</span><span class="s">&quot;/home/leandro/git&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0775</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span>
+<span class="n">readlink</span><span class="p">(</span><span class="s">"/home/leandro/git/lwan/build/files_root"</span><span class="p">,</span>
+<span class="s">"/home/leandro/git/blotest/output/"</span><span class="p">,</span> <span class="mi">4095</span><span class="p">)</span> <span class="o">=</span> <span class="mi">33</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro/git"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0775</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span>
 <span class="o">=</span> <span class="mi">0</span>
-<span class="n">lstat</span><span class="p">(</span><span class="s">&quot;/home/leandro/git/blotest&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro/git/blotest"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span>
 <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">lstat</span><span class="p">(</span><span class="s">&quot;/home/leandro/git/blotest/output&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0775</span><span class="p">,</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro/git/blotest/output"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0775</span><span class="p">,</span>
 <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">getcwd</span><span class="p">(</span><span class="s">&quot;/home/leandro/git/lwan/build&quot;</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">29</span>
-<span class="n">lstat</span><span class="p">(</span><span class="s">&quot;/home/leandro/git/lwan/build/files_root&quot;</span><span class="p">,</span>
+<span class="n">getcwd</span><span class="p">(</span><span class="s">"/home/leandro/git/lwan/build"</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">29</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro/git/lwan/build/files_root"</span><span class="p">,</span>
 <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFLNK</span><span class="o">|</span><span class="mo">0777</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">33</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">readlink</span><span class="p">(</span><span class="s">&quot;/home/leandro/git/lwan/build/files_root&quot;</span><span class="p">,</span>
-<span class="s">&quot;/home/leandro/git/blotest/output/&quot;</span><span class="p">,</span> <span class="mi">4095</span><span class="p">)</span> <span class="o">=</span> <span class="mi">33</span>
-<span class="n">lstat</span><span class="p">(</span><span class="s">&quot;/home&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">lstat</span><span class="p">(</span><span class="s">&quot;/home/leandro&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">lstat</span><span class="p">(</span><span class="s">&quot;/home/leandro/git&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0775</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span>
+<span class="n">readlink</span><span class="p">(</span><span class="s">"/home/leandro/git/lwan/build/files_root"</span><span class="p">,</span>
+<span class="s">"/home/leandro/git/blotest/output/"</span><span class="p">,</span> <span class="mi">4095</span><span class="p">)</span> <span class="o">=</span> <span class="mi">33</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro/git"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0775</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span>
 <span class="o">=</span> <span class="mi">0</span>
-<span class="n">lstat</span><span class="p">(</span><span class="s">&quot;/home/leandro/git/blotest&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro/git/blotest"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span>
 <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">lstat</span><span class="p">(</span><span class="s">&quot;/home/leandro/git/blotest/output&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0775</span><span class="p">,</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro/git/blotest/output"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0775</span><span class="p">,</span>
 <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">open</span><span class="p">(</span><span class="s">&quot;/home/leandro/git/blotest/output&quot;</span><span class="p">,</span> <span class="n">O_RDONLY</span><span class="o">|</span><span class="n">O_NOATIME</span><span class="p">)</span> <span class="o">=</span> <span class="mi">9</span>
+<span class="n">open</span><span class="p">(</span><span class="s">"/home/leandro/git/blotest/output"</span><span class="p">,</span> <span class="n">O_RDONLY</span><span class="o">|</span><span class="n">O_NOATIME</span><span class="p">)</span> <span class="o">=</span> <span class="mi">9</span>
 <span class="n">fstat</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0775</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
 <span class="n">close</span><span class="p">(</span><span class="mi">9</span><span class="p">)</span>                    <span class="o">=</span> <span class="mi">0</span>
-<span class="n">open</span><span class="p">(</span><span class="s">&quot;/home/leandro/git/blotest/output/index.html&quot;</span><span class="p">,</span>
+<span class="n">open</span><span class="p">(</span><span class="s">"/home/leandro/git/blotest/output/index.html"</span><span class="p">,</span>
 <span class="n">O_RDONLY</span><span class="o">|</span><span class="n">O_NOATIME</span><span class="p">)</span> <span class="o">=</span> <span class="mi">9</span>
 <span class="n">fstat</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFREG</span><span class="o">|</span><span class="mo">0664</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">13200</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
 <span class="n">setsockopt</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="n">SOL_TCP</span><span class="p">,</span> <span class="n">TCP_CORK</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">4</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">write</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s">&quot;HTTP/1.0 200 OK</span><span class="se">\r\n</span><span class="s">Content-Length:&quot;</span><span class="p">...,</span> <span class="mi">100</span><span class="p">)</span> <span class="o">=</span> <span class="mi">100</span>
+<span class="n">write</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s">"HTTP/1.0 200 OK</span><span class="se">\r\n</span><span class="s">Content-Length:"</span><span class="p">...,</span> <span class="mi">100</span><span class="p">)</span> <span class="o">=</span> <span class="mi">100</span>
 <span class="n">fadvise64</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">13200</span><span class="p">,</span> <span class="n">POSIX_FADV_SEQUENTIAL</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span>
 <span class="n">sendfile</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="mi">1400</span><span class="p">)</span>  <span class="o">=</span> <span class="mi">1400</span>
 <span class="n">epoll_ctl</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="n">EPOLL_CTL_MOD</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="p">{</span><span class="n">EPOLLOUT</span><span class="o">|</span><span class="n">EPOLLERR</span><span class="o">|</span><span class="mh">0x2000</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
@@ -1979,11 +1967,11 @@ was added as an afterthought. After some experiments, I’ve managed to turn
 that mess into this:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="o">&lt;</span><span class="p">...</span> <span class="n">epoll_wait</span> <span class="n">resumed</span><span class="o">&gt;</span> <span class="p">{{</span><span class="n">EPOLLIN</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">9</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span>
 <span class="mi">4294967295</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span>
-<span class="n">read</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="s">&quot;GET / HTTP/1.0</span><span class="se">\r\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">16</span>
-<span class="n">newfstatat</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="s">&quot;index.html&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFREG</span><span class="o">|</span><span class="mo">0664</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">13200</span><span class="p">,</span>
+<span class="n">read</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="s">"GET / HTTP/1.0</span><span class="se">\r\n</span><span class="s">"</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">16</span>
+<span class="n">newfstatat</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="s">"index.html"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFREG</span><span class="o">|</span><span class="mo">0664</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">13200</span><span class="p">,</span>
 <span class="p">...},</span> <span class="mi">0</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">openat</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="s">&quot;index.html&quot;</span><span class="p">,</span> <span class="n">O_RDONLY</span><span class="o">|</span><span class="n">O_NOATIME</span><span class="p">)</span> <span class="o">=</span> <span class="mi">10</span>
-<span class="n">sendto</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="s">&quot;HTTP/1.0 200 OK</span><span class="se">\r\n</span><span class="s">Content-Length:&quot;</span><span class="p">...,</span> <span class="mi">223</span><span class="p">,</span> <span class="n">MSG_MORE</span><span class="p">,</span>
+<span class="n">openat</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="s">"index.html"</span><span class="p">,</span> <span class="n">O_RDONLY</span><span class="o">|</span><span class="n">O_NOATIME</span><span class="p">)</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">sendto</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="s">"HTTP/1.0 200 OK</span><span class="se">\r\n</span><span class="s">Content-Length:"</span><span class="p">...,</span> <span class="mi">223</span><span class="p">,</span> <span class="n">MSG_MORE</span><span class="p">,</span>
 <span class="nb">NULL</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">=</span> <span class="mi">223</span>
 <span class="n">fadvise64</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">13200</span><span class="p">,</span> <span class="n">POSIX_FADV_SEQUENTIAL</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span>
 <span class="n">sendfile</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">13200</span><span class="p">)</span> <span class="o">=</span> <span class="mi">13200</span>
@@ -2006,7 +1994,7 @@ chunks, to avoid coroutine context switches. <span class="docutils literal"><spa
 block, but in this case, the coroutine will yield and the next time, try
 to send a smaller chunk.</li>
 <li>The <span class="docutils literal"><span class="pre">-at()</span></span> version of system calls are also being used by a
-replacement <span class="docutils literal"><span class="pre">realpath()</span></span> routine that I’ve adapted from <a class="reference external" href="http://www.gnu.org/software/libc">glibc</a>. This
+replacement <span class="docutils literal"><span class="pre">realpath()</span></span> routine that I’ve adapted from <a class="reference external" href="http://www.gnu.org/software/libc/">glibc</a>. This
 improved the performance as well by not only reducing the number of
 system calls (the standard <span class="docutils literal"><span class="pre">realpath()</span></span> will perform a <span class="docutils literal"><span class="pre">lstat()</span></span> for
 every path component, whereas this version will only perform
@@ -2017,7 +2005,7 @@ every path component, whereas this version will only perform
 fact, compared to a simple <em>hello world</em> handler and file serving – without
 keep-alive – the performance drop even comparing the I/O involved is about
 5%.</p>
-</div>]]></description>
+]]></description>
              <pubDate>Sun, 12 Aug 2012 00:00:00 -0300</pubDate>
         </item>
     
@@ -2025,8 +2013,7 @@ keep-alive – the performance drop even comparing the I/O involved is about
             <link>http://tia.mat.br/blog/html/2012/08/11/deferred_statements_in_c.html</link>
             <guid>http://tia.mat.br/blog/html/2012/08/11/deferred_statements_in_c.html</guid>
             <title><![CDATA[Deferred statements in C]]></title>
-            <description><![CDATA[<div class="section" id="deferred-statements-in-c">
-<h1>Deferred statements in C</h1>
+            <description><![CDATA[<h1>Deferred statements in C</h1>
 <p><a class="reference external" href="http://golang.org">Golang</a> has a lot of nice features – and one I found pretty interesting is
 called <a class="reference external" href="http://blog.golang.org/2010/08/defer-panic-and-recover.html">deferred statements</a>. This can be implemented in C++ pretty easily
 through <a class="reference external" href="https://en.wikipedia.org/wiki/Resource_Acquisition_Is_Initialization">RAII</a>, but in C we’re pretty much out of luck. Or are we?</p>
@@ -2062,7 +2049,7 @@ miscellaneous cleanup code:</p>
 </div>
 <p>This way, one can easily allocate memory, lock mutexes, open files – and
 leave the cleanup to <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>.</p>
-</div>]]></description>
+]]></description>
              <pubDate>Sat, 11 Aug 2012 00:00:00 -0300</pubDate>
         </item>
     
@@ -2070,8 +2057,7 @@ leave the cleanup to <a class="reference external" href="http://github.com/lpere
             <link>http://tia.mat.br/blog/html/2012/08/10/hash_trie.html</link>
             <guid>http://tia.mat.br/blog/html/2012/08/10/hash_trie.html</guid>
             <title><![CDATA[Hash trie]]></title>
-            <description><![CDATA[<div class="section" id="hash-trie">
-<h1>Hash trie</h1>
+            <description><![CDATA[<h1>Hash trie</h1>
 <p><a class="reference external" href="https://en.wikipedia.org/wiki/Trie">Tries</a> are very useful data structures if you need to perform longest
 subprefix matching. Unfortunately, simple implementations uses a lot of
 memory, which is often solved by collapsing common prefixes in a single node
@@ -2093,7 +2079,7 @@ determine which handler to call.</p>
 To avoid having to perform one last string comparison if there’s just one
 node in this linked list (and hence no collisions), <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>’s trie assume it
 was a match.</p>
-</div>]]></description>
+]]></description>
              <pubDate>Fri, 10 Aug 2012 00:00:00 -0300</pubDate>
         </item>
     
@@ -2101,8 +2087,7 @@ was a match.</p>
             <link>http://tia.mat.br/blog/html/2012/08/09/string_switch_in_c.html</link>
             <guid>http://tia.mat.br/blog/html/2012/08/09/string_switch_in_c.html</guid>
             <title><![CDATA[String switch in C]]></title>
-            <description><![CDATA[<div class="section" id="string-switch-in-c">
-<h1>String switch in C</h1>
+            <description><![CDATA[<h1>String switch in C</h1>
 <p>C’s <span class="docutils literal"><span class="pre">switch</span></span> statement is very powerful. However, it can’t be used with
 strings, only with constant integral types. This is understandable, since
 strings in C are merely arrays – they’re not first-class citizens.</p>
@@ -2139,16 +2124,16 @@ these constants. My solution was to just use a macro in conjuntion with an
         <span class="k">goto</span> <span class="n">fallback</span><span class="p">;</span>
 
     <span class="n">STRING_SWITCH_L</span><span class="p">(</span><span class="n">last_dot</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">case</span> <span class="n">EXT_CSS</span>: <span class="k">return</span> <span class="s">&quot;text/css&quot;</span><span class="p">;</span>
-    <span class="k">case</span> <span class="n">EXT_HTM</span>: <span class="k">return</span> <span class="s">&quot;text/html&quot;</span><span class="p">;</span>
-    <span class="k">case</span> <span class="n">EXT_JPG</span>: <span class="k">return</span> <span class="s">&quot;image/jpeg&quot;</span><span class="p">;</span>
-    <span class="k">case</span> <span class="n">EXT_JS</span>:  <span class="k">return</span> <span class="s">&quot;application/javascript&quot;</span><span class="p">;</span>
-    <span class="k">case</span> <span class="n">EXT_PNG</span>: <span class="k">return</span> <span class="s">&quot;image/png&quot;</span><span class="p">;</span>
-    <span class="k">case</span> <span class="n">EXT_TXT</span>: <span class="k">return</span> <span class="s">&quot;text/plain&quot;</span><span class="p">;</span>
+    <span class="k">case</span> <span class="nl">EXT_CSS</span><span class="p">:</span> <span class="k">return</span> <span class="s">"text/css"</span><span class="p">;</span>
+    <span class="k">case</span> <span class="nl">EXT_HTM</span><span class="p">:</span> <span class="k">return</span> <span class="s">"text/html"</span><span class="p">;</span>
+    <span class="k">case</span> <span class="nl">EXT_JPG</span><span class="p">:</span> <span class="k">return</span> <span class="s">"image/jpeg"</span><span class="p">;</span>
+    <span class="k">case</span> <span class="nl">EXT_JS</span><span class="p">:</span>  <span class="k">return</span> <span class="s">"application/javascript"</span><span class="p">;</span>
+    <span class="k">case</span> <span class="nl">EXT_PNG</span><span class="p">:</span> <span class="k">return</span> <span class="s">"image/png"</span><span class="p">;</span>
+    <span class="k">case</span> <span class="nl">EXT_TXT</span><span class="p">:</span> <span class="k">return</span> <span class="s">"text/plain"</span><span class="p">;</span>
     <span class="p">}</span>
 
-<span class="nl">fallback:</span>
-    <span class="k">return</span> <span class="s">&quot;application/octet-stream&quot;</span><span class="p">;</span>
+<span class="nl">fallback</span><span class="p">:</span>
+    <span class="k">return</span> <span class="s">"application/octet-stream"</span><span class="p">;</span>
 <span class="p">}</span>
 </pre></div>
 </div>
@@ -2157,7 +2142,7 @@ value – this is a fast means of lowering the case of four characters at once.<
 <p>This kind of switch statement is used in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a> to match HTTP headers and
 HTTP methods, and also the naïve file extension to MIME-Type conversion code
 shown above.</p>
-</div>]]></description>
+]]></description>
              <pubDate>Thu, 09 Aug 2012 00:00:00 -0300</pubDate>
         </item>
     
@@ -2165,8 +2150,7 @@ shown above.</p>
             <link>http://tia.mat.br/blog/html/2012/02/13/fosdem_2012.html</link>
             <guid>http://tia.mat.br/blog/html/2012/02/13/fosdem_2012.html</guid>
             <title><![CDATA[FOSDEM 2012]]></title>
-            <description><![CDATA[<div class="section" id="fosdem-2012">
-<h1>FOSDEM 2012</h1>
+            <description><![CDATA[<h1>FOSDEM 2012</h1>
 <p>Last week I was in Belgium, attending the Free and Open Source Developers
 European Meeting — FOSDEM, for short. This conference is held every year and
 gathers people from all around the globe to discuss and publish FOSS-related
@@ -2202,7 +2186,7 @@ couldn’t get it properly stamped.</p>
 <p>All in all, it was a great experience. I sure hope I’ll be able to attend
 this conference next year. And last, but certainly not least, I’d like to
 thank my employer, ProFUSION Embedded Systems, for sponsoring my trip.</p>
-</div>]]></description>
+]]></description>
              <pubDate>Mon, 13 Feb 2012 00:00:00 -0200</pubDate>
         </item>
     

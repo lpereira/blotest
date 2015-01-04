@@ -21,7 +21,7 @@
             <link rel="stylesheet" href="_static/main.css" type="text/css">
             <link rel="stylesheet" href="_static/flat.css" type="text/css">
             <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-            <link rel="stylesheet" href="_static/webfont.css" type="text/css">
+            <link rel="stylesheet" href="_static/font-awesome.min.css" type="text/css">
         <link rel="shortcut icon" href="_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
         <script src="_static/vendor/modernizr-2.6.2.min.js"></script>
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
@@ -31,7 +31,7 @@
         <link rel="next" title="Older" href="page4.html" /><link rel="prev" title="Newer" href="page2.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '1.2.1',
+        VERSION:     '1.5',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -39,16 +39,16 @@
     </script><script type="text/javascript" src="_static/underscore.js"></script><script type="text/javascript" src="_static/doctools.js"></script>
 <style type="text/css">img {max-width: 100%;}</style>
 </head>
-    <body>
+    <body role="document">
         <!--[if lt IE 7]>
             <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
         <![endif]-->
 
-      <div id="container"><header>
+      <div id="container"><header role="banner">
             <hgroup>
               <h1><a href="index.html">Leandro Pereira</a></h1><h2>Geek in training</h2></hgroup>
           </header>
-      <nav>
+      <nav role="navigation">
             <ul><li class="main-nav">
                   <a href="index.html">Home</a>
                 </li>
@@ -56,11 +56,11 @@
                   <a href="pages/about.html">About</a>
                 </li>
               </ul>
-          </nav><div class="main-container"><div class="main wrapper clearfix"><article><div class="timestamp postmeta">
-            <span>21 September 2012</span>
+          </nav><div class="main-container" role="main"><div class="main wrapper body clearfix"><article><div class="timestamp postmeta">
+            <span>September 21, 2012</span>
         </div>
-        <div class="section" id="presenting-easyui">
-<h1><a href="2012/09/21/presenting_easyui.html">Presenting EasyUI</a></h1>
+        <div class="section">
+            <h1><a href="2012/09/21/presenting_easyui.html">Presenting EasyUI</a></h1>
 <div class="section" id="introduction">
 <h2>Introduction</h2>
 <p>I’ve been working at <a class="reference external" href="http://profusion.mobi">ProFUSION</a> on a project called EasyUI for the past few
@@ -120,8 +120,8 @@ fruits were in the model, by writing a <span class="docutils literal"><span clas
 </ul>
 <div class="highlight-javascript"><div class="highlight"><pre><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
     <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">model</span><span class="p">.</span><span class="nx">length</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
-            <span class="k">return</span> <span class="s2">&quot;My Favorite Fruit&quot;</span><span class="p">;</span>
-    <span class="k">return</span> <span class="s2">&quot;My Favourite Fruits&quot;</span><span class="p">;</span>
+            <span class="k">return</span> <span class="s2">"My Favorite Fruit"</span><span class="p">;</span>
+    <span class="k">return</span> <span class="s2">"My Favourite Fruits"</span><span class="p">;</span>
 <span class="p">}</span>
 </pre></div>
 </div>
@@ -139,7 +139,7 @@ implement <span class="docutils literal"><span class="pre">selectedNavigationBar
 <p>Behind the scenes, the framework will initialize the EFL, create the window
 and required widgets, listen to callbacks – and call the application code in
 appropriate moments.</p>
-<p>The next post in this series will show the anatomy of a <a class="reference external" href="http://reddit.com">Reddit</a> client.</p>
+<p>The next post in this series will show the anatomy of a <a class="reference external" href="http://reddit.com/">Reddit</a> client.</p>
 </div>
 <div class="section" id="show-me-the-code">
 <h2>Show me the code</h2>
@@ -147,7 +147,8 @@ appropriate moments.</p>
 released as an open source project. As soon as this is cleared up, EasyUI
 should hit Enlightenment’s SVN repository.</p>
 </div>
-</div>
+
+        </div>
         <div class="postmeta">
         <div class="author">
             <span>Posted by Leandro Pereira</span>
@@ -159,10 +160,10 @@ should hit Enlightenment’s SVN repository.</p>
                 <a href="tags/profusion.html">profusion</a>, <a href="tags/efl.html">efl</a>, <a href="tags/javascript.html">javascript</a>, <a href="tags/programming.html">programming</a>, <a href="tags/tizen.html">tizen</a></span>
         </div>
         </div><div class="separator post_separator"></div><div class="timestamp postmeta">
-            <span>12 August 2012</span>
+            <span>August 12, 2012</span>
         </div>
-        <div class="section" id="file-serving-with-few-system-calls">
-<h1><a href="2012/08/12/file_serving_with_few_system_calls.html">File serving with few system calls</a></h1>
+        <div class="section">
+            <h1><a href="2012/08/12/file_serving_with_few_system_calls.html">File serving with few system calls</a></h1>
 <p>When I first wrote <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>, file serving was not a primary goal. I’ve added
 this capability later, never giving much thought to the number of system
 calls required to serve one file. As a result, static file serving was quite
@@ -172,41 +173,41 @@ this as much as I could.</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="o">&lt;</span><span class="p">...</span> <span class="n">epoll_wait</span> <span class="n">resumed</span><span class="o">&gt;</span> <span class="p">{{</span><span class="n">EPOLLIN</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">8</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span>
 <span class="mi">4294967295</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span>
 <span class="n">rt_sigprocmask</span><span class="p">(</span><span class="n">SIG_BLOCK</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="p">[],</span> <span class="mi">8</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">read</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s">&quot;GET / HTTP/1.0</span><span class="se">\r\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">16</span>
-<span class="n">getcwd</span><span class="p">(</span><span class="s">&quot;/home/leandro/git/lwan/build&quot;</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">29</span>
-<span class="n">lstat</span><span class="p">(</span><span class="s">&quot;/home/leandro/git/lwan/build/files_root&quot;</span><span class="p">,</span>
+<span class="n">read</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s">"GET / HTTP/1.0</span><span class="se">\r\n</span><span class="s">"</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">16</span>
+<span class="n">getcwd</span><span class="p">(</span><span class="s">"/home/leandro/git/lwan/build"</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">29</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro/git/lwan/build/files_root"</span><span class="p">,</span>
 <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFLNK</span><span class="o">|</span><span class="mo">0777</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">33</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">readlink</span><span class="p">(</span><span class="s">&quot;/home/leandro/git/lwan/build/files_root&quot;</span><span class="p">,</span>
-<span class="s">&quot;/home/leandro/git/blotest/output/&quot;</span><span class="p">,</span> <span class="mi">4095</span><span class="p">)</span> <span class="o">=</span> <span class="mi">33</span>
-<span class="n">lstat</span><span class="p">(</span><span class="s">&quot;/home&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">lstat</span><span class="p">(</span><span class="s">&quot;/home/leandro&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">lstat</span><span class="p">(</span><span class="s">&quot;/home/leandro/git&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0775</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span>
+<span class="n">readlink</span><span class="p">(</span><span class="s">"/home/leandro/git/lwan/build/files_root"</span><span class="p">,</span>
+<span class="s">"/home/leandro/git/blotest/output/"</span><span class="p">,</span> <span class="mi">4095</span><span class="p">)</span> <span class="o">=</span> <span class="mi">33</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro/git"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0775</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span>
 <span class="o">=</span> <span class="mi">0</span>
-<span class="n">lstat</span><span class="p">(</span><span class="s">&quot;/home/leandro/git/blotest&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro/git/blotest"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span>
 <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">lstat</span><span class="p">(</span><span class="s">&quot;/home/leandro/git/blotest/output&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0775</span><span class="p">,</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro/git/blotest/output"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0775</span><span class="p">,</span>
 <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">getcwd</span><span class="p">(</span><span class="s">&quot;/home/leandro/git/lwan/build&quot;</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">29</span>
-<span class="n">lstat</span><span class="p">(</span><span class="s">&quot;/home/leandro/git/lwan/build/files_root&quot;</span><span class="p">,</span>
+<span class="n">getcwd</span><span class="p">(</span><span class="s">"/home/leandro/git/lwan/build"</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">29</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro/git/lwan/build/files_root"</span><span class="p">,</span>
 <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFLNK</span><span class="o">|</span><span class="mo">0777</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">33</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">readlink</span><span class="p">(</span><span class="s">&quot;/home/leandro/git/lwan/build/files_root&quot;</span><span class="p">,</span>
-<span class="s">&quot;/home/leandro/git/blotest/output/&quot;</span><span class="p">,</span> <span class="mi">4095</span><span class="p">)</span> <span class="o">=</span> <span class="mi">33</span>
-<span class="n">lstat</span><span class="p">(</span><span class="s">&quot;/home&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">lstat</span><span class="p">(</span><span class="s">&quot;/home/leandro&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">lstat</span><span class="p">(</span><span class="s">&quot;/home/leandro/git&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0775</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span>
+<span class="n">readlink</span><span class="p">(</span><span class="s">"/home/leandro/git/lwan/build/files_root"</span><span class="p">,</span>
+<span class="s">"/home/leandro/git/blotest/output/"</span><span class="p">,</span> <span class="mi">4095</span><span class="p">)</span> <span class="o">=</span> <span class="mi">33</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro/git"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0775</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span>
 <span class="o">=</span> <span class="mi">0</span>
-<span class="n">lstat</span><span class="p">(</span><span class="s">&quot;/home/leandro/git/blotest&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro/git/blotest"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span>
 <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">lstat</span><span class="p">(</span><span class="s">&quot;/home/leandro/git/blotest/output&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0775</span><span class="p">,</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro/git/blotest/output"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0775</span><span class="p">,</span>
 <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">open</span><span class="p">(</span><span class="s">&quot;/home/leandro/git/blotest/output&quot;</span><span class="p">,</span> <span class="n">O_RDONLY</span><span class="o">|</span><span class="n">O_NOATIME</span><span class="p">)</span> <span class="o">=</span> <span class="mi">9</span>
+<span class="n">open</span><span class="p">(</span><span class="s">"/home/leandro/git/blotest/output"</span><span class="p">,</span> <span class="n">O_RDONLY</span><span class="o">|</span><span class="n">O_NOATIME</span><span class="p">)</span> <span class="o">=</span> <span class="mi">9</span>
 <span class="n">fstat</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0775</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
 <span class="n">close</span><span class="p">(</span><span class="mi">9</span><span class="p">)</span>                    <span class="o">=</span> <span class="mi">0</span>
-<span class="n">open</span><span class="p">(</span><span class="s">&quot;/home/leandro/git/blotest/output/index.html&quot;</span><span class="p">,</span>
+<span class="n">open</span><span class="p">(</span><span class="s">"/home/leandro/git/blotest/output/index.html"</span><span class="p">,</span>
 <span class="n">O_RDONLY</span><span class="o">|</span><span class="n">O_NOATIME</span><span class="p">)</span> <span class="o">=</span> <span class="mi">9</span>
 <span class="n">fstat</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFREG</span><span class="o">|</span><span class="mo">0664</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">13200</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
 <span class="n">setsockopt</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="n">SOL_TCP</span><span class="p">,</span> <span class="n">TCP_CORK</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">4</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">write</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s">&quot;HTTP/1.0 200 OK</span><span class="se">\r\n</span><span class="s">Content-Length:&quot;</span><span class="p">...,</span> <span class="mi">100</span><span class="p">)</span> <span class="o">=</span> <span class="mi">100</span>
+<span class="n">write</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s">"HTTP/1.0 200 OK</span><span class="se">\r\n</span><span class="s">Content-Length:"</span><span class="p">...,</span> <span class="mi">100</span><span class="p">)</span> <span class="o">=</span> <span class="mi">100</span>
 <span class="n">fadvise64</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">13200</span><span class="p">,</span> <span class="n">POSIX_FADV_SEQUENTIAL</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span>
 <span class="n">sendfile</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="mi">1400</span><span class="p">)</span>  <span class="o">=</span> <span class="mi">1400</span>
 <span class="n">epoll_ctl</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="n">EPOLL_CTL_MOD</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="p">{</span><span class="n">EPOLLOUT</span><span class="o">|</span><span class="n">EPOLLERR</span><span class="o">|</span><span class="mh">0x2000</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
@@ -240,11 +241,11 @@ was added as an afterthought. After some experiments, I’ve managed to turn
 that mess into this:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="o">&lt;</span><span class="p">...</span> <span class="n">epoll_wait</span> <span class="n">resumed</span><span class="o">&gt;</span> <span class="p">{{</span><span class="n">EPOLLIN</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">9</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span>
 <span class="mi">4294967295</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span>
-<span class="n">read</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="s">&quot;GET / HTTP/1.0</span><span class="se">\r\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">16</span>
-<span class="n">newfstatat</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="s">&quot;index.html&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFREG</span><span class="o">|</span><span class="mo">0664</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">13200</span><span class="p">,</span>
+<span class="n">read</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="s">"GET / HTTP/1.0</span><span class="se">\r\n</span><span class="s">"</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">16</span>
+<span class="n">newfstatat</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="s">"index.html"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFREG</span><span class="o">|</span><span class="mo">0664</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">13200</span><span class="p">,</span>
 <span class="p">...},</span> <span class="mi">0</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">openat</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="s">&quot;index.html&quot;</span><span class="p">,</span> <span class="n">O_RDONLY</span><span class="o">|</span><span class="n">O_NOATIME</span><span class="p">)</span> <span class="o">=</span> <span class="mi">10</span>
-<span class="n">sendto</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="s">&quot;HTTP/1.0 200 OK</span><span class="se">\r\n</span><span class="s">Content-Length:&quot;</span><span class="p">...,</span> <span class="mi">223</span><span class="p">,</span> <span class="n">MSG_MORE</span><span class="p">,</span>
+<span class="n">openat</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="s">"index.html"</span><span class="p">,</span> <span class="n">O_RDONLY</span><span class="o">|</span><span class="n">O_NOATIME</span><span class="p">)</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">sendto</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="s">"HTTP/1.0 200 OK</span><span class="se">\r\n</span><span class="s">Content-Length:"</span><span class="p">...,</span> <span class="mi">223</span><span class="p">,</span> <span class="n">MSG_MORE</span><span class="p">,</span>
 <span class="nb">NULL</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">=</span> <span class="mi">223</span>
 <span class="n">fadvise64</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">13200</span><span class="p">,</span> <span class="n">POSIX_FADV_SEQUENTIAL</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span>
 <span class="n">sendfile</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">13200</span><span class="p">)</span> <span class="o">=</span> <span class="mi">13200</span>
@@ -267,7 +268,7 @@ chunks, to avoid coroutine context switches. <span class="docutils literal"><spa
 block, but in this case, the coroutine will yield and the next time, try
 to send a smaller chunk.</li>
 <li>The <span class="docutils literal"><span class="pre">-at()</span></span> version of system calls are also being used by a
-replacement <span class="docutils literal"><span class="pre">realpath()</span></span> routine that I’ve adapted from <a class="reference external" href="http://www.gnu.org/software/libc">glibc</a>. This
+replacement <span class="docutils literal"><span class="pre">realpath()</span></span> routine that I’ve adapted from <a class="reference external" href="http://www.gnu.org/software/libc/">glibc</a>. This
 improved the performance as well by not only reducing the number of
 system calls (the standard <span class="docutils literal"><span class="pre">realpath()</span></span> will perform a <span class="docutils literal"><span class="pre">lstat()</span></span> for
 every path component, whereas this version will only perform
@@ -278,7 +279,8 @@ every path component, whereas this version will only perform
 fact, compared to a simple <em>hello world</em> handler and file serving – without
 keep-alive – the performance drop even comparing the I/O involved is about
 5%.</p>
-</div>
+
+        </div>
         <div class="postmeta">
         <div class="author">
             <span>Posted by Leandro Pereira</span>
@@ -290,10 +292,10 @@ keep-alive – the performance drop even comparing the I/O involved is about
                 <a href="tags/strace.html">strace</a>, <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/c.html">C</a>, <a href="tags/linux.html">linux</a></span>
         </div>
         </div><div class="separator post_separator"></div><div class="timestamp postmeta">
-            <span>11 August 2012</span>
+            <span>August 11, 2012</span>
         </div>
-        <div class="section" id="deferred-statements-in-c">
-<h1><a href="2012/08/11/deferred_statements_in_c.html">Deferred statements in C</a></h1>
+        <div class="section">
+            <h1><a href="2012/08/11/deferred_statements_in_c.html">Deferred statements in C</a></h1>
 <p><a class="reference external" href="http://golang.org">Golang</a> has a lot of nice features – and one I found pretty interesting is
 called <a class="reference external" href="http://blog.golang.org/2010/08/defer-panic-and-recover.html">deferred statements</a>. This can be implemented in C++ pretty easily
 through <a class="reference external" href="https://en.wikipedia.org/wiki/Resource_Acquisition_Is_Initialization">RAII</a>, but in C we’re pretty much out of luck. Or are we?</p>
@@ -329,7 +331,8 @@ miscellaneous cleanup code:</p>
 </div>
 <p>This way, one can easily allocate memory, lock mutexes, open files – and
 leave the cleanup to <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>.</p>
-</div>
+
+        </div>
         <div class="postmeta">
         <div class="author">
             <span>Posted by Leandro Pereira</span>
@@ -341,10 +344,10 @@ leave the cleanup to <a class="reference external" href="http://github.com/lpere
                 <a href="tags/trick.html">trick</a>, <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/c.html">C</a></span>
         </div>
         </div><div class="separator post_separator"></div><div class="timestamp postmeta">
-            <span>10 August 2012</span>
+            <span>August 10, 2012</span>
         </div>
-        <div class="section" id="hash-trie">
-<h1><a href="2012/08/10/hash_trie.html">Hash trie</a></h1>
+        <div class="section">
+            <h1><a href="2012/08/10/hash_trie.html">Hash trie</a></h1>
 <p><a class="reference external" href="https://en.wikipedia.org/wiki/Trie">Tries</a> are very useful data structures if you need to perform longest
 subprefix matching. Unfortunately, simple implementations uses a lot of
 memory, which is often solved by collapsing common prefixes in a single node
@@ -366,7 +369,8 @@ determine which handler to call.</p>
 To avoid having to perform one last string comparison if there’s just one
 node in this linked list (and hence no collisions), <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>’s trie assume it
 was a match.</p>
-</div>
+
+        </div>
         <div class="postmeta">
         <div class="author">
             <span>Posted by Leandro Pereira</span>
@@ -378,10 +382,10 @@ was a match.</p>
                 <a href="tags/data_structure.html">data-structure</a>, <a href="tags/programming.html">programming</a>, <a href="tags/lwan.html">lwan</a></span>
         </div>
         </div><div class="separator post_separator"></div><div class="timestamp postmeta">
-            <span>09 August 2012</span>
+            <span>August 09, 2012</span>
         </div>
-        <div class="section" id="string-switch-in-c">
-<h1><a href="2012/08/09/string_switch_in_c.html">String switch in C</a></h1>
+        <div class="section">
+            <h1><a href="2012/08/09/string_switch_in_c.html">String switch in C</a></h1>
 <p>C’s <span class="docutils literal"><span class="pre">switch</span></span> statement is very powerful. However, it can’t be used with
 strings, only with constant integral types. This is understandable, since
 strings in C are merely arrays – they’re not first-class citizens.</p>
@@ -418,16 +422,16 @@ these constants. My solution was to just use a macro in conjuntion with an
         <span class="k">goto</span> <span class="n">fallback</span><span class="p">;</span>
 
     <span class="n">STRING_SWITCH_L</span><span class="p">(</span><span class="n">last_dot</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">case</span> <span class="n">EXT_CSS</span>: <span class="k">return</span> <span class="s">&quot;text/css&quot;</span><span class="p">;</span>
-    <span class="k">case</span> <span class="n">EXT_HTM</span>: <span class="k">return</span> <span class="s">&quot;text/html&quot;</span><span class="p">;</span>
-    <span class="k">case</span> <span class="n">EXT_JPG</span>: <span class="k">return</span> <span class="s">&quot;image/jpeg&quot;</span><span class="p">;</span>
-    <span class="k">case</span> <span class="n">EXT_JS</span>:  <span class="k">return</span> <span class="s">&quot;application/javascript&quot;</span><span class="p">;</span>
-    <span class="k">case</span> <span class="n">EXT_PNG</span>: <span class="k">return</span> <span class="s">&quot;image/png&quot;</span><span class="p">;</span>
-    <span class="k">case</span> <span class="n">EXT_TXT</span>: <span class="k">return</span> <span class="s">&quot;text/plain&quot;</span><span class="p">;</span>
+    <span class="k">case</span> <span class="nl">EXT_CSS</span><span class="p">:</span> <span class="k">return</span> <span class="s">"text/css"</span><span class="p">;</span>
+    <span class="k">case</span> <span class="nl">EXT_HTM</span><span class="p">:</span> <span class="k">return</span> <span class="s">"text/html"</span><span class="p">;</span>
+    <span class="k">case</span> <span class="nl">EXT_JPG</span><span class="p">:</span> <span class="k">return</span> <span class="s">"image/jpeg"</span><span class="p">;</span>
+    <span class="k">case</span> <span class="nl">EXT_JS</span><span class="p">:</span>  <span class="k">return</span> <span class="s">"application/javascript"</span><span class="p">;</span>
+    <span class="k">case</span> <span class="nl">EXT_PNG</span><span class="p">:</span> <span class="k">return</span> <span class="s">"image/png"</span><span class="p">;</span>
+    <span class="k">case</span> <span class="nl">EXT_TXT</span><span class="p">:</span> <span class="k">return</span> <span class="s">"text/plain"</span><span class="p">;</span>
     <span class="p">}</span>
 
-<span class="nl">fallback:</span>
-    <span class="k">return</span> <span class="s">&quot;application/octet-stream&quot;</span><span class="p">;</span>
+<span class="nl">fallback</span><span class="p">:</span>
+    <span class="k">return</span> <span class="s">"application/octet-stream"</span><span class="p">;</span>
 <span class="p">}</span>
 </pre></div>
 </div>
@@ -436,7 +440,8 @@ value – this is a fast means of lowering the case of four characters at once.<
 <p>This kind of switch statement is used in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a> to match HTTP headers and
 HTTP methods, and also the naïve file extension to MIME-Type conversion code
 shown above.</p>
-</div>
+
+        </div>
         <div class="postmeta">
         <div class="author">
             <span>Posted by Leandro Pereira</span>
@@ -452,11 +457,11 @@ shown above.</p>
     </div><ul class="related clearfix">
             <li class="left"> &laquo; <a href="page2.html">Newer</a></li>
             <li class="right"><a href="page4.html">Older</a> &raquo; </li>
-        </ul></article><aside class="sidebar"><section><div class="widget" id="searchbox">
-    <h1>Search</h1>
+        </ul></article><aside class="sidebar"><section><div class="widget" id="searchbox" role="search">
+    <h1><a href="#searchbox">Search</a></h1>
     <form action="search.html" method="get">
         <input type="text" name="q" />
-        <button type="submit"><span class="webfont">L</span></button>
+        <button type="submit"><span class="fa fa-search"></span></button>
     </form>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
@@ -505,7 +510,7 @@ shown above.</p>
       <a href="tags/tricks.html" style="font-size: 8pt">tricks</a>
 </div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
 
-        <div class="footer-container"><footer class="wrapper">&copy; Copyright 2012-2014, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
+        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012 &amp;emdash; 2015, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
 
       </div> <!--! end of #container --><!--[if lt IE 7 ]>
           <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"></script>

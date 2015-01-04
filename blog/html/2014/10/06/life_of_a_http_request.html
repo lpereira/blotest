@@ -21,7 +21,7 @@
             <link rel="stylesheet" href="../../../_static/main.css" type="text/css">
             <link rel="stylesheet" href="../../../_static/flat.css" type="text/css">
             <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
-            <link rel="stylesheet" href="../../../_static/webfont.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/font-awesome.min.css" type="text/css">
         <link rel="shortcut icon" href="../../../_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
         <script src="../../../_static/vendor/modernizr-2.6.2.min.js"></script>
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
@@ -31,7 +31,7 @@
         <link rel="next" title="Integer to string conversion" href="../../06/23/integer_to_string_conversion.html" /><link rel="prev" title="Hybrid C/Pascal Strings" href="../../11/02/hybrid_c_pascal_strings.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     '1.2.1',
+        VERSION:     '1.5',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -39,16 +39,16 @@
     </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
 <style type="text/css">img {max-width: 100%;}</style>
 </head>
-    <body>
+    <body role="document">
         <!--[if lt IE 7]>
             <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
         <![endif]-->
 
-      <div id="container"><header>
+      <div id="container"><header role="banner">
             <hgroup>
               <h1><a href="../../../index.html">Leandro Pereira</a></h1><h2>Geek in training</h2></hgroup>
           </header>
-      <nav>
+      <nav role="navigation">
             <ul><li class="main-nav">
                   <a href="../../../index.html">Home</a>
                 </li>
@@ -56,8 +56,8 @@
                   <a href="../../../pages/about.html">About</a>
                 </li>
               </ul>
-          </nav><div class="main-container"><div class="main wrapper clearfix"><article><div class="timestamp postmeta">
-            <span>06 October 2014</span>
+          </nav><div class="main-container" role="main"><div class="main wrapper body clearfix"><article><div class="timestamp postmeta">
+            <span>October 06, 2014</span>
         </div>
     <div class="section" id="life-of-a-http-request-as-seen-by-my-toy-web-server">
 <h1>Life of a HTTP request, as seen by my toy web server</h1>
@@ -261,14 +261,14 @@ few times before giving up;</li>
         <span class="p">}</span>
 
         <span class="k">switch</span> <span class="p">(</span><span class="n">errno</span><span class="p">)</span> <span class="p">{</span>
-        <span class="k">case</span> <span class="n">EINTR</span>:
-        <span class="k">case</span> <span class="n">EMFILE</span>:
-        <span class="k">case</span> <span class="n">ENFILE</span>:
-        <span class="k">case</span> <span class="n">ENOMEM</span>:
+        <span class="k">case</span> <span class="nl">EINTR</span><span class="p">:</span>
+        <span class="k">case</span> <span class="nl">EMFILE</span><span class="p">:</span>
+        <span class="k">case</span> <span class="nl">ENFILE</span><span class="p">:</span>
+        <span class="k">case</span> <span class="nl">ENOMEM</span><span class="p">:</span>
             <span class="n">coro_yield</span><span class="p">(</span><span class="n">request</span><span class="o">-&gt;</span><span class="n">conn</span><span class="o">-&gt;</span><span class="n">coro</span><span class="p">,</span>
                        <span class="n">CONN_CORO_MAY_RESUME</span><span class="p">);</span>
             <span class="k">break</span><span class="p">;</span>
-        <span class="nl">default:</span>
+        <span class="k">default</span><span class="o">:</span>
             <span class="k">return</span> <span class="o">-</span><span class="n">errno</span><span class="p">;</span>
         <span class="p">}</span>
     <span class="p">}</span>
@@ -531,7 +531,7 @@ headers automatically.</p>
         <span class="k">return</span> <span class="n">HTTP_OK</span><span class="p">;</span>
     <span class="p">}</span>
 
-<span class="nl">fail:</span>
+<span class="nl">fail</span><span class="p">:</span>
     <span class="n">response</span><span class="o">-&gt;</span><span class="n">stream</span><span class="p">.</span><span class="n">callback</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
     <span class="k">return</span> <span class="n">return_status</span><span class="p">;</span>
 <span class="p">}</span>
@@ -632,10 +632,10 @@ did not yield substantial performance gains compared to using <span class="docut
     <span class="k">if</span> <span class="p">(</span><span class="n">total_size</span> <span class="o">&lt;</span> <span class="n">md</span><span class="o">-&gt;</span><span class="n">uncompressed</span><span class="p">.</span><span class="n">size</span><span class="p">)</span>
         <span class="k">return</span><span class="p">;</span>
 
-<span class="nl">error_free_compressed:</span>
+<span class="nl">error_free_compressed</span><span class="p">:</span>
     <span class="n">free</span><span class="p">(</span><span class="n">md</span><span class="o">-&gt;</span><span class="n">compressed</span><span class="p">.</span><span class="n">contents</span><span class="p">);</span>
     <span class="n">md</span><span class="o">-&gt;</span><span class="n">compressed</span><span class="p">.</span><span class="n">contents</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-<span class="nl">error_zero_out:</span>
+<span class="nl">error_zero_out</span><span class="p">:</span>
     <span class="n">md</span><span class="o">-&gt;</span><span class="n">compressed</span><span class="p">.</span><span class="n">size</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
 <span class="p">}</span>
 </pre></div>
@@ -915,7 +915,7 @@ structures help reducing cache pressure.</p>
 <span class="k">static</span> <span class="kr">inline</span> <span class="kt">lwan_connection_t</span> <span class="o">*</span><span class="nf">_death_queue_idx_to_node</span><span class="p">(</span>
             <span class="k">struct</span> <span class="kt">death_queue_t</span> <span class="o">*</span><span class="n">dq</span><span class="p">,</span> <span class="kt">int</span> <span class="n">idx</span><span class="p">)</span>
 <span class="p">{</span>
-    <span class="k">return</span> <span class="p">(</span><span class="n">idx</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">?</span> <span class="o">&amp;</span><span class="n">dq</span><span class="o">-&gt;</span><span class="n">head</span> <span class="o">:</span> <span class="o">&amp;</span><span class="n">dq</span><span class="o">-&gt;</span><span class="n">conns</span><span class="p">[</span><span class="n">idx</span><span class="p">];</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">idx</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">?</span> <span class="o">&amp;</span><span class="n">dq</span><span class="o">-&gt;</span><span class="nl">head</span> <span class="p">:</span> <span class="o">&amp;</span><span class="n">dq</span><span class="o">-&gt;</span><span class="n">conns</span><span class="p">[</span><span class="n">idx</span><span class="p">];</span>
 <span class="p">}</span>
 
 <span class="k">static</span> <span class="kt">void</span> <span class="nf">_death_queue_insert</span><span class="p">(</span><span class="k">struct</span> <span class="kt">death_queue_t</span> <span class="o">*</span><span class="n">dq</span><span class="p">,</span>
@@ -967,11 +967,11 @@ request.</p>
         </div><ul class="related clearfix">
             <li class="left"> &laquo; <a href="../../11/02/hybrid_c_pascal_strings.html">Hybrid C/Pascal Strings</a></li>
             <li class="right"><a href="../../06/23/integer_to_string_conversion.html">Integer to string conversion</a> &raquo; </li>
-        </ul></article><aside class="sidebar"><section><div class="widget" id="searchbox">
-    <h1>Search</h1>
+        </ul></article><aside class="sidebar"><section><div class="widget" id="searchbox" role="search">
+    <h1><a href="#searchbox">Search</a></h1>
     <form action="../../../search.html" method="get">
         <input type="text" name="q" />
-        <button type="submit"><span class="webfont">L</span></button>
+        <button type="submit"><span class="fa fa-search"></span></button>
     </form>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
@@ -1020,7 +1020,7 @@ request.</p>
       <a href="../../../tags/tricks.html" style="font-size: 8pt">tricks</a>
 </div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
 
-        <div class="footer-container"><footer class="wrapper">&copy; Copyright 2012-2014, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
+        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012 &amp;emdash; 2015, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
 
       </div> <!--! end of #container --><!--[if lt IE 7 ]>
           <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"></script>
