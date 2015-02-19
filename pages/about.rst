@@ -4,9 +4,10 @@ About
 Who is this guy anyway?
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-.. image:: https://pbs.twimg.com/profile_images/54637340/Adium_Icon.png
+.. image:: https://pbs.twimg.com/profile_images/562321950190862336/KkMbfsmw.jpeg
     :alt: me
     :align: right
+    :width: 42%
 
 
 Leandro A. F. Pereira tinkers with computers since 8 years old. He has a
