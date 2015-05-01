@@ -4,6 +4,7 @@ Sitemap
 .. toctree::
    :maxdepth: 1
 
+   2015/05/01/initializing_a_heap_allocated_structure_in_c
    2014/11/02/hybrid_c_pascal_strings
    2014/10/06/life_of_a_http_request
    2014/06/23/integer_to_string_conversion

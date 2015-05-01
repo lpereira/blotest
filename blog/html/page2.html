@@ -57,6 +57,98 @@
                 </li>
               </ul>
           </nav><div class="main-container" role="main"><div class="main wrapper body clearfix"><article><div class="timestamp postmeta">
+            <span>September 26, 2013</span>
+        </div>
+        <div class="section">
+            <h1><a href="2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a></h1>
+<p>When I wrote about lwan’s templating engine on a <a class="reference external" href="http://tia.mat.br/blog/html/2012/11/11/mustache_templates_in_c.html">blog post</a> last year, I
+purposedly ommitted the fact that it didn’t support sequences. Took me
+almost a year, but I’ve finally implemented it this week. (Lwan is usually a
+low priority weekend project. Maybe that should do as an excuse for my
+laziness.)</p>
+<p>It took me three tries to get this right. <a class="reference external" href="https://en.wikipedia.org/wiki/Rube_Goldberg_machine">Rube Goldberg machine</a> kind of
+right, but there’s always some elegance in ingenuity.</p>
+<p>The first try would require one to create the list beforehand, and then pass
+it to the template engine to render.  Not only cumbersome, but would require
+the creation of (potentially) large amounts of temporary objects.</p>
+<p>The latter reason lead me to think of a way to implement iterators in C.
+This is usually done using callbacks; and although performant, it gets
+pretty verbose and tedious as there is usually the need to create structures
+to keep state, and different callbacks to initialize, destroy, and advance
+the iterator.</p>
+<p>Lots of <a class="reference external" href="https://01.org/blogs/imad/2013/welcome-profusion">things happened since then</a>, and this feature sort of creeped
+under the low priority rug for the most part of a year.</p>
+<p>While writing a completely different program in Python, however, it struck
+me: I could use the <a class="reference external" href="http://tia.mat.br/blog/html/2012/09/29/asynchronous_i_o_in_c_with_coroutines.html">coroutine stuff</a> I was already using in lwan and
+implement <a class="reference external" href="https://wiki.python.org/moin/Generators">generator functions</a>.  A few minutes later and I had a working
+prototype, which can probably be better explained with the help of a
+diagram:</p>
+<img alt="diagram" class="align-center" src="https://i.imgur.com/VsAfnsC.png"/>
+<p>In short, the engine will create a coroutine whenever it finds a
+<span class="docutils literal"><span class="pre">{{#sequence}}</span></span> template tag.  This coroutine will start, and will execute
+as usual until it yields.</p>
+<p>Yielding <span class="docutils literal"><span class="pre">false</span></span>, the engine assumes the iteration ended, and proceeds to
+find the next matching <span class="docutils literal"><span class="pre">{{/sequence}}</span></span> tag to continue from there.</p>
+<p>On a <span class="docutils literal"><span class="pre">true</span></span> yield, however, the engine will recurse to apply everything is
+between the iteration tags, repeating the process when the iteration-end tag
+is found and the coroutine yields <span class="docutils literal"><span class="pre">true</span></span> again.</p>
+<p>The coroutine is supposed to clean up after itself before returning a
+<span class="docutils literal"><span class="pre">false</span></span> value.</p>
+<div class="figure align-center">
+<img alt="rubegoldbergmachine" src="https://i.imgur.com/7P2yadJ.jpg"/>
+<p class="caption">Professor Butts would be proud. Maybe. <a class="reference external" href="https://en.wikipedia.org/wiki/File:Rubenvent.jpg">Source</a>.</p>
+</div>
+<p>A sample generator function is shown below. It iterates over a directory
+with <span class="docutils literal"><span class="pre">readdir()</span></span>, returning <span class="docutils literal"><span class="pre">1</span></span> on new item availability and <span class="docutils literal"><span class="pre">0</span></span> when there
+isn’t anything else to do. Notice that initialization, iteration, and cleanup
+is all contained within a single function.</p>
+<p>Also, notice that there’s no need to copy any values to and from the
+structure – calling <span class="docutils literal"><span class="pre">coro_yield()</span></span> will of course maintain the stack
+alive, so local variables can be used outside this function as long as a
+reference to them can be obtained.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="kt">int</span> <span class="nf">dir_list_generator</span><span class="p">(</span><span class="kt">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">DIR</span> <span class="o">*</span><span class="n">dir</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">dirent</span> <span class="o">*</span><span class="n">ent</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">file_list</span> <span class="o">*</span><span class="n">fl</span> <span class="o">=</span> <span class="n">coro_get_data</span><span class="p">(</span><span class="n">coro</span><span class="p">);</span>
+
+    <span class="n">dir</span> <span class="o">=</span> <span class="n">opendir</span><span class="p">(</span><span class="n">fl</span><span class="o">-&gt;</span><span class="n">path</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">dir</span><span class="p">)</span>
+      <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="k">while</span> <span class="p">((</span><span class="n">ent</span> <span class="o">=</span> <span class="n">readdir</span><span class="p">(</span><span class="n">dir</span><span class="p">)))</span> <span class="p">{</span>
+      <span class="n">fl</span><span class="o">-&gt;</span><span class="n">list</span><span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">ent</span><span class="o">-&gt;</span><span class="n">d_name</span><span class="p">;</span>
+      <span class="n">coro_yield</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>   <span class="cm">/* !0 means "iter not done yet" */</span>
+    <span class="p">}</span>
+
+    <span class="n">closedir</span><span class="p">(</span><span class="n">dir</span><span class="p">);</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The details of how the variable descriptors are set up are explained in the
+<a class="reference external" href="https://github.com/lpereira/lwan/commit/a4188d73a00cec4c99d50473803c44bfb2218d13">commit message</a> that introduced this change.  (The commit itself is quite
+buggy, but whatever I could find has been fixed in <a class="reference external" href="https://github.com/lpereira/lwan">HEAD</a> already.)</p>
+<p>In an ideal world, one would use something akin to Golang’s <a class="reference external" href="http://golang.org/doc/effective_go.html#channels">Channels</a>, but
+if I were to implement them in lwan it would take perhaps another year.
+Plus, they wouldn’t be as efficient as setting some pointers.  But they
+might be useful in the future, so I’m not completely discarding the idea.
+Although I’ve never written a single line of Go code, I’m reading a lot
+about it recently and it is sort of positively impacting the way I think
+about programming.  But I digress.</p>
+
+        </div>
+        <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="tags/c.html">C</a>, <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a></span>
+        </div>
+        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
             <span>July 20, 2013</span>
         </div>
         <div class="section">
@@ -431,194 +523,6 @@ in the cache when asked.</p>
                 Tags:
                 <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/c.html">C</a>, <a href="tags/linux.html">linux</a></span>
         </div>
-        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
-            <span>September 29, 2012</span>
-        </div>
-        <div class="section">
-            <h1><a href="2012/09/29/asynchronous_i_o_in_c_with_coroutines.html">Asynchronous I/O in C with Coroutines</a></h1>
-<p>Writing asynchronous I/O code in C is kind of tedious, and often leads to a
-callback hell. But it doesn’t have to be this way; if you have a main loop,
-it’s quite simple to use <a class="reference external" href="https://en.wikipedia.org/wiki/Coroutine">coroutines</a> and write code in a soothing, old
-school, synchronous way.</p>
-<img alt="yodawg" class="align-center" src="https://i.imgur.com/dHCqj.jpg"/>
-<p>Under POSIX, it’s also quite easy to implement coroutines, via the use of the
-stuff contained in the <a class="reference external" href="https://en.wikipedia.org/wiki/Setcontext">ucontext.h</a> header. Unfortunately deprecated in
-favor of threads, the functions and structures found in this header are one
-of the unpopular gems in the POSIX C library.</p>
-<div class="section" id="coroutines-in-lwan-my-toy-web-server">
-<h2>Coroutines in lwan, my toy web server</h2>
-<p>In <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>, there are <span class="docutils literal"><span class="pre">n</span> <span class="pre">+</span> <span class="pre">1</span></span> worker threads, where <span class="docutils literal"><span class="pre">n</span></span> is the number of
-logical CPUs. One thread is the <em>acceptor</em> thread, which accepts connections,
-and gives control to the other <span class="docutils literal"><span class="pre">n</span></span> threads, which in turn do all the work
-of receiving a request, parsing, and delivering the response.</p>
-<p>Each of these worker threads can multiplex thousands of connections by
-polling on events: so, for each worker thread, only one request can be
-handled at a time. And, if one blocking operation (say, write to a socket)
-would block, all other requests would wait for a response.</p>
-<p>By <em>yielding</em> the coroutine at the right moments, lwan blocks only on calls
-to <a class="reference external" href="http://linux.die.net/man/4/epoll">epoll(4)</a>. Whenever the socket can be written again, that coroutine is
-resumed. The request handler function does not know what happened.</p>
-</div>
-<div class="section" id="implementing-coroutines-using-ucontext">
-<h2>Implementing coroutines using ucontext</h2>
-<p>As said earlier, POSIX offers some infrastructure that can be used to
-implement coroutines or more powerful concepts, like <a class="reference external" href="https://en.wikipedia.org/wiki/Call-with-current-continuation">call/cc</a>. However,
-they’re quite tricky to use, so it’s often a good idea to offer a thin
-wrapper on top of them. The API used in lwan is the following (implementation
-details omitted for brevity):</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="kt">coro_t</span> <span class="o">*</span><span class="nf">coro_new</span><span class="p">(</span><span class="kt">coro_function_t</span> <span class="n">function</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-<span class="kt">void</span> <span class="nf">coro_free</span><span class="p">(</span><span class="kt">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">);</span>
-<span class="kt">int</span> <span class="nf">coro_resume</span><span class="p">(</span><span class="kt">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">);</span>
-<span class="kt">void</span> <span class="nf">coro_yield</span><span class="p">(</span><span class="kt">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="kt">int</span> <span class="n">value</span><span class="p">);</span>
-</pre></div>
-</div>
-</div>
-<div class="section" id="coroutine-allocation">
-<h2>Coroutine allocation</h2>
-<p>A coroutine is pretty much a simple data structure; the real implementation
-has more fields, but they’re implementation details:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="k">struct</span> <span class="n">coro_t_</span> <span class="p">{</span>
-    <span class="kt">coro_function_t</span> <span class="n">function</span><span class="p">;</span>
-    <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">;</span>
-
-    <span class="kt">ucontext_t</span> <span class="n">context</span><span class="p">;</span>
-    <span class="kt">int</span> <span class="n">yield_value</span><span class="p">;</span>
-
-    <span class="kt">char</span> <span class="n">stack</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
-<span class="p">};</span>
-</pre></div>
-</div>
-<p>To allocate one, just allocate space for <span class="docutils literal"><span class="pre">sizeof(coro_t_)</span> <span class="pre">+</span> <span class="pre">stack_size</span></span>,
-initialize the variables, and call <span class="docutils literal"><span class="pre">getcontext(&amp;coro-&gt;context)</span></span>. (These
-context-swapping functions are weirdly-named in my opinion: <span class="docutils literal"><span class="pre">getcontext</span></span>
-actually <em>saves</em> the current context into the variable pointed to by its sole
-parameter.)</p>
-<p>After that, one just need to set up the context so that it points to the
-newly-allocated stack:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="n">coro</span><span class="o">-&gt;</span><span class="n">context</span><span class="p">.</span><span class="n">uc_stack</span><span class="p">.</span><span class="n">ss_sp</span> <span class="o">=</span> <span class="n">coro</span><span class="o">-&gt;</span><span class="n">stack</span><span class="p">;</span>
-<span class="n">coro</span><span class="o">-&gt;</span><span class="n">context</span><span class="p">.</span><span class="n">uc_stack</span><span class="p">.</span><span class="n">ss_size</span> <span class="o">=</span> <span class="n">stack_size</span><span class="p">;</span>
-<span class="n">coro</span><span class="o">-&gt;</span><span class="n">context</span><span class="p">.</span><span class="n">uc_stack</span><span class="p">.</span><span class="n">ss_flags</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-<span class="n">coro</span><span class="o">-&gt;</span><span class="n">context</span><span class="p">.</span><span class="n">uc_link</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-</pre></div>
-</div>
-<p>And then call <span class="docutils literal"><span class="pre">makecontext()</span></span> so that the coroutine entry point can be
-called when resuming the coroutine. (Another weirdly-named function. No
-wonder why this thing is quite unpopular.) This function takes a variable
-number of parameters, each one being a 32-bit integer value. I don’t know why
-a <span class="docutils literal"><span class="pre">void</span> <span class="pre">*</span></span> wasn’t used instead – so, on 64-bit, I use an union to break a
-pointer into two 32-bit components:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="k">union</span> <span class="n">ptr_splitter</span> <span class="p">{</span>
-    <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">;</span>
-    <span class="kt">uint32_t</span> <span class="n">part</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
-<span class="p">};</span>
-</pre></div>
-</div>
-<p>That’s it to allocate a coroutine.</p>
-</div>
-<div class="section" id="freeing-a-coroutine">
-<h2>Freeing a coroutine</h2>
-<p>Just free the coroutine’s <span class="docutils literal"><span class="pre">coro_t</span></span> structure. Lwan’s implementation does
-run the deferred statements at this moment.</p>
-</div>
-<div class="section" id="resuming-a-coroutine">
-<h2>Resuming a coroutine</h2>
-<p>Resuming a coroutine pretty simple: one has to save the current context, swap
-the current context with the coroutine context, and when the coroutine
-yields, return the contexts where they were.</p>
-</div>
-<div class="section" id="yielding-from-a-coroutine">
-<h2>Yielding from a coroutine</h2>
-<p>To yield from a coroutine, just save <span class="docutils literal"><span class="pre">value</span></span> into <span class="docutils literal"><span class="pre">coro_t</span></span>’s
-<span class="docutils literal"><span class="pre">yield_value</span></span> field, and make a call to <span class="docutils literal"><span class="pre">swapcontext()</span></span>, swapping the
-current coroutine stack with the context that was active when the coroutine
-was resumed (which happens to be the routine that resumes a coroutine – which
-now cleans up and return to whoever called it, most probably the main loop).
-<span class="docutils literal"><span class="pre">value</span></span> is now available to whoever called <span class="docutils literal"><span class="pre">coro_resume()</span></span> and is used in
-lwan to determine if a coroutine should be resumed.</p>
-</div>
-<div class="section" id="using-the-coroutines">
-<h2>Using the coroutines</h2>
-<p>From the user perspective, it’s just like calling some blocking function:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="n">lwan_sendfile</span><span class="p">(</span><span class="n">request</span><span class="o">-&gt;</span><span class="n">socket</span><span class="p">,</span> <span class="n">file_fd</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">total_bytes</span><span class="p">);</span>
-</pre></div>
-</div>
-<p>Behind the scenes, <span class="docutils literal"><span class="pre">lwan_sendfile</span></span> is actually doing this (error handling
-omitted for brevity):</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="k">while</span> <span class="p">(</span><span class="n">sent_bytes</span> <span class="o">&lt;</span> <span class="n">total_bytes</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">read_bytes</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">file_fd</span><span class="p">,</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">buffer_size</span><span class="p">);</span>
-    <span class="n">sent_bytes</span> <span class="o">+=</span> <span class="n">read_bytes</span><span class="p">;</span>
-    <span class="n">write</span><span class="p">(</span><span class="n">socket_fd</span><span class="p">,</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">read_bytes</span><span class="p">);</span>
-
-    <span class="n">coro_yield</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-<p>(Of course, if available, <a class="reference external" href="http://linux.die.net/man/2/sendfile">sendfile(2)</a> is used instead in a similar
-fashion, but this better illustrates the point.)</p>
-<p>Whenever the coroutine yields, it goes back to the main loop, which is now
-free to resume another coroutine. Ideally, one could yield to be resumed on a
-certain condition (instead of assuming that the condition is just “the socket
-is ready to be written to”), but this isn’t possible in the current
-implementation.</p>
-<p>For implementation simplicity, the same timer code that is used for keep-
-alive connections is used for coroutines, so that they don’t linger
-indefinitely.</p>
-</div>
-<div class="section" id="implementation-details">
-<h2>Implementation details</h2>
-<ul class="simple">
-<li>On 64-bit, hand-tuned assembly versions of <span class="docutils literal"><span class="pre">ucontext</span></span> routines are
-used. These routines avoid saving and restoring the signal mask (avoiding
-two roundtrips to the kernel), and does not save the floating point
-registers.</li>
-<li>Also, on 64-bit, resuming a coroutine is orders of magnitude faster,
-since not everything is copied when switching contexts.</li>
-<li>Swapping stacks makes tools like <a class="reference external" href="http://valgrind.org/">Valgrind</a> get pretty crazy. Lwan’s
-implementation uses Valgrind-provided macros that marks the newly-
-allocated blocks (from the heap) as stacks.</li>
-<li>The real implementation has a <span class="docutils literal"><span class="pre">coro_switcher_t</span></span> data structure.
-This structure is used to both avoid race conditions when swapping
-coroutines in different threads, but also to maintain coroutine state
-from different threads.</li>
-</ul>
-<p>There are other details that were ommitted from this post. Lwan’s source code
-is small enough it can digested easily, and if you’re not sleeping already,
-check it out.</p>
-</div>
-<div class="section" id="closing-notes">
-<h2>Closing notes</h2>
-<p>Although not as performant as the traditional way of using callbacks
-(resuming and yielding from coroutines are a little bit more expensive than
-calling a function), coroutines brings a lot of simplicity when writing
-asynchronous code.</p>
-<p>The example shown here might not be expressive, but imagine an application
-fetching data from a key-value store from another machine: there might be
-dozens of calls to the database to build a web page, which would be pretty
-difficult to handle if there were dozen callbacks. With a synchronous style,
-that would be a lot easier to write and maintain.</p>
-<p>One could argue that the same thing could be done in threads. But creating
-more threads than there are processors will often hurt performance (for
-various reasons) in noticeable ways. Also, coroutines are cheaper on the
-memory requirements: in Lwan, they sport 16KiB of stack space and it takes a
-little bit more than a <span class="docutils literal"><span class="pre">malloc()</span></span> to set them up.</p>
-<p>I believe we should stop using callbacks for asynchronous I/O and use things
-like this. Even if <span class="docutils literal"><span class="pre">ucontext.h</span></span> is deprecated from POSIX, the functions a
-fairly trivial to write (even in assembly language) – actually, encouraged,
-given that <span class="docutils literal"><span class="pre">swapcontext()</span></span> and <span class="docutils literal"><span class="pre">getcontext()</span></span> makes often unnecessary
-system calls.</p>
-</div>
-
-        </div>
-        <div class="postmeta">
-        <div class="author">
-            <span>Posted by Leandro Pereira</span>
-        </div>
-        
-        <div class="tags">
-            <span>
-                Tags:
-                <a href="tags/trick.html">trick</a>, <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/c.html">C</a></span>
-        </div>
         </div><div class="archive_link">
         <a href="archive.html"> &mdash; Blog Archive &mdash; </a>
     </div><ul class="related clearfix">
@@ -633,6 +537,8 @@ system calls.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="2015/05/01/initializing_a_heap_allocated_structure_in_c.html">Initializing a heap-allocated structure in C</a>
+        </li><li>
             <a href="2014/11/02/hybrid_c_pascal_strings.html">Hybrid C/Pascal Strings</a>
         </li><li>
             <a href="2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
@@ -650,8 +556,6 @@ system calls.</p>
             <a href="2012/10/27/programming_on_an_arduino_without_a_pc.html">Programming on an Arduino without a PC</a>
         </li><li>
             <a href="2012/10/14/vectored_i_o_with_mmap___to_serve_files.html">Vectored I/O with mmap() to serve files</a>
-        </li><li>
-            <a href="2012/09/29/asynchronous_i_o_in_c_with_coroutines.html">Asynchronous I/O in C with Coroutines</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
@@ -659,16 +563,16 @@ system calls.</p>
       <a href="tags/arduino.html" style="font-size: 8pt">arduino</a>&nbsp;&nbsp;
       <a href="tags/c.html" style="font-size: 17pt">C</a>&nbsp;&nbsp;
       <a href="tags/c.html" style="font-size: 8pt">c</a>&nbsp;&nbsp;
-      <a href="tags/conferences.html" style="font-size: 9pt">conferences</a>&nbsp;&nbsp;
+      <a href="tags/conferences.html" style="font-size: 8pt">conferences</a>&nbsp;&nbsp;
       <a href="tags/data_structure.html" style="font-size: 8pt">data-structure</a>&nbsp;&nbsp;
       <a href="tags/efl.html" style="font-size: 8pt">efl</a>&nbsp;&nbsp;
       <a href="tags/enlightenment.html" style="font-size: 8pt">enlightenment</a>&nbsp;&nbsp;
       <a href="tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
-      <a href="tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
-      <a href="tags/lwan.html" style="font-size: 18pt">lwan</a>&nbsp;&nbsp;
+      <a href="tags/linux.html" style="font-size: 8pt">linux</a>&nbsp;&nbsp;
+      <a href="tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
       <a href="tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
-      <a href="tags/profusion.html" style="font-size: 10pt">profusion</a>&nbsp;&nbsp;
+      <a href="tags/profusion.html" style="font-size: 9pt">profusion</a>&nbsp;&nbsp;
       <a href="tags/programming.html" style="font-size: 20pt">programming</a>&nbsp;&nbsp;
       <a href="tags/strace.html" style="font-size: 8pt">strace</a>&nbsp;&nbsp;
       <a href="tags/template.html" style="font-size: 8pt">template</a>&nbsp;&nbsp;
