@@ -7,7 +7,7 @@ gathers people from all around the globe to discuss and publish FOSS-related
 matters. Belgian beer, waffles, french fries, and sub-zero temperatures were
 also in the agenda.
 
-.. image:: http://i.imgur.com/ufLRC.jpg
+.. image:: https://i.imgur.com/ufLRC.jpg
     :alt: groupphoto
     :align: center
 

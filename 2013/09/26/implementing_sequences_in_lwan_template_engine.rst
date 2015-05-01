@@ -29,7 +29,7 @@ implement `generator functions`_.  A few minutes later and I had a working
 prototype, which can probably be better explained with the help of a
 diagram:
 
-.. image:: http://i.imgur.com/VsAfnsC.png
+.. image:: https://i.imgur.com/VsAfnsC.png
     :alt: diagram
     :align: center
 
@@ -47,7 +47,7 @@ is found and the coroutine yields ``true`` again.
 The coroutine is supposed to clean up after itself before returning a
 ``false`` value.
 
-.. figure:: http://i.imgur.com/7P2yadJ.jpg
+.. figure:: https://i.imgur.com/7P2yadJ.jpg
     :alt: rubegoldbergmachine
     :align: center
 

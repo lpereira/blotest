@@ -6,7 +6,7 @@ callback hell. But it doesn’t have to be this way; if you have a main loop,
 it’s quite simple to use `coroutines`_ and write code in a soothing, old
 school, synchronous way.
 
-.. image:: http://i.imgur.com/dHCqj.jpg
+.. image:: https://i.imgur.com/dHCqj.jpg
     :alt: yodawg
     :align: center
 

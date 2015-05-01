@@ -28,7 +28,7 @@ maybe some more room to spare).  It used to use **2670%** more memory.
 This was only possible because I know the code inside out and was able to
 refactor the code a few times.
 
-.. figure:: http://i.imgur.com/xSB5PZp.png
+.. figure:: https://i.imgur.com/xSB5PZp.png
     :alt: massifscreenshot0
     :align: center
     :width: 100%
@@ -70,7 +70,7 @@ This also made keep-alive connections a tiny bit faster, as there's no need to
 ``memset()`` the request structure to clean state for the next request
 anymore.
 
-.. figure:: http://i.imgur.com/3BrC0KB.png
+.. figure:: https://i.imgur.com/3BrC0KB.png
     :alt: massifscreenshot
     :align: center
     :width: 100%

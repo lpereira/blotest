@@ -11,7 +11,7 @@ first that was actually fun to write. Some years later, I’ve decided to
 rewrite it so that it would work on the `Arduino`_ – and that’s what I went
 to FISL to talk about.
 
-.. image:: http://i.imgur.com/AsCOr.jpg
+.. image:: https://i.imgur.com/AsCOr.jpg
     :alt: audience
     :align: center
 
