@@ -50,7 +50,7 @@ generic-chunk-of-memory equivalent of <span class="docutils literal"><span class
 </div>
 <p>Then a macro is defined:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="cp">#define ALLOC_INIT(type, contents)      \</span>
-<span class="cp">        memdup(&amp;(type) contents, sizeof(type))</span>
+<span class="cp">        (type *)memdup(&amp;(type) contents, sizeof(type))</span>
 </pre></div>
 </div>
 <p>Then it is used like so:</p>
@@ -64,12 +64,24 @@ generic-chunk-of-memory equivalent of <span class="docutils literal"><span class
 <p>The compiler will check if <span class="docutils literal"><span class="pre">field</span></span>, <span class="docutils literal"><span class="pre">other_field</span></span>, and <span class="docutils literal"><span class="pre">yet_another_field</span></span>
 are actually part of <span class="docutils literal"><span class="pre">struct</span> <span class="pre">foobar</span></span>, and will abort compilation of a field
 isn’t there or is of the wrong type.</p>
+<p>The cast prevents the allocated memory block from being assigned to the wrong
+type. (C will happily cast any <span class="docutils literal"><span class="pre">void*</span></span> to any other pointer.)</p>
 <p>The amount of memory allocated will be exactly what’s needed by the
 structure, and all fields that not mentioned will be initialized with their
-default values as per named initializer rules.</p>
+default values as per <a class="reference external" href="https://gcc.gnu.org/onlinedocs/gcc/Designated-Inits.html">designated initializer rules</a>.</p>
 <p>If <span class="docutils literal"><span class="pre">memdup()</span></span> is inlined, a good compiler will generate pretty good code,
 that’s often byte-by-byte equivalent to allocating directly with
 <span class="docutils literal"><span class="pre">malloc()</span></span>, initializing all the fields by hand, etc.</p>
+<p>If GCC is being used, the <span class="docutils literal"><span class="pre">__auto_type</span></span> <a class="reference external" href="https://gcc.gnu.org/onlinedocs/gcc/Typeof.html">extension</a> can be used, to avoid
+having to type <span class="docutils literal"><span class="pre">struct</span> <span class="pre">foobar</span></span> twice. This has been suggested by <a class="reference external" href="https://plus.google.com/117917253135468806554/posts/DcBUyuicdLW">Thiago
+Macieira</a>. I’d use this sparingly, though.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="n">__auto_type</span> <span class="n">foobar</span> <span class="o">=</span> <span class="n">ALLOC_INIT</span><span class="p">(</span><span class="k">struct</span> <span class="n">foobar</span><span class="p">,</span> <span class="p">{</span>
+        <span class="p">.</span><span class="n">field</span> <span class="o">=</span> <span class="n">value</span><span class="p">,</span>
+        <span class="p">.</span><span class="n">other_field</span> <span class="o">=</span> <span class="n">other_value</span><span class="p">,</span>
+        <span class="p">.</span><span class="n">yet_another_field</span> <span class="o">=</span> <span class="n">yet_another_value</span>
+<span class="p">});</span>
+</pre></div>
+</div>
 <p>It’s a pretty nice idiom that I haven’t seen anywhere else, and I’m blogging
 here as the project I’m working on might not ever see the light of day and
 it would be a shame if at least this didn’t become public.</p>
