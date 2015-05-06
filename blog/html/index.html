@@ -98,8 +98,8 @@ generic-chunk-of-memory equivalent of <span class="docutils literal"><span class
 </pre></div>
 </div>
 <p>Then a macro is defined:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="cp">#define ALLOC_INIT(type, contents)      \</span>
-<span class="cp">        (type *)memdup((type[]){ contents }, sizeof(type))</span>
+<div class="highlight-c"><div class="highlight"><pre><span class="cp">#define ALLOC_INIT(type, ...)   \</span>
+<span class="cp">        (type *)memdup((type[]){ __VA_ARGS__ }, sizeof(type))</span>
 </pre></div>
 </div>
 <p>Then it is used like so:</p>
