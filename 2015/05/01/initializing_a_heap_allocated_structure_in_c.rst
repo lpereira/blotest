@@ -25,7 +25,7 @@ should the type of ``foobar`` change:
 	struct foobar *foobar = malloc(sizeof(*foobar));
 
 However, structures often have members that, if someone forgets to
-initialize, will inflict some unintialized behavior pains on the user.  The
+initialize, will inflict some undefined behavior pains on the user.  The
 things in the toolbelt might help here, as well as the ``calloc()``
 function, that, in addition to allocating memory, also zero-out the memory
 block:
