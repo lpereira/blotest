@@ -53,7 +53,7 @@ Then a macro is defined:
 .. code-block:: c
 
 	#define ALLOC_INIT(type, contents)	\
-		(type *)memdup(&(type) contents, sizeof(type))
+		(type *)memdup((type[]){ contents }, sizeof(type))
 
 Then it is used like so:
 
