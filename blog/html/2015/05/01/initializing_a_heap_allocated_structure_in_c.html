@@ -1,0 +1,212 @@
+<!DOCTYPE html><!--[if lt IE 7]>      <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width">
+        <title>Initializing a heap-allocated structure in C &mdash; Leandro Pereira</title>
+            <link rel="stylesheet" href="../../../_static/normalize.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/sphinx.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/main.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/flat.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+            <link rel="stylesheet" href="../../../_static/font-awesome.min.css" type="text/css">
+        <link rel="shortcut icon" href="../../../_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
+        <script src="../../../_static/vendor/modernizr-2.6.2.min.js"></script>
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+        <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
+        <script src="../../../_static/plugins.js"></script>
+        <script src="../../../_static/main.js"></script>
+        <link rel="next" title="Hybrid C/Pascal Strings" href="../../../2014/11/02/hybrid_c_pascal_strings.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
+<style type="text/css">img {max-width: 100%;}</style>
+</head>
+    <body role="document">
+        <!--[if lt IE 7]>
+            <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
+        <![endif]-->
+
+      <div id="container"><header role="banner">
+            <hgroup>
+              <h1><a href="../../../index.html">Leandro Pereira</a></h1><h2>Geek in training</h2></hgroup>
+          </header>
+      <nav role="navigation">
+            <ul><li class="main-nav">
+                  <a href="../../../index.html">Home</a>
+                </li>
+              <li class="main-nav">
+                  <a href="../../../pages/about.html">About</a>
+                </li>
+              </ul>
+          </nav><div class="main-container" role="main"><div class="main wrapper body clearfix"><article><div class="timestamp postmeta">
+            <span>May 01, 2015</span>
+        </div>
+    <div class="section" id="initializing-a-heap-allocated-structure-in-c">
+<h1>Initializing a heap-allocated structure in C</h1>
+<p>A pretty common mistake that happens when programming things in C is to
+allocate less memory than necessary to hold a structure:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">struct</span> <span class="n">foobar</span> <span class="o">*</span><span class="n">foobar</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">foobaz</span><span class="p">));</span>
+</pre></div>
+</div>
+<p>Note that <span class="docutils literal"><span class="pre">struct</span> <span class="pre">foobaz</span></span> is passed instead of <span class="docutils literal"><span class="pre">struct</span> <span class="pre">foobar</span></span>. We might get
+lucky, and <span class="docutils literal"><span class="pre">sizeof(struct</span> <span class="pre">foobaz)</span></span> might be larger or equal than
+<span class="docutils literal"><span class="pre">sizeof(struct</span> <span class="pre">foobar)</span></span>, but we might not.</p>
+<p>There are lots of tools out there that will catch these mistakes: static
+analyzers such as the one from Clang, and Memcheck from Valgrind are just
+two examples that should be in any C programmer&#8217;s toolbelt.</p>
+<p>Even then, people often resort to a a nicer idiom: <span class="docutils literal"><span class="pre">sizeof(*foobar)</span></span>,
+which not only avoids these problems, but also is somewhat future-proof,
+should the type of <span class="docutils literal"><span class="pre">foobar</span></span> change:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">struct</span> <span class="n">foobar</span> <span class="o">*</span><span class="n">foobar</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="o">*</span><span class="n">foobar</span><span class="p">));</span>
+</pre></div>
+</div>
+<p>However, structures often have members that, if someone forgets to
+initialize, will inflict some undefined behavior pains on the user.  The
+things in the toolbelt might help here, as well as the <span class="docutils literal"><span class="pre">calloc()</span></span>
+function, that, in addition to allocating memory, also zero-out the memory
+block:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">struct</span> <span class="n">foobar</span> <span class="o">*</span><span class="n">foobar</span> <span class="o">=</span> <span class="n">calloc</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="o">*</span><span class="n">foobar</span><span class="p">));</span>
+</pre></div>
+</div>
+<p>Not always one would want to zero out the whole memory chunk just to fill
+out important fields afterwards, though.</p>
+<p>Here&#8217;s a trick that&#8217;s being used in a yet-to-be-released project I&#8217;ve been
+working on and off for the past few months. It starts by defining the
+generic-chunk-of-memory equivalent of <span class="docutils literal"><span class="pre">strdup()</span></span>, <span class="docutils literal"><span class="pre">memdup()</span></span>:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="kt">void</span> <span class="o">*</span><span class="nf">memdup</span><span class="p">(</span><span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">src</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">sz</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kt">void</span> <span class="o">*</span><span class="n">mem</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="n">sz</span><span class="p">);</span>
+        <span class="k">return</span> <span class="n">mem</span> <span class="o">?</span> <span class="n">memcpy</span><span class="p">(</span><span class="n">mem</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">sz</span><span class="p">)</span> <span class="o">:</span> <span class="nb">NULL</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Then a macro is defined:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="cp">#define ALLOC_INIT(type, ...)   \</span>
+<span class="cp">        (type *)memdup((type[]){ __VA_ARGS__ }, sizeof(type))</span>
+</pre></div>
+</div>
+<p>Then it is used like so:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">struct</span> <span class="n">foobar</span> <span class="o">*</span><span class="n">foobar</span> <span class="o">=</span> <span class="n">ALLOC_INIT</span><span class="p">(</span><span class="k">struct</span> <span class="n">foobar</span><span class="p">,</span> <span class="p">{</span>
+        <span class="p">.</span><span class="n">field</span> <span class="o">=</span> <span class="n">value</span><span class="p">,</span>
+        <span class="p">.</span><span class="n">other_field</span> <span class="o">=</span> <span class="n">other_value</span><span class="p">,</span>
+        <span class="p">.</span><span class="n">yet_another_field</span> <span class="o">=</span> <span class="n">yet_another_value</span>
+<span class="p">});</span>
+</pre></div>
+</div>
+<p>The compiler will check if <span class="docutils literal"><span class="pre">field</span></span>, <span class="docutils literal"><span class="pre">other_field</span></span>, and <span class="docutils literal"><span class="pre">yet_another_field</span></span>
+are actually part of <span class="docutils literal"><span class="pre">struct</span> <span class="pre">foobar</span></span>, and will abort compilation of a field
+isn&#8217;t there or is of the wrong type.</p>
+<p>The cast prevents the allocated memory block from being assigned to the wrong
+type. (C will happily cast any <span class="docutils literal"><span class="pre">void*</span></span> to any other pointer.)</p>
+<p>The amount of memory allocated will be exactly what&#8217;s needed by the
+structure, and all fields that not mentioned will be initialized with their
+default values as per <a class="reference external" href="https://gcc.gnu.org/onlinedocs/gcc/Designated-Inits.html">designated initializer rules</a>.</p>
+<p>If <span class="docutils literal"><span class="pre">memdup()</span></span> is inlined, a good compiler will generate pretty good code,
+that&#8217;s often byte-by-byte equivalent to allocating directly with
+<span class="docutils literal"><span class="pre">malloc()</span></span>, initializing all the fields by hand, etc.</p>
+<p>If GCC is being used, the <span class="docutils literal"><span class="pre">__auto_type</span></span> <a class="reference external" href="https://gcc.gnu.org/onlinedocs/gcc/Typeof.html">extension</a> can be used, to avoid
+having to type <span class="docutils literal"><span class="pre">struct</span> <span class="pre">foobar</span></span> twice. This has been suggested by <a class="reference external" href="https://plus.google.com/117917253135468806554/posts/DcBUyuicdLW">Thiago
+Macieira</a>. I&#8217;d use this sparingly, though.</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="n">__auto_type</span> <span class="n">foobar</span> <span class="o">=</span> <span class="n">ALLOC_INIT</span><span class="p">(</span><span class="k">struct</span> <span class="n">foobar</span><span class="p">,</span> <span class="p">{</span>
+        <span class="p">.</span><span class="n">field</span> <span class="o">=</span> <span class="n">value</span><span class="p">,</span>
+        <span class="p">.</span><span class="n">other_field</span> <span class="o">=</span> <span class="n">other_value</span><span class="p">,</span>
+        <span class="p">.</span><span class="n">yet_another_field</span> <span class="o">=</span> <span class="n">yet_another_value</span>
+<span class="p">});</span>
+</pre></div>
+</div>
+<p>It&#8217;s a pretty nice idiom that I haven&#8217;t seen anywhere else, and I&#8217;m blogging
+here as the project I&#8217;m working on might not ever see the light of day and
+it would be a shame if at least this didn&#8217;t become public.</p>
+</div>
+
+    <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="../../../tags/c.html">C</a>, <a href="../../../tags/programming.html">programming</a>, <a href="../../../tags/trick.html">trick</a></span>
+        </div>
+        </div><ul class="related clearfix">
+            <li class="left"></li>
+            <li class="right"><a href="../../../2014/11/02/hybrid_c_pascal_strings.html">Hybrid C/Pascal Strings</a> &raquo; </li>
+        </ul></article><aside class="sidebar"><section><div class="widget" id="searchbox" role="search">
+    <h1><a href="#searchbox">Search</a></h1>
+    <form action="../../../search.html" method="get">
+        <input type="text" name="q" />
+        <button type="submit"><span class="fa fa-search"></span></button>
+    </form>
+</div></section><section><div class="widget">
+    <h1>Recent Posts</h1>
+    <ul><li>
+            <a href="#">Initializing a heap-allocated structure in C</a>
+        </li><li>
+            <a href="../../../2014/11/02/hybrid_c_pascal_strings.html">Hybrid C/Pascal Strings</a>
+        </li><li>
+            <a href="../../../2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
+        </li><li>
+            <a href="../../../2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
+        </li><li>
+            <a href="../../../2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage by 94%</a>
+        </li><li>
+            <a href="../../../2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a>
+        </li><li>
+            <a href="../../../2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a>
+        </li><li>
+            <a href="../../../2012/11/11/mustache_templates_in_c.html">Mustache templates in C</a>
+        </li><li>
+            <a href="../../../2012/10/27/programming_on_an_arduino_without_a_pc.html">Programming on an Arduino without a PC</a>
+        </li><li>
+            <a href="../../../2012/10/14/vectored_i_o_with_mmap___to_serve_files.html">Vectored I/O with mmap() to serve files</a>
+        </li></ul>
+</div>
+</section><section><div class="widget">
+    <h1>Tags Cloud</h1>
+      <a href="../../../tags/arduino.html" style="font-size: 8pt">arduino</a>&nbsp;&nbsp;
+      <a href="../../../tags/c.html" style="font-size: 17pt">C</a>&nbsp;&nbsp;
+      <a href="../../../tags/c.html" style="font-size: 8pt">c</a>&nbsp;&nbsp;
+      <a href="../../../tags/conferences.html" style="font-size: 8pt">conferences</a>&nbsp;&nbsp;
+      <a href="../../../tags/data_structure.html" style="font-size: 8pt">data-structure</a>&nbsp;&nbsp;
+      <a href="../../../tags/efl.html" style="font-size: 8pt">efl</a>&nbsp;&nbsp;
+      <a href="../../../tags/enlightenment.html" style="font-size: 8pt">enlightenment</a>&nbsp;&nbsp;
+      <a href="../../../tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
+      <a href="../../../tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
+      <a href="../../../tags/linux.html" style="font-size: 8pt">linux</a>&nbsp;&nbsp;
+      <a href="../../../tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
+      <a href="../../../tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
+      <a href="../../../tags/profusion.html" style="font-size: 9pt">profusion</a>&nbsp;&nbsp;
+      <a href="../../../tags/programming.html" style="font-size: 20pt">programming</a>&nbsp;&nbsp;
+      <a href="../../../tags/strace.html" style="font-size: 8pt">strace</a>&nbsp;&nbsp;
+      <a href="../../../tags/template.html" style="font-size: 8pt">template</a>&nbsp;&nbsp;
+      <a href="../../../tags/tizen.html" style="font-size: 8pt">tizen</a>&nbsp;&nbsp;
+      <a href="../../../tags/trick.html" style="font-size: 14pt">trick</a>&nbsp;&nbsp;
+      <a href="../../../tags/tricks.html" style="font-size: 8pt">tricks</a>
+</div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
+
+        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2015, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
+
+      </div> <!--! end of #container --><!--[if lt IE 7 ]>
+          <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"></script>
+          <script>window.attachEvent('onload',function(){CFInstall.check({mode:'overlay'})})</script>
+        <![endif]-->
+    </body>
+</html>
