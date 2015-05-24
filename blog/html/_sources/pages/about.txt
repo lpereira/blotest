@@ -29,6 +29,15 @@ found on `LinkedIn`_ or `Twitter`_.  His email address is
 This is a `personal blog`_. The opinions expressed here represent his own and
 not those of his employer.
 
+.. raw:: html
+
+    <p style="text-align: center; margin-top: 4em">
+       <github-badge user="lpereira" badge="octogeek"></github-badge>
+    </p>
+    <script src="/_static/badge.min.js" type="text/javascript"></script>
+    <link href="/_static/badge.min.css" rel="stylesheet" type="text/css" />
+
+
 .. _Twitter: http://twitter.com/lafp
 .. _LinkedIn: http://www.linkedin.com/pub/leandro-pereira/20/883/578
 .. _Crosswalk: http://crosswalk-project.org
