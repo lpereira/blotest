@@ -10,7 +10,7 @@ sort of a low priority refactoring thread inside my head.  Sometimes this
 thread is able to produce a thing or two, and I'm able to revisit these
 things.
 
-.. figure:: http://farm1.staticflickr.com/64/169229347_f554a9c9ea.jpg
+.. figure:: https://farm1.staticflickr.com/64/169229347_f554a9c9ea.jpg
     :alt: projectmovingforward
     :align: center
 
