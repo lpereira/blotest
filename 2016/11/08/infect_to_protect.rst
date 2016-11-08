@@ -20,7 +20,7 @@ programs.  However, the sandbox aspect of containers are quite interesting
 and it’s something I’d like to know more about.
 
 There are many articles around the web explaining how containers on Linux
-work.  Some get out of their way to explain depth all the machinery
+work.  Some get out of their way to explain in depth all the machinery
 necessary to make them work, so there’s no need to repeat it here.
 
 But, in sum: almost all of the `kernel side of things was already present
@@ -183,7 +183,7 @@ call expects a ``struct sock_fprog``, which contains the BPF program length
 that array.  Since there's no way to know where this code is gong to land in
 memory beforehand, this trick comes in handy: after the ``call
 apply_filter`` instruction, the top of the stack now contains the base
-address that array.
+address of that array.
 
 Now that I had a way to write the shellcode, it was just the matter of
 shoehorning it into the executable.
@@ -405,7 +405,7 @@ system calls.  (329 according to ``sys/syscall.h`` at the moment I write
 this.)
 
 Even if the JIT for BPFs is quite efficient, doing a linear search before each
-an every system call will certainly be a bottleneck.  Also, BPF programs are
+and every system call will certainly be a bottleneck.  Also, BPF programs are
 limited in size, and a large whitelist that’s implemented the same way as the
 prototype will limit the possibility for more fine-grained filters.  Things
 like "the ``socket(2)`` call is allowed only for UNIX-domain sockets", rather than

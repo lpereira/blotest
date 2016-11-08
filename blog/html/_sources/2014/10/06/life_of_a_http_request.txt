@@ -280,7 +280,7 @@ been detected.
 
 .. figure:: https://i.imgur.com/7sHL2ZH.png
     :alt: coroutines
-   :align: center
+    :align: center
 
     Diagram of main loop plus two coroutines
 

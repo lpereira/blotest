@@ -76,7 +76,7 @@ For personal usage, package management is more than sufficient to install
 programs.  However, the sandbox aspect of containers are quite interesting
 and it’s something I’d like to know more about.</p>
 <p>There are many articles around the web explaining how containers on Linux
-work.  Some get out of their way to explain depth all the machinery
+work.  Some get out of their way to explain in depth all the machinery
 necessary to make them work, so there’s no need to repeat it here.</p>
 <p>But, in sum: almost all of the <a class="reference external" href="http://jvns.ca/blog/2016/10/10/what-even-is-a-container/">kernel side of things was already present</a> before
 containers were actually a thing: cgroups, system call filters, etc.
@@ -211,7 +211,7 @@ call expects a <span class="docutils literal"><span class="pre">struct</span> <s
 that array.  Since there&#8217;s no way to know where this code is gong to land in
 memory beforehand, this trick comes in handy: after the <span class="docutils literal"><span class="pre">call</span>
 <span class="pre">apply_filter</span></span> instruction, the top of the stack now contains the base
-address that array.</p>
+address of that array.</p>
 <p>Now that I had a way to write the shellcode, it was just the matter of
 shoehorning it into the executable.</p>
 <div class="figure align-center">
@@ -395,7 +395,7 @@ used at first.</p>
 system calls.  (329 according to <span class="docutils literal"><span class="pre">sys/syscall.h</span></span> at the moment I write
 this.)</p>
 <p>Even if the JIT for BPFs is quite efficient, doing a linear search before each
-an every system call will certainly be a bottleneck.  Also, BPF programs are
+and every system call will certainly be a bottleneck.  Also, BPF programs are
 limited in size, and a large whitelist that’s implemented the same way as the
 prototype will limit the possibility for more fine-grained filters.  Things
 like &#8220;the <span class="docutils literal"><span class="pre">socket(2)</span></span> call is allowed only for UNIX-domain sockets&#8221;, rather than
