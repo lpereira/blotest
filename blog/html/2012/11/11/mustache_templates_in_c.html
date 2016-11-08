@@ -28,7 +28,7 @@
         <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
         <script src="../../../_static/plugins.js"></script>
         <script src="../../../_static/main.js"></script>
-        <link rel="next" title="Programming on an Arduino without a PC" href="../../10/27/programming_on_an_arduino_without_a_pc.html" /><link rel="prev" title="Partially Applied Functions in C" href="../../../2013/07/20/partial_functions_in_c.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
+        <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Programming on an Arduino without a PC" href="../../10/27/programming_on_an_arduino_without_a_pc.html" /><link rel="prev" title="Partially Applied Functions in C" href="../../../2013/07/20/partial_functions_in_c.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
         VERSION:     '1.5',
@@ -68,11 +68,11 @@ necessarily mean we can’t do that in C if we know where to look.</p>
 <p>I’ve implemented a subset of <a class="reference external" href="http://mustache.github.com/">Mustache</a> templates in C that leverages some
 tricks that makes template rendering both convenient and efficient. For
 instance, if you have a template such as this:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="n">Hello</span><span class="p">,</span> <span class="p">{{</span><span class="n">name</span><span class="p">}}</span><span class="o">!</span>
+<div class="highlight-c"><div class="highlight"><pre><span></span><span class="n">Hello</span><span class="p">,</span> <span class="p">{{</span><span class="n">name</span><span class="p">}}</span><span class="o">!</span>
 </pre></div>
 </div>
 <p>It can easily be rendered with the following code:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="kt">hello_t</span> <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+<div class="highlight-c"><div class="highlight"><pre><span></span><span class="n">hello_t</span> <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
   <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;World&quot;</span>
 <span class="p">};</span>
 <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">data</span><span class="p">);</span>
@@ -87,7 +87,7 @@ table. While reasonably efficient (even considering the overhead to create
 and destroy the table every time the template had to be rendered), they’re
 not first class citizens in C, and the usage would be pretty clumsy, to say
 the least:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="n">hash_table</span> <span class="o">*</span><span class="n">ht</span> <span class="o">=</span> <span class="n">hash_table_new</span><span class="p">();</span>
+<div class="highlight-c"><div class="highlight"><pre><span></span><span class="n">hash_table</span> <span class="o">*</span><span class="n">ht</span> <span class="o">=</span> <span class="n">hash_table_new</span><span class="p">();</span>
 <span class="n">hash_table_add</span><span class="p">(</span><span class="n">ht</span><span class="p">,</span> <span class="s">&quot;name&quot;</span><span class="p">,</span> <span class="s">&quot;World&quot;</span><span class="p">);</span>
 
 <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="n">ht</span><span class="p">);</span>
@@ -102,7 +102,7 @@ values whenever necessary to render the template.</p>
 which is supported by GCC even in C89 mode. This trick allows the use of
 <a class="reference external" href="http://www.run.montefiore.ulg.ac.be/~martin/resources/kung-f00.html">anonymous arrays</a>, among other things, and provides enough syntactic sugar
 to conveniently group the template variables:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="p">(</span><span class="kt">hello_t</span><span class="p">[])</span> <span class="p">{{</span>
+<div class="highlight-c"><div class="highlight"><pre><span></span><span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="p">(</span><span class="n">hello_t</span><span class="p">[])</span> <span class="p">{{</span>
   <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;World&quot;</span>
 <span class="p">}});</span>
 </pre></div>
@@ -112,7 +112,7 @@ this would not help much. Enter the second trick: the <span class="docutils lite
 which computes the offset of a field in a given structure. By storing this
 offset alongside data type information, the value lookup is not only possible
 but can also work with types different than strings:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="k">typedef</span> <span class="k">struct</span> <span class="kt">hello_t</span> <span class="p">{</span>
+<div class="highlight-c"><div class="highlight"><pre><span></span><span class="k">typedef</span> <span class="k">struct</span> <span class="n">hello_t</span> <span class="p">{</span>
   <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">;</span>
   <span class="kt">int</span> <span class="n">age</span><span class="p">;</span>
 <span class="p">};</span>
@@ -128,13 +128,13 @@ but can also work with types different than strings:</p>
 <span class="cm"> many</span>
 <span class="cm"> * fields as necessary.</span>
 <span class="cm"> */</span>
-<span class="kt">lwan_var_descriptor_t</span> <span class="n">hello_descriptor</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
-  <span class="n">TPL_VAR_STR</span><span class="p">(</span><span class="kt">hello_t</span><span class="p">,</span> <span class="n">name</span><span class="p">),</span>
-  <span class="n">TPL_VAR_INT</span><span class="p">(</span><span class="kt">hello_t</span><span class="p">,</span> <span class="n">age</span><span class="p">),</span>
+<span class="n">lwan_var_descriptor_t</span> <span class="n">hello_descriptor</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="n">TPL_VAR_STR</span><span class="p">(</span><span class="n">hello_t</span><span class="p">,</span> <span class="n">name</span><span class="p">),</span>
+  <span class="n">TPL_VAR_INT</span><span class="p">(</span><span class="n">hello_t</span><span class="p">,</span> <span class="n">age</span><span class="p">),</span>
   <span class="n">TPL_VAR_SENTINEL</span>
 <span class="p">};</span>
-<span class="kt">lwan_tpl_t</span> <span class="o">*</span><span class="n">hello</span><span class="p">;</span>
-<span class="kt">strbuf_t</span> <span class="o">*</span><span class="n">rendered</span><span class="p">;</span>
+<span class="n">lwan_tpl_t</span> <span class="o">*</span><span class="n">hello</span><span class="p">;</span>
+<span class="n">strbuf_t</span> <span class="o">*</span><span class="n">rendered</span><span class="p">;</span>
 
 <span class="cm">/*</span>
 <span class="cm"> * ``hello&#39;&#39; would usually be compiled once and kept around for</span>
@@ -149,7 +149,7 @@ but can also work with types different than strings:</p>
 <span class="cm"> * rendering will incur in very few expensive reallocations, if</span>
 <span class="cm"> * there are reallocations at all.</span>
 <span class="cm"> */</span>
-<span class="n">rendered</span> <span class="o">=</span> <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="p">(</span><span class="kt">hello_t</span><span class="p">[])</span> <span class="p">{{</span>
+<span class="n">rendered</span> <span class="o">=</span> <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="p">(</span><span class="n">hello_t</span><span class="p">[])</span> <span class="p">{{</span>
   <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;World&quot;</span><span class="p">,</span>
   <span class="p">.</span><span class="n">age</span> <span class="o">=</span> <span class="mi">42</span>
 <span class="p">}});</span>
@@ -191,6 +191,8 @@ would it? :)</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2016/11/08/infect_to_protect.html">Infect to Protect</a>
+        </li><li>
             <a href="../../../2015/05/01/initializing_a_heap_allocated_structure_in_c.html">Initializing a heap-allocated structure in C</a>
         </li><li>
             <a href="../../../2014/11/02/hybrid_c_pascal_strings.html">Hybrid C/Pascal Strings</a>
@@ -208,22 +210,23 @@ would it? :)</p>
             <a href="#">Mustache templates in C</a>
         </li><li>
             <a href="../../10/27/programming_on_an_arduino_without_a_pc.html">Programming on an Arduino without a PC</a>
-        </li><li>
-            <a href="../../10/14/vectored_i_o_with_mmap___to_serve_files.html">Vectored I/O with mmap() to serve files</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
     <h1>Tags Cloud</h1>
       <a href="../../../tags/arduino.html" style="font-size: 8pt">arduino</a>&nbsp;&nbsp;
+      <a href="../../../tags/assembly.html" style="font-size: 8pt">assembly</a>&nbsp;&nbsp;
+      <a href="../../../tags/bpf.html" style="font-size: 8pt">bpf</a>&nbsp;&nbsp;
       <a href="../../../tags/c.html" style="font-size: 17pt">C</a>&nbsp;&nbsp;
       <a href="../../../tags/c.html" style="font-size: 8pt">c</a>&nbsp;&nbsp;
       <a href="../../../tags/conferences.html" style="font-size: 8pt">conferences</a>&nbsp;&nbsp;
+      <a href="../../../tags/container.html" style="font-size: 8pt">container</a>&nbsp;&nbsp;
       <a href="../../../tags/data_structure.html" style="font-size: 8pt">data-structure</a>&nbsp;&nbsp;
       <a href="../../../tags/efl.html" style="font-size: 8pt">efl</a>&nbsp;&nbsp;
       <a href="../../../tags/enlightenment.html" style="font-size: 8pt">enlightenment</a>&nbsp;&nbsp;
       <a href="../../../tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="../../../tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
-      <a href="../../../tags/linux.html" style="font-size: 8pt">linux</a>&nbsp;&nbsp;
+      <a href="../../../tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
       <a href="../../../tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
       <a href="../../../tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
       <a href="../../../tags/profusion.html" style="font-size: 9pt">profusion</a>&nbsp;&nbsp;

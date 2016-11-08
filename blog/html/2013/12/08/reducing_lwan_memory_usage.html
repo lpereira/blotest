@@ -28,7 +28,7 @@
         <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
         <script src="../../../_static/plugins.js"></script>
         <script src="../../../_static/main.js"></script>
-        <link rel="next" title="Implementing sequences in lwan template engine" href="../../09/26/implementing_sequences_in_lwan_template_engine.html" /><link rel="prev" title="Integer to string conversion" href="../../../2014/06/23/integer_to_string_conversion.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
+        <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Implementing sequences in lwan template engine" href="../../09/26/implementing_sequences_in_lwan_template_engine.html" /><link rel="prev" title="Integer to string conversion" href="../../../2014/06/23/integer_to_string_conversion.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
         VERSION:     '1.5',
@@ -69,10 +69,10 @@ as projects need to move forward; however, written code often ends up in
 sort of a low priority refactoring thread inside my head.  Sometimes this
 thread is able to produce a thing or two, and I&#8217;m able to revisit these
 things.</p>
-<div class="figure align-center">
+<div class="figure align-center" id="id1">
 <img alt="projectmovingforward" src="https://farm1.staticflickr.com/64/169229347_f554a9c9ea.jpg" />
-<p class="caption">Project moving forward picture by <a class="reference external" href="http://www.flickr.com/photos/tsdesign/">Todd Smith</a>. Sometimes you&#8217;re so
-focused on the goal that you end up not appreciating the journey.</p>
+<p class="caption"><span class="caption-text">Project moving forward picture by <a class="reference external" href="http://www.flickr.com/photos/tsdesign/">Todd Smith</a>. Sometimes you&#8217;re so
+focused on the goal that you end up not appreciating the journey.</span></p>
 </div>
 <div class="section" id="background-toys">
 <h2>Background toys</h2>
@@ -82,9 +82,9 @@ while idling; recent commits dropped this amount to a mere <strong>32MB</strong>
 maybe some more room to spare).  It used to use <strong>2670%</strong> more memory.</p>
 <p>This was only possible because I know the code inside out and was able to
 refactor the code a few times.</p>
-<div class="figure align-center">
+<div class="figure align-center" id="id2">
 <a class="reference internal image-reference" href="https://i.imgur.com/xSB5PZp.png"><img alt="massifscreenshot0" src="https://i.imgur.com/xSB5PZp.png" style="width: 100%;" /></a>
-<p class="caption">Massif-visualizer windows shown at different scales.</p>
+<p class="caption"><span class="caption-text">Massif-visualizer windows shown at different scales.</span></p>
 </div>
 </div>
 <div class="section" id="structure-diet">
@@ -115,9 +115,9 @@ memory usage.</p>
 <p>This also made keep-alive connections a tiny bit faster, as there&#8217;s no need to
 <span class="docutils literal"><span class="pre">memset()</span></span> the request structure to clean state for the next request
 anymore.</p>
-<div class="figure align-center">
+<div class="figure align-center" id="id3">
 <a class="reference internal image-reference" href="https://i.imgur.com/3BrC0KB.png"><img alt="massifscreenshot" src="https://i.imgur.com/3BrC0KB.png" style="width: 100%;" /></a>
-<p class="caption">Same scale this time. <em>That drop</em>.</p>
+<p class="caption"><span class="caption-text">Same scale this time. <em>That drop</em>.</span></p>
 </div>
 </div>
 <div class="section" id="reducing-it-further">
@@ -174,6 +174,8 @@ is now using 2MiB less memory.  Basically:</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2016/11/08/infect_to_protect.html">Infect to Protect</a>
+        </li><li>
             <a href="../../../2015/05/01/initializing_a_heap_allocated_structure_in_c.html">Initializing a heap-allocated structure in C</a>
         </li><li>
             <a href="../../../2014/11/02/hybrid_c_pascal_strings.html">Hybrid C/Pascal Strings</a>
@@ -191,22 +193,23 @@ is now using 2MiB less memory.  Basically:</p>
             <a href="../../../2012/11/11/mustache_templates_in_c.html">Mustache templates in C</a>
         </li><li>
             <a href="../../../2012/10/27/programming_on_an_arduino_without_a_pc.html">Programming on an Arduino without a PC</a>
-        </li><li>
-            <a href="../../../2012/10/14/vectored_i_o_with_mmap___to_serve_files.html">Vectored I/O with mmap() to serve files</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
     <h1>Tags Cloud</h1>
       <a href="../../../tags/arduino.html" style="font-size: 8pt">arduino</a>&nbsp;&nbsp;
+      <a href="../../../tags/assembly.html" style="font-size: 8pt">assembly</a>&nbsp;&nbsp;
+      <a href="../../../tags/bpf.html" style="font-size: 8pt">bpf</a>&nbsp;&nbsp;
       <a href="../../../tags/c.html" style="font-size: 17pt">C</a>&nbsp;&nbsp;
       <a href="../../../tags/c.html" style="font-size: 8pt">c</a>&nbsp;&nbsp;
       <a href="../../../tags/conferences.html" style="font-size: 8pt">conferences</a>&nbsp;&nbsp;
+      <a href="../../../tags/container.html" style="font-size: 8pt">container</a>&nbsp;&nbsp;
       <a href="../../../tags/data_structure.html" style="font-size: 8pt">data-structure</a>&nbsp;&nbsp;
       <a href="../../../tags/efl.html" style="font-size: 8pt">efl</a>&nbsp;&nbsp;
       <a href="../../../tags/enlightenment.html" style="font-size: 8pt">enlightenment</a>&nbsp;&nbsp;
       <a href="../../../tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="../../../tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
-      <a href="../../../tags/linux.html" style="font-size: 8pt">linux</a>&nbsp;&nbsp;
+      <a href="../../../tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
       <a href="../../../tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
       <a href="../../../tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
       <a href="../../../tags/profusion.html" style="font-size: 9pt">profusion</a>&nbsp;&nbsp;

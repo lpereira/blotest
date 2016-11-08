@@ -28,7 +28,7 @@
         <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
         <script src="../../../_static/plugins.js"></script>
         <script src="../../../_static/main.js"></script>
-        <link rel="next" title="File serving with few system calls" href="../../08/12/file_serving_with_few_system_calls.html" /><link rel="prev" title="Asynchronous I/O in C with Coroutines" href="../29/asynchronous_i_o_in_c_with_coroutines.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
+        <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="File serving with few system calls" href="../../08/12/file_serving_with_few_system_calls.html" /><link rel="prev" title="Asynchronous I/O in C with Coroutines" href="../29/asynchronous_i_o_in_c_with_coroutines.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
         VERSION:     '1.5',
@@ -89,7 +89,7 @@ are apps for mobile devices with stacked lists and the eventual popup
 that appears on top of the content.</dd>
 </dl>
 <p>The code below shows a typical controller-view; explanation will follow.</p>
-<div class="highlight-javascript"><div class="highlight"><pre><span class="nx">MainController</span> <span class="o">=</span> <span class="nx">EUI</span><span class="p">.</span><span class="nx">ListController</span><span class="p">({</span>
+<div class="highlight-javascript"><div class="highlight"><pre><span></span><span class="nx">MainController</span> <span class="o">=</span> <span class="nx">EUI</span><span class="p">.</span><span class="nx">ListController</span><span class="p">({</span>
     <span class="nx">title</span><span class="o">:</span> <span class="s1">&#39;My Favorite Fruits&#39;</span><span class="p">,</span>
     <span class="nx">model</span><span class="o">:</span> <span class="k">new</span> <span class="nx">ArrayModel</span><span class="p">([</span><span class="s1">&#39;Pear&#39;</span><span class="p">,</span> <span class="s1">&#39;Banana&#39;</span><span class="p">,</span> <span class="s1">&#39;Uvaia&#39;</span><span class="p">]),</span>
     <span class="nx">itemAtIndex</span><span class="o">:</span> <span class="kd">function</span><span class="p">(</span><span class="nx">index</span><span class="p">)</span> <span class="p">{</span>
@@ -118,7 +118,7 @@ application developer focuses only on defining behavior.</li>
 needs them. For instance, one could change the title based on how many
 fruits were in the model, by writing a <span class="docutils literal"><span class="pre">title</span></span> function like so:</li>
 </ul>
-<div class="highlight-javascript"><div class="highlight"><pre><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+<div class="highlight-javascript"><div class="highlight"><pre><span></span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
     <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">model</span><span class="p">.</span><span class="nx">length</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
             <span class="k">return</span> <span class="s2">&quot;My Favorite Fruit&quot;</span><span class="p">;</span>
     <span class="k">return</span> <span class="s2">&quot;My Favourite Fruits&quot;</span><span class="p">;</span>
@@ -171,6 +171,8 @@ should hit Enlightenment’s SVN repository.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2016/11/08/infect_to_protect.html">Infect to Protect</a>
+        </li><li>
             <a href="../../../2015/05/01/initializing_a_heap_allocated_structure_in_c.html">Initializing a heap-allocated structure in C</a>
         </li><li>
             <a href="../../../2014/11/02/hybrid_c_pascal_strings.html">Hybrid C/Pascal Strings</a>
@@ -188,22 +190,23 @@ should hit Enlightenment’s SVN repository.</p>
             <a href="../../11/11/mustache_templates_in_c.html">Mustache templates in C</a>
         </li><li>
             <a href="../../10/27/programming_on_an_arduino_without_a_pc.html">Programming on an Arduino without a PC</a>
-        </li><li>
-            <a href="../../10/14/vectored_i_o_with_mmap___to_serve_files.html">Vectored I/O with mmap() to serve files</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
     <h1>Tags Cloud</h1>
       <a href="../../../tags/arduino.html" style="font-size: 8pt">arduino</a>&nbsp;&nbsp;
+      <a href="../../../tags/assembly.html" style="font-size: 8pt">assembly</a>&nbsp;&nbsp;
+      <a href="../../../tags/bpf.html" style="font-size: 8pt">bpf</a>&nbsp;&nbsp;
       <a href="../../../tags/c.html" style="font-size: 17pt">C</a>&nbsp;&nbsp;
       <a href="../../../tags/c.html" style="font-size: 8pt">c</a>&nbsp;&nbsp;
       <a href="../../../tags/conferences.html" style="font-size: 8pt">conferences</a>&nbsp;&nbsp;
+      <a href="../../../tags/container.html" style="font-size: 8pt">container</a>&nbsp;&nbsp;
       <a href="../../../tags/data_structure.html" style="font-size: 8pt">data-structure</a>&nbsp;&nbsp;
       <a href="../../../tags/efl.html" style="font-size: 8pt">efl</a>&nbsp;&nbsp;
       <a href="../../../tags/enlightenment.html" style="font-size: 8pt">enlightenment</a>&nbsp;&nbsp;
       <a href="../../../tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="../../../tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
-      <a href="../../../tags/linux.html" style="font-size: 8pt">linux</a>&nbsp;&nbsp;
+      <a href="../../../tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
       <a href="../../../tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
       <a href="../../../tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
       <a href="../../../tags/profusion.html" style="font-size: 9pt">profusion</a>&nbsp;&nbsp;

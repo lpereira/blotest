@@ -1,0 +1,538 @@
+<!DOCTYPE html><!--[if lt IE 7]>      <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width">
+        <title>Infect to Protect &mdash; Leandro Pereira</title>
+            <link rel="stylesheet" href="../../../_static/normalize.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/sphinx.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/main.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/flat.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+            <link rel="stylesheet" href="../../../_static/font-awesome.min.css" type="text/css">
+        <link rel="shortcut icon" href="../../../_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
+        <script src="../../../_static/vendor/modernizr-2.6.2.min.js"></script>
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+        <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
+        <script src="../../../_static/plugins.js"></script>
+        <script src="../../../_static/main.js"></script>
+        <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Initializing a heap-allocated structure in C" href="../../../2015/05/01/initializing_a_heap_allocated_structure_in_c.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
+<style type="text/css">img {max-width: 100%;}</style>
+</head>
+    <body role="document">
+        <!--[if lt IE 7]>
+            <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
+        <![endif]-->
+
+      <div id="container"><header role="banner">
+            <hgroup>
+              <h1><a href="../../../index.html">Leandro Pereira</a></h1><h2>Geek in training</h2></hgroup>
+          </header>
+      <nav role="navigation">
+            <ul><li class="main-nav">
+                  <a href="../../../index.html">Home</a>
+                </li>
+              <li class="main-nav">
+                  <a href="../../../pages/about.html">About</a>
+                </li>
+              </ul>
+          </nav><div class="main-container" role="main"><div class="main wrapper body clearfix"><article><div class="timestamp postmeta">
+            <span>November 08, 2016</span>
+        </div>
+    <div class="section" id="infect-to-protect">
+<h1>Infect to Protect</h1>
+<div class="section" id="bandwagons">
+<h2>Bandwagons</h2>
+<p>I’m not one to jump on each and every bandwagon I see. Sometimes that’s a
+good decision, sometimes it’s better to just wait and see where they go
+before taking any action.</p>
+<p>Containers are one of those ideas that, while promising and intriguing, were
+quite clumsy in the beginning, so I ignored them for a good while.  It’s
+sufficiently mature now; so much so that’s quite difficult to ignore them.
+Time to investigate them again.</p>
+<p>Now, most of my work revolve around writing embedded software that runs on
+bare metal; containers don’t really solve any work-related problem I have.
+For personal usage, package management is more than sufficient to install
+programs.  However, the sandbox aspect of containers are quite interesting
+and it’s something I’d like to know more about.</p>
+<p>There are many articles around the web explaining how containers on Linux
+work.  Some get out of their way to explain depth all the machinery
+necessary to make them work, so there’s no need to repeat it here.</p>
+<p>But, in sum: almost all of the <a class="reference external" href="http://jvns.ca/blog/2016/10/10/what-even-is-a-container/">kernel side of things was already present</a> before
+containers were actually a thing: cgroups, system call filters, etc.
+Containers (and their runtimes) only make them so simple to use it’s
+transparent for the user.</p>
+<p>I usually have a hard time understanding things that I cannot build, so I
+decided to build a toy container runtime.  It’s crude and it’s a far cry
+from what any industrial-strength container runtime is capable of, but it’s
+not only a start, it’s implemented in a way that makes things a
+<em>lot</em> easier for the user.</p>
+</div>
+<div class="section" id="virulent-tutorials">
+<h2>Virulent tutorials</h2>
+<p>Before I go into details on how my contraption works, a little bit of
+background. I’ve been using Linux for over 18 years, and began my forays
+in C about 14 years ago.</p>
+<p>Around that time, a pretty interesting HOWTO explaining <a class="reference external" href="http://virus.enemy.org/virus-writing-HOWTO/_html/">how to create
+viruses for ELF binaries</a> came out.  It
+explained not only various methods of infecting an ELF executable, but also
+methods to detect them.  Suffice to say, I couldn’t understand a thing back
+then.  A few months ago, though, a conversation in the <a class="reference external" href="https://lhc.net.br">local hackerspace</a> brought up that tutorial; I could now finally
+not only understand the techniques but put them to use.</p>
+<p>One of the techniques explained in the HOWTO involves finding some
+unused space in an ELF segment that’s also executable, writing shellcode
+to that area, rewiring the executable’s entry point to point to the shell
+code, and modifying the shell code so that it points to the original entry
+point. It’s all quite Rube Goldberg-ey, but it’s actually quite simple.</p>
+<p>This way, a chunk of code can be executed every time that program
+starts, without altering the size of the program. The perfect crime.</p>
+<div class="figure align-center">
+<a class="reference internal image-reference" href="https://media.giphy.com/media/oX13doUEAPtIY/giphy.gif"><img alt="Perfect crime" src="https://media.giphy.com/media/oX13doUEAPtIY/giphy.gif" style="width: 50%;" /></a>
+</div>
+</div>
+<div class="section" id="dual-use-technology">
+<h2>Dual use technology</h2>
+<p>By now, you’ve most likely connected the dots: the idea is to use the
+very same technique, originally designed for viruses, to create a program that
+transforms any program into a sandboxed version of itself.</p>
+<p>The prototype I wrote is very elementary; the only thing it does is
+limiting, just once, which system calls a program can execute.</p>
+<p>Sort of a less-powerful version of <a class="reference external" href="http://man.openbsd.org/cgi-bin/man.cgi/OpenBSD-current/man2/pledge.2">OpenBSD’s
+pledge(2)</a>
+(née <span class="docutils literal"><span class="pre">tame(2)</span></span>), which can be repeatedly called to reduce the amount of
+privileges a process has. Useful, for instance, in cases where a
+configuration file has to be read before processing user-supplied work.
+That BSD version has <a class="reference external" href="https://www.openbsd.org/papers/hackfest2015-pledge/mgp00001.html">been sprinkling calls to
+pledge()</a>
+in almost all of the programs in the base install (which is easier for a
+BSD system, since everything is kept under the same roof.)</p>
+<p>But, unlike <span class="docutils literal"><span class="pre">pledge(2)</span></span>, this thing can be applied to binaries that have
+been already built. No source code modifications are necessary. If your
+distribution can withstand the stench, &#8220;infected&#8221; binaries could be a
+thing in the default installation.</p>
+</div>
+<div class="section" id="filtering-the-system-calls">
+<h2>Filtering the system calls</h2>
+<p>Any respectable container runtime will perform a lot of tasks to sandbox
+a process and their children. So, for a proof of concept, I decided to
+do just the bare minimum: limit system calls using Seccomp-BPF.</p>
+<p><a class="reference external" href="https://en.wikipedia.org/wiki/Seccomp">Seccomp</a> is a set of features
+present in the Linux kernel, since the 2.6.x days, that allows
+restricting what a program can do, system call-wise. The original intent
+was to do not permit any other system calls excepting those to end the
+program, and read and write to already-opened file descriptors. In some
+scenarios, this is perfectly acceptable. For others, there’s the
+seccomp-BPF extension.</p>
+<p>BPF stands for <a class="reference external" href="https://en.wikipedia.org/wiki/Berkeley_Packet_Filter">Berkeley Packet
+Filter</a>. A
+famous use of BPFs is in the tcpdump program, where rules such as &#8220;only
+give me back TCP connections with the RST flag set&#8221; can be passed to the
+kernel; packets that don’t match the filter are not copied back to the
+userland, reducing a lot of the chatter between the two lands.</p>
+<p>Obviously, this must be extremely performant, since kernel time must be
+conserved at all costs (the kernel is there only to serve userland,
+after all). Linux has many ways to speed up BPF programs, including an
+in-kernel JIT. Some restrictions are in place that wouldn’t allow BPF
+programs to take an infinite amount of time to execute, and this <a class="reference external" href="https://blog.cloudflare.com/bpf-the-forgotten-bytecode/">blog
+post</a> is a
+good introductory reading material on the subject.</p>
+<p>Another, slightly less famous use of BPFs is with the seccomp-BPF
+extension. Instead of filtering network packets, processes can, for
+instance, pick which system calls they’re allowed to perform. And that’s
+precisely what’s necessary for my proof of concept.</p>
+</div>
+<div class="section" id="scripting-like-a-kid">
+<h2>Scripting like a kid</h2>
+<p>There are many ways to skin a cat. I decided to take a look how other
+programs were doing their sandboxes, and eventually <a class="reference external" href="https://github.com/brynet/file/commit/612a76f47d879d8c7cc5791b49a3704b54391e05">found one that
+seemed easy
+enough</a>
+to copy the technique from.</p>
+<p>Unfortunately, writing shellcodes in C isn’t that easy, specially if you
+don’t know which C library a program was linked with (or if it were
+linked to a C library in the first place). Luckily, all the shellcode
+has to do is make two system calls, which is straightforward to do with
+a little bit of assembly.</p>
+<p>The first call will forbid the process from getting more privileges. The
+second call will actually copy the BPF program to the kernel side.</p>
+<p>The first call is painless: just set a few registers, invoke the syscall,
+done.</p>
+<p>The other one takes a little bit more work. A few things helped: I’ve
+used <a class="reference external" href="http://www.nasm.us/">nasm</a>, which is a <a class="reference external" href="https://en.wikipedia.org/wiki/Assembly_language#Macros">macro
+assembler</a>,
+and wrote a few macros that let me write BPF programs as if they were
+standard x86-64 instructions.</p>
+<p>The remaining issue is that a pointer to the BPF program must be passed
+to the call to <span class="docutils literal"><span class="pre">prctl()</span></span>, and the shellcode must be relocatable. A <a class="reference external" href="http://stackoverflow.com/a/15704848">common
+trick</a> to perform in these
+scenarios is to employ the fact that, on x86, when a call instruction is
+made, the return address (i.e. the address of the byte right after the
+call instruction) is pushed to the stack:</p>
+<div class="highlight-nasm"><div class="highlight"><pre><span></span>    <span class="c1">; …</span>
+    <span class="nf">jmp</span> <span class="nv">push_bpf_addr</span>
+<span class="nl">apply_filter:</span>
+    <span class="nf">pop</span> <span class="nb">rdx</span>     <span class="c1">; rdx points to the BPF program</span>
+    <span class="c1">; …</span>
+<span class="nl">push_bpf_adr:</span>
+    <span class="nf">call</span> <span class="nv">apply_filter</span>
+<span class="nl">bpf:</span>
+    <span class="nf">bpf_stmt</span> <span class="c1">; …</span>
+    <span class="nf">bpf_jump</span> <span class="c1">; …</span>
+    <span class="nf">sc_allow</span> <span class="c1">; …</span>
+    <span class="c1">; …</span>
+<span class="nl">bpf_end:</span>
+</pre></div>
+</div>
+<p>The <span class="docutils literal"><span class="pre">bpf</span></span> label doesn&#8217;t point to any x86 instruction: it contains only
+macros that expands to the definitions of <span class="docutils literal"><span class="pre">struct</span> <span class="pre">sock_filter</span></span> as defined
+in <span class="docutils literal"><span class="pre">linux/filter.h</span></span>.  To copy the BPF program to the kernel, the <cite>prctl()</cite>
+call expects a <span class="docutils literal"><span class="pre">struct</span> <span class="pre">sock_fprog</span></span>, which contains the BPF program length
+(in number of <span class="docutils literal"><span class="pre">struct</span> <span class="pre">sock_filter</span></span> elements), and a pointer to the base of
+that array.  Since there&#8217;s no way to know where this code is gong to land in
+memory beforehand, this trick comes in handy: after the <span class="docutils literal"><span class="pre">call</span>
+<span class="pre">apply_filter</span></span> instruction, the top of the stack now contains the base
+address that array.</p>
+<p>Now that I had a way to write the shellcode, it was just the matter of
+shoehorning it into the executable.</p>
+<div class="figure align-center">
+<img alt="Hacking time" src="https://media.giphy.com/media/l46C6sdSa5DVSJnLG/giphy.gif" />
+</div>
+</div>
+<div class="section" id="scoring-a-goal">
+<h2>Scoring a goal</h2>
+<p>For the proof of concept, I was initially going to write the infection
+program in Python, as I usually do for throwaway code.  However, I wasn&#8217;t
+successful in finding a working ELF library that would let me dump the
+modified executable.</p>
+<p>I was too lazy to actually fix or write support for that, so I kept
+looking for alternatives and ended up finding the
+<a class="reference external" href="http://www.muppetlabs.com/~breadbox/software/elfkickers.html">ELFkickers</a>
+suite from the always excellent Muppet Labs. It includes an &#8220;infect&#8221;
+program that does exactly what says in the tin: it takes in an
+executable file, and produces another executable file that creates a
+setuid shell before continuing to the original program. Exactly what one
+would expect from a program with nefarious purposes.</p>
+<p>So I substituted the original shellcode for the one I’ve just assembled, and
+now I had a proof of concept.  Which of course didn’t work the first few
+tries.  In fact, it took a long while to get it right.</p>
+</div>
+<div class="section" id="debugging-the-contraption-with-gdb">
+<h2>Debugging the contraption with gdb</h2>
+<p>The GNU Debugger is indeed very powerful, but ease of use (compared to
+the Turbo Debugger I used to use in the DOS days) is not it’s strong
+suit. I’m not used to using it to debug programs without access to
+source, and this was a good opportunity to learn a few things.</p>
+<p>Since the infection program modifies the ELF entry point, setting a
+breakpoint on <span class="docutils literal"><span class="pre">main()</span></span> won’t actually work. But this is easily solvable:
+just use <a class="reference external" href="https://linux.die.net/man/1/readelf">readelf(1)</a> to find
+where the new entry point is, and set a breakpoint to that:</p>
+<div class="highlight-shell-session"><div class="highlight"><pre><span></span><span class="gp">$</span> gcc -o hello hello.c
+<span class="gp">$</span> readelf -h hello <span class="p">|</span> grep Entry
+<span class="go">  Entry point address: 0x400490</span>
+<span class="gp">$</span> ./infect hello
+<span class="gp">$</span> readelf -h hello <span class="p">|</span> grep Entry
+<span class="go">  Entry point address: 0x4007bc</span>
+<span class="gp">$</span> gdb ./hello
+<span class="go">…</span>
+<span class="go">(gdb) break *0x4007bc</span>
+<span class="go">Breakpoint 1 at 0x4007bc</span>
+</pre></div>
+</div>
+<p>From now on, it’s just the usual
+execute-inspect-modify-reassemble-reinfect loop until it works. Although
+it’s no <a class="reference external" href="https://www.youtube.com/watch?v=-ueCuJXF6po">td</a>, I’m
+certainly glad GDB has layouts that displays both the <a class="reference external" href="https://reverseengineering.stackexchange.com/questions/1935/how-to-handle-stripped-binaries-with-gdb-no-source-no-symbols-and-gdb-only-sho">disassembly and
+the
+registers</a>.</p>
+<div class="figure align-center">
+<a class="reference internal image-reference" href="http://data.photofunky.net/output/image/f/b/5/0/fb50ca/photofunky.gif"><img alt="Step-by-step debugging" src="http://data.photofunky.net/output/image/f/b/5/0/fb50ca/photofunky.gif" style="width: 50%;" /></a>
+</div>
+</div>
+<div class="section" id="watching-the-magic-happen">
+<h2>Watching the magic happen</h2>
+<p>The <span class="docutils literal"><span class="pre">hello</span></span> program is very short and the call to <span class="docutils literal"><span class="pre">socket(2)</span></span> doesn’t
+make much sense there.  It’s just a way to test what’s going to happen when
+the filter is in place, without the need to modify the program to test this
+assumption.  (<a class="reference external" href="https://www.bsdcan.org/2016/schedule/attachments/357_20160610-bsdcan-helloworld.pdf">Lots of things</a>
+happens when executing a simple program such as this.)</p>
+<div class="highlight-c"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;sys/socket.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;netinet/in.h&gt;</span><span class="cp"></span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">argc</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">printf</span><span class="p">(</span><span class="s">&quot;no socket created</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="kt">int</span> <span class="n">fd</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">,</span> <span class="n">IPPROTO_TCP</span><span class="p">);</span>
+            <span class="n">printf</span><span class="p">(</span><span class="s">&quot;created socket, fd=%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">fd</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Executing the program before infecting it gives the following output, as
+expected:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ ./hello
+no socket created
+$ ./hello 1
+created socket, fd = 3
+</pre></div>
+</div>
+<p>Indeed, if the program is executed under strace, it all goes exactly
+like it’s supposed to be:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ strace ./hello
+execve(&quot;./hello&quot;, [&quot;./hello&quot;], [/* 58 vars */]) = 0
+…
+write(1, &quot;no socket created\n&quot;, 18no socket created
+)     = 18
+exit_group(0)                           = ?
++++ exited with 0 +++
+</pre></div>
+</div>
+<p>And, with a command-line argument, so the socket is created:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>…
+socket(AF_INET, SOCK_STREAM, IPPROTO_TCP) = 3
+…
+write(1, &quot;created socket, fd = 3\n&quot;, 23created socket, fd = 3
+) = 23
+exit_group(0)                           = ?
++++ exited with 0 +++
+</pre></div>
+</div>
+<p>However, the magic happens after the &#8220;infected&#8221; binary is executed.
+First, without creating a socket:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>…
+prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)  = 0
+prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, {len=30, filter=0x400824}) = 0
+…
+write(1, &quot;no socket created\n&quot;, 18no socket created
+)     = 18
+exit_group(0)                           = ?
++++ exited with 0 +++
+</pre></div>
+</div>
+<p>Notice the calls to <span class="docutils literal"><span class="pre">prctl()</span></span>, very similar to the ones found in the
+previously-mentioned commit. And then the program executes as usual.
+Now, if an argument is passed, the program will attempt to create a
+socket:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>…
+prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)  = 0
+prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, {len=30, filter=0x400824}) = 0
+socket(AF_INET, SOCK_STREAM, IPPROTO_TCP) = 41
+--- SIGSYS {si_signo=SIGSYS, si_code=SYS_SECCOMP, si_call_addr=0x7f2d01aa19e7, si_syscall=__NR_socket, si_arch=AUDIT_ARCH_X86_64} ---
++++ killed by SIGSYS (core dumped) +++
+[1]    27536 invalid system call (core dumped)  strace ./hello 1
+</pre></div>
+</div>
+<p>And Seccomp kicks in and kills the program with a <span class="docutils literal"><span class="pre">SIGSYS</span></span> signal. As
+expected. <strong>It&#8217;s alive!</strong></p>
+<div class="figure align-center">
+<img alt="It's alive!" src="https://i.imgur.com/sWwquxp.jpg" />
+</div>
+</div>
+<div class="section" id="next-steps">
+<h2>Next steps</h2>
+<p>The prototype works. But there are a few things that must be considered
+before even considering this idea for anything.</p>
+<div class="section" id="system-call-whitelist">
+<h3>System call whitelist</h3>
+<p>The list of system calls is still hardcoded within the shellcode. That’s
+not optimal. Maintaining a list such as this for each and every program
+will most likely be so boring nobody is going to do that.</p>
+<p>I can think of three possible ways of coming up with this list.</p>
+<p>The first would be doing the same thing <span class="docutils literal"><span class="pre">pledge(2)</span></span> does: allowing a very
+restrict set of system calls at first, with some limitations, and then
+providing a few sets of calls per set of features a program might use: stdio,
+inet, tty, etc.  The nice thing about this is that the filters are more fine
+grained; it’s not just a whitelist of system calls.  (The <a class="reference external" href="http://man.openbsd.org/cgi-bin/man.cgi/OpenBSD-current/man2/pledge.2">man page</a> has
+more details.)</p>
+<p>The second way would involve running the program under <span class="docutils literal"><span class="pre">strace(1)</span></span> and
+record which system calls the program makes from a few runs.  If the test
+coverage for each run is sufficiently high, this will work very reliably;
+this isn&#8217;t always the case, so the mileage may vary.  Also, for certain
+large, complicated programs, stracing it all automatically could prove to be
+a challenge.</p>
+<p>Another way would be the following: Grab a list of undefined symbols a
+program uses, and find them in the shared libraries it links to.  Then scan
+the executable and the libraries for sequences like <span class="docutils literal"><span class="pre">mov</span> <span class="pre">eax,</span> <span class="pre">57;</span> <span class="pre">syscall</span></span>
+(for the oldschool <span class="docutils literal"><span class="pre">fork(2)</span></span> syscall on x86-64) or <span class="docutils literal"><span class="pre">mov</span> <span class="pre">eax,</span> <span class="pre">57;</span> <span class="pre">call</span>
+<span class="pre">syscall&#64;plt</span></span>.  This is still not foolproof, since not necessarily a system
+call number (loaded into <span class="docutils literal"><span class="pre">eax</span></span>) will be hardcoded within a program or
+shared library.</p>
+<p>There’s a fourth idea, as well, which involves both doing the automated
+static analysis on the binary and running strace to catch &#8220;runaway&#8221;
+syscalls. This can get quite complicated and it’s unlikely I’ll get it
+correct in the first few tries (and, yet, the same shortcomings will
+apply in the end.)</p>
+<p>For me, though, these experiments are all about the hunt, not about the
+treasure. So the tried and true approach that <span class="docutils literal"><span class="pre">pledge(2)</span></span> uses won’t be
+used at first.</p>
+</div>
+<div class="section" id="filter-optimization">
+<h3>Filter optimization</h3>
+<p>Another thing that might be a problem is: on x86-64, Linux has hundreds of
+system calls.  (329 according to <span class="docutils literal"><span class="pre">sys/syscall.h</span></span> at the moment I write
+this.)</p>
+<p>Even if the JIT for BPFs is quite efficient, doing a linear search before each
+an every system call will certainly be a bottleneck.  Also, BPF programs are
+limited in size, and a large whitelist that’s implemented the same way as the
+prototype will limit the possibility for more fine-grained filters.  Things
+like &#8220;the <span class="docutils literal"><span class="pre">socket(2)</span></span> call is allowed only for UNIX-domain sockets&#8221;, rather than
+allowing whatever call to <span class="docutils literal"><span class="pre">socket(2)</span></span> would be impractical.</p>
+<p>Since each syscall is identified by a number, a simple bitmap could be
+used to implement the whitelist. This will also free up some space in
+the BPF program for more detailed whitelisting for certain syscalls (for
+instance, only allowing certain family of sockets to be created).</p>
+<p>After a quick read of
+<a class="reference external" href="https://www.kernel.org/doc/Documentation/networking/filter.txt">networking/filter.txt</a>,
+this seems doable by using an algorithm such as this, which will reduce
+the number of comparisons as the number of acceptable system calls
+increases:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>        if syscall_number &lt; 32:
+                if bitmask_0 &amp; 1&lt;&lt;syscall_number: goto accept
+        if syscall_number &lt; 64:
+                syscall_number -= 32
+                if bitmask_1 &amp; 1&lt;&lt;syscall_number: goto accept
+        if syscall_number &lt; 96:
+                syscall_number -= 64
+                if bitmask_2 &amp; 1&lt;&lt;syscall_number: goto accept
+        …
+        if syscall_number &lt; 352:
+                syscall_number -= 320
+                if bitmask_10 &amp; 1&lt;&lt;syscall_number: goto accept
+        return SECCOMP_RET_KILL
+accept:
+        return SECCOMP_RET_ACCEPT
+</pre></div>
+</div>
+<p>(Some of the <span class="docutils literal"><span class="pre">if</span> <span class="pre">syscall_number</span> <span class="pre">&lt;</span> <span class="pre">N</span></span> blocks could be changed to
+<span class="docutils literal"><span class="pre">syscall_number</span> <span class="pre">-=</span> <span class="pre">M</span></span> if their respective bitmask is <span class="docutils literal"><span class="pre">0</span></span>.)</p>
+<p>Or maybe just a bloom filter instead of a series of bitmaps. I’ll have
+to experiment.</p>
+</div>
+<div class="section" id="getting-a-larger-vessel">
+<h3>Getting a larger vessel</h3>
+<p>Containers, of course, are not just about restricting which system calls a
+program is allowed to perform.  There are many things that can and must be
+considered before even calling this a container runtime, or really consider
+that this is in fact sandboxing anything.  Learning about namespaces,
+cgroups and virtual machines are certainly on the list of things to learn
+about.</p>
+</div>
+</div>
+<div class="section" id="conclusion">
+<h2>Conclusion</h2>
+<p>While the prototype I built isn’t practical and is of very limited use,
+I find the idea of sandboxed programs without the need for specialized
+runtimes very enticing.</p>
+<p>Programs can be still packaged the way they have been packaged in the
+past decades, without throwing away some of the sandboxing benefits that
+containers provide, all the while not introducing new concepts for
+users.</p>
+<p>Of course, something like this &#8211; even if properly implemented &#8211; won’t
+be a replacement for containers. Specially if one considers their role
+as packets ready for deployment, which have a lot of value for devops
+personnel.</p>
+<p>The code, as usual, is open source, and available from <a class="reference external" href="https://github.com/lpereira/infect-to-protect">this Git
+repository</a>.</p>
+</div>
+</div>
+
+    <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="../../../tags/container.html">container</a>, <a href="../../../tags/assembly.html">assembly</a>, <a href="../../../tags/linux.html">linux</a>, <a href="../../../tags/bpf.html">bpf</a></span>
+        </div>
+        </div><ul class="related clearfix">
+            <li class="left"></li>
+            <li class="right"><a href="../../../2015/05/01/initializing_a_heap_allocated_structure_in_c.html">Initializing a heap-allocated structure in C</a> &raquo; </li>
+        </ul></article><aside class="sidebar"><section><div class="widget" id="searchbox" role="search">
+    <h1><a href="#searchbox">Search</a></h1>
+    <form action="../../../search.html" method="get">
+        <input type="text" name="q" />
+        <button type="submit"><span class="fa fa-search"></span></button>
+    </form>
+</div></section><section><div class="widget">
+    <h1>Recent Posts</h1>
+    <ul><li>
+            <a href="#">Infect to Protect</a>
+        </li><li>
+            <a href="../../../2015/05/01/initializing_a_heap_allocated_structure_in_c.html">Initializing a heap-allocated structure in C</a>
+        </li><li>
+            <a href="../../../2014/11/02/hybrid_c_pascal_strings.html">Hybrid C/Pascal Strings</a>
+        </li><li>
+            <a href="../../../2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
+        </li><li>
+            <a href="../../../2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
+        </li><li>
+            <a href="../../../2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage by 94%</a>
+        </li><li>
+            <a href="../../../2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a>
+        </li><li>
+            <a href="../../../2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a>
+        </li><li>
+            <a href="../../../2012/11/11/mustache_templates_in_c.html">Mustache templates in C</a>
+        </li><li>
+            <a href="../../../2012/10/27/programming_on_an_arduino_without_a_pc.html">Programming on an Arduino without a PC</a>
+        </li></ul>
+</div>
+</section><section><div class="widget">
+    <h1>Tags Cloud</h1>
+      <a href="../../../tags/arduino.html" style="font-size: 8pt">arduino</a>&nbsp;&nbsp;
+      <a href="../../../tags/assembly.html" style="font-size: 8pt">assembly</a>&nbsp;&nbsp;
+      <a href="../../../tags/bpf.html" style="font-size: 8pt">bpf</a>&nbsp;&nbsp;
+      <a href="../../../tags/c.html" style="font-size: 17pt">C</a>&nbsp;&nbsp;
+      <a href="../../../tags/c.html" style="font-size: 8pt">c</a>&nbsp;&nbsp;
+      <a href="../../../tags/conferences.html" style="font-size: 8pt">conferences</a>&nbsp;&nbsp;
+      <a href="../../../tags/container.html" style="font-size: 8pt">container</a>&nbsp;&nbsp;
+      <a href="../../../tags/data_structure.html" style="font-size: 8pt">data-structure</a>&nbsp;&nbsp;
+      <a href="../../../tags/efl.html" style="font-size: 8pt">efl</a>&nbsp;&nbsp;
+      <a href="../../../tags/enlightenment.html" style="font-size: 8pt">enlightenment</a>&nbsp;&nbsp;
+      <a href="../../../tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
+      <a href="../../../tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
+      <a href="../../../tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
+      <a href="../../../tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
+      <a href="../../../tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
+      <a href="../../../tags/profusion.html" style="font-size: 9pt">profusion</a>&nbsp;&nbsp;
+      <a href="../../../tags/programming.html" style="font-size: 20pt">programming</a>&nbsp;&nbsp;
+      <a href="../../../tags/strace.html" style="font-size: 8pt">strace</a>&nbsp;&nbsp;
+      <a href="../../../tags/template.html" style="font-size: 8pt">template</a>&nbsp;&nbsp;
+      <a href="../../../tags/tizen.html" style="font-size: 8pt">tizen</a>&nbsp;&nbsp;
+      <a href="../../../tags/trick.html" style="font-size: 14pt">trick</a>&nbsp;&nbsp;
+      <a href="../../../tags/tricks.html" style="font-size: 8pt">tricks</a>
+</div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
+
+        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2015, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
+
+      </div> <!--! end of #container --><!--[if lt IE 7 ]>
+          <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"></script>
+          <script>window.attachEvent('onload',function(){CFInstall.check({mode:'overlay'})})</script>
+        <![endif]-->
+    </body>
+</html>

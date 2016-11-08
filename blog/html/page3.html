@@ -28,7 +28,7 @@
         <script>window.jQuery || document.write('<script src="_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
         <script src="_static/plugins.js"></script>
         <script src="_static/main.js"></script>
-        <link rel="next" title="Older" href="page4.html" /><link rel="prev" title="Newer" href="page2.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="rss.html" /><script type="text/javascript">
+        <link rel="search" title="Search" href="search.html" /><link rel="next" title="Older" href="page4.html" /><link rel="prev" title="Newer" href="page2.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
         VERSION:     '1.5',
@@ -57,6 +57,53 @@
                 </li>
               </ul>
           </nav><div class="main-container" role="main"><div class="main wrapper body clearfix"><article><div class="timestamp postmeta">
+            <span>October 14, 2012</span>
+        </div>
+        <div class="section">
+            <h1><a href="2012/10/14/vectored_i_o_with_mmap___to_serve_files.html">Vectored I/O with mmap() to serve files</a></h1>
+<p>Previously, I’ve <a class="reference external" href="/posts/file_serving_with_few_syscalls/">improved file serving performance</a> in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a> by
+dramatially cutting down on the number of system calls performed to serve a
+file. However, for small files (&lt; 16KiB), the throughput drop from the
+<span class="docutils literal"><span class="pre">hello</span></span> handler (which merely responds “Hello, World!”) was significant,
+since lwan was still performing system calls to open, obtain the size, and
+close the file.</p>
+<p>I’ve experimented with userland caching before, but it never occurred to me
+to use <span class="docutils literal"><span class="pre">mmap()</span></span>. For the unitiated, this system call offers a way to map a
+file into memory, by giving a pointer to the process virtual memory space,
+that, when dereferenced, will perform the necessary disk I/O if the pages
+were not already present in the kernel buffers. <a class="reference external" href="https://en.wikipedia.org/wiki/Mmap">Wikipedia</a> has more details
+about it. Using <span class="docutils literal"><span class="pre">mmap()</span></span> greatly simplifies caching code by relaying it to
+the kernel, closer to where the low level buffers are.</p>
+<p>By using a memory-mapped buffer and <a class="reference external" href="https://en.wikipedia.org/wiki/Vectored_I/O">writev()</a> (which the <span class="docutils literal"><span class="pre">hello</span></span> handler
+uses through lwan’s abstractions), the file serving performance improved
+about 60%! Before the optimization, <a class="reference external" href="https://github.com/lighttpd/weighttp">weighttp</a> would be able to make ~170000
+requests/s. Now, ~286000 requests/s can be made. (That’s on my laptop, a Core
+i7 2640m, with 8GiB of RAM and without spinning platters.)</p>
+<p>Of course, introducing caching also introduces a lot of complexity. Not only
+the file serving handler almost doubled its size (from 350 lines to 610
+lines), but I’ve had to add a hash table implementation (with around 430
+lines) and a directory watcher that uses <a class="reference external" href="https://en.wikipedia.org/wiki/Inotify">inotify</a> at around 150 lines of C
+code. In the order of 840 lines of code to improve performance by about 60%.
+About 30% more lines of code to improve performance in 60% – not bad,
+methinks.</p>
+<p>On the other hand, the cache mechanism brings shared mutable state. This is
+protected by mutexes, of course, but I’m not sure if I got it right. One more
+reason to <strong>not</strong> use lwan in production.</p>
+<p>As a bonus to these things, lwan now offers <a class="reference external" href="https://en.wikipedia.org/wiki/Deflate">deflated</a> content for the files
+in the cache when asked.</p>
+
+        </div>
+        <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/c.html">C</a>, <a href="tags/linux.html">linux</a></span>
+        </div>
+        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
             <span>September 29, 2012</span>
         </div>
         <div class="section">
@@ -91,10 +138,10 @@ implement coroutines or more powerful concepts, like <a class="reference externa
 they’re quite tricky to use, so it’s often a good idea to offer a thin
 wrapper on top of them. The API used in lwan is the following (implementation
 details omitted for brevity):</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="kt">coro_t</span> <span class="o">*</span><span class="nf">coro_new</span><span class="p">(</span><span class="kt">coro_function_t</span> <span class="n">function</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-<span class="kt">void</span> <span class="nf">coro_free</span><span class="p">(</span><span class="kt">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">);</span>
-<span class="kt">int</span> <span class="nf">coro_resume</span><span class="p">(</span><span class="kt">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">);</span>
-<span class="kt">void</span> <span class="nf">coro_yield</span><span class="p">(</span><span class="kt">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="kt">int</span> <span class="n">value</span><span class="p">);</span>
+<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">coro_t</span> <span class="o">*</span><span class="nf">coro_new</span><span class="p">(</span><span class="n">coro_function_t</span> <span class="n">function</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">coro_free</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">coro_resume</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">coro_yield</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="kt">int</span> <span class="n">value</span><span class="p">);</span>
 </pre></div>
 </div>
 </div>
@@ -102,11 +149,11 @@ details omitted for brevity):</p>
 <h2>Coroutine allocation</h2>
 <p>A coroutine is pretty much a simple data structure; the real implementation
 has more fields, but they’re implementation details:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="k">struct</span> <span class="n">coro_t_</span> <span class="p">{</span>
-    <span class="kt">coro_function_t</span> <span class="n">function</span><span class="p">;</span>
+<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">coro_t_</span> <span class="p">{</span>
+    <span class="n">coro_function_t</span> <span class="n">function</span><span class="p">;</span>
     <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">;</span>
 
-    <span class="kt">ucontext_t</span> <span class="n">context</span><span class="p">;</span>
+    <span class="n">ucontext_t</span> <span class="n">context</span><span class="p">;</span>
     <span class="kt">int</span> <span class="n">yield_value</span><span class="p">;</span>
 
     <span class="kt">char</span> <span class="n">stack</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
@@ -120,7 +167,7 @@ actually <em>saves</em> the current context into the variable pointed to by its 
 parameter.)</p>
 <p>After that, one just need to set up the context so that it points to the
 newly-allocated stack:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="n">coro</span><span class="o">-&gt;</span><span class="n">context</span><span class="p">.</span><span class="n">uc_stack</span><span class="p">.</span><span class="n">ss_sp</span> <span class="o">=</span> <span class="n">coro</span><span class="o">-&gt;</span><span class="n">stack</span><span class="p">;</span>
+<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">coro</span><span class="o">-&gt;</span><span class="n">context</span><span class="p">.</span><span class="n">uc_stack</span><span class="p">.</span><span class="n">ss_sp</span> <span class="o">=</span> <span class="n">coro</span><span class="o">-&gt;</span><span class="n">stack</span><span class="p">;</span>
 <span class="n">coro</span><span class="o">-&gt;</span><span class="n">context</span><span class="p">.</span><span class="n">uc_stack</span><span class="p">.</span><span class="n">ss_size</span> <span class="o">=</span> <span class="n">stack_size</span><span class="p">;</span>
 <span class="n">coro</span><span class="o">-&gt;</span><span class="n">context</span><span class="p">.</span><span class="n">uc_stack</span><span class="p">.</span><span class="n">ss_flags</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
 <span class="n">coro</span><span class="o">-&gt;</span><span class="n">context</span><span class="p">.</span><span class="n">uc_link</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
@@ -132,7 +179,7 @@ wonder why this thing is quite unpopular.) This function takes a variable
 number of parameters, each one being a 32-bit integer value. I don’t know why
 a <span class="docutils literal"><span class="pre">void</span> <span class="pre">*</span></span> wasn’t used instead – so, on 64-bit, I use an union to break a
 pointer into two 32-bit components:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="k">union</span> <span class="n">ptr_splitter</span> <span class="p">{</span>
+<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">union</span> <span class="n">ptr_splitter</span> <span class="p">{</span>
     <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">;</span>
     <span class="kt">uint32_t</span> <span class="n">part</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
 <span class="p">};</span>
@@ -164,12 +211,12 @@ lwan to determine if a coroutine should be resumed.</p>
 <div class="section" id="using-the-coroutines">
 <h2>Using the coroutines</h2>
 <p>From the user perspective, it’s just like calling some blocking function:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="n">lwan_sendfile</span><span class="p">(</span><span class="n">request</span><span class="o">-&gt;</span><span class="n">socket</span><span class="p">,</span> <span class="n">file_fd</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">total_bytes</span><span class="p">);</span>
+<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">lwan_sendfile</span><span class="p">(</span><span class="n">request</span><span class="o">-&gt;</span><span class="n">socket</span><span class="p">,</span> <span class="n">file_fd</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">total_bytes</span><span class="p">);</span>
 </pre></div>
 </div>
 <p>Behind the scenes, <span class="docutils literal"><span class="pre">lwan_sendfile</span></span> is actually doing this (error handling
 omitted for brevity):</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="k">while</span> <span class="p">(</span><span class="n">sent_bytes</span> <span class="o">&lt;</span> <span class="n">total_bytes</span><span class="p">)</span> <span class="p">{</span>
+<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">while</span> <span class="p">(</span><span class="n">sent_bytes</span> <span class="o">&lt;</span> <span class="n">total_bytes</span><span class="p">)</span> <span class="p">{</span>
     <span class="n">read_bytes</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">file_fd</span><span class="p">,</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">buffer_size</span><span class="p">);</span>
     <span class="n">sent_bytes</span> <span class="o">+=</span> <span class="n">read_bytes</span><span class="p">;</span>
     <span class="n">write</span><span class="p">(</span><span class="n">socket_fd</span><span class="p">,</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">read_bytes</span><span class="p">);</span>
@@ -277,7 +324,7 @@ are apps for mobile devices with stacked lists and the eventual popup
 that appears on top of the content.</dd>
 </dl>
 <p>The code below shows a typical controller-view; explanation will follow.</p>
-<div class="highlight-javascript"><div class="highlight"><pre><span class="nx">MainController</span> <span class="o">=</span> <span class="nx">EUI</span><span class="p">.</span><span class="nx">ListController</span><span class="p">({</span>
+<div class="highlight-javascript"><div class="highlight"><pre><span/><span class="nx">MainController</span> <span class="o">=</span> <span class="nx">EUI</span><span class="p">.</span><span class="nx">ListController</span><span class="p">({</span>
     <span class="nx">title</span><span class="o">:</span> <span class="s1">'My Favorite Fruits'</span><span class="p">,</span>
     <span class="nx">model</span><span class="o">:</span> <span class="k">new</span> <span class="nx">ArrayModel</span><span class="p">([</span><span class="s1">'Pear'</span><span class="p">,</span> <span class="s1">'Banana'</span><span class="p">,</span> <span class="s1">'Uvaia'</span><span class="p">]),</span>
     <span class="nx">itemAtIndex</span><span class="o">:</span> <span class="kd">function</span><span class="p">(</span><span class="nx">index</span><span class="p">)</span> <span class="p">{</span>
@@ -306,7 +353,7 @@ application developer focuses only on defining behavior.</li>
 needs them. For instance, one could change the title based on how many
 fruits were in the model, by writing a <span class="docutils literal"><span class="pre">title</span></span> function like so:</li>
 </ul>
-<div class="highlight-javascript"><div class="highlight"><pre><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+<div class="highlight-javascript"><div class="highlight"><pre><span/><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
     <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">model</span><span class="p">.</span><span class="nx">length</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
             <span class="k">return</span> <span class="s2">"My Favorite Fruit"</span><span class="p">;</span>
     <span class="k">return</span> <span class="s2">"My Favourite Fruits"</span><span class="p">;</span>
@@ -358,7 +405,7 @@ calls required to serve one file. As a result, static file serving was quite
 slow compared to “hello world” requests. Bored one day, I’ve decided to speed
 this as much as I could.</p>
 <p>Before optimizing, serving a file would look like this:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="o">&lt;</span><span class="p">...</span> <span class="n">epoll_wait</span> <span class="n">resumed</span><span class="o">&gt;</span> <span class="p">{{</span><span class="n">EPOLLIN</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">8</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span>
+<div class="highlight-c"><div class="highlight"><pre><span/><span class="o">&lt;</span><span class="p">...</span> <span class="n">epoll_wait</span> <span class="n">resumed</span><span class="o">&gt;</span> <span class="p">{{</span><span class="n">EPOLLIN</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">8</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span>
 <span class="mi">4294967295</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span>
 <span class="n">rt_sigprocmask</span><span class="p">(</span><span class="n">SIG_BLOCK</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="p">[],</span> <span class="mi">8</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span>
 <span class="n">read</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s">"GET / HTTP/1.0</span><span class="se">\r\n</span><span class="s">"</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">16</span>
@@ -427,7 +474,7 @@ this as much as I could.</p>
 <p>Yes. That many system calls – I was not kidding when I said that file serving
 was added as an afterthought. After some experiments, I’ve managed to turn
 that mess into this:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="o">&lt;</span><span class="p">...</span> <span class="n">epoll_wait</span> <span class="n">resumed</span><span class="o">&gt;</span> <span class="p">{{</span><span class="n">EPOLLIN</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">9</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span>
+<div class="highlight-c"><div class="highlight"><pre><span/><span class="o">&lt;</span><span class="p">...</span> <span class="n">epoll_wait</span> <span class="n">resumed</span><span class="o">&gt;</span> <span class="p">{{</span><span class="n">EPOLLIN</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">9</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span>
 <span class="mi">4294967295</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span>
 <span class="n">read</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="s">"GET / HTTP/1.0</span><span class="se">\r\n</span><span class="s">"</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">16</span>
 <span class="n">newfstatat</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="s">"index.html"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFREG</span><span class="o">|</span><span class="mo">0664</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">13200</span><span class="p">,</span>
@@ -494,21 +541,21 @@ what I did, by implementing <span class="docutils literal"><span class="pre">cor
 called sequentially by <span class="docutils literal"><span class="pre">coro_free()</span></span>.</p>
 <p>This can be used for various purposes, including garbage collection and other
 miscellaneous cleanup code:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="kt">void</span><span class="o">*</span> <span class="nf">coro_malloc</span><span class="p">(</span><span class="kt">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">sz</span><span class="p">)</span> <span class="p">{</span>
+<div class="highlight-c"><div class="highlight"><pre><span/><span class="kt">void</span><span class="o">*</span> <span class="nf">coro_malloc</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">sz</span><span class="p">)</span> <span class="p">{</span>
     <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="n">sz</span><span class="p">);</span>
     <span class="k">if</span> <span class="p">(</span><span class="n">ptr</span><span class="p">)</span>
             <span class="n">coro_defer</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="n">free</span><span class="p">,</span> <span class="n">ptr</span><span class="p">);</span>
     <span class="k">return</span> <span class="n">ptr</span><span class="p">;</span>
 <span class="p">}</span>
 
-<span class="kt">void</span><span class="o">*</span> <span class="nf">coro_strdup</span><span class="p">(</span><span class="kt">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">str</span><span class="p">)</span> <span class="p">{</span>
+<span class="kt">void</span><span class="o">*</span> <span class="nf">coro_strdup</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">str</span><span class="p">)</span> <span class="p">{</span>
     <span class="kt">char</span> <span class="o">*</span><span class="n">dup</span> <span class="o">=</span> <span class="n">strdup</span><span class="p">(</span><span class="n">str</span><span class="p">);</span>
     <span class="k">if</span> <span class="p">(</span><span class="n">dup</span><span class="p">)</span>
             <span class="n">coro_defer</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="n">free</span><span class="p">,</span> <span class="n">ptr</span><span class="p">);</span>
     <span class="k">return</span> <span class="n">dup</span><span class="p">;</span>
 <span class="p">}</span>
 
-<span class="kt">int</span> <span class="nf">coro_open</span><span class="p">(</span><span class="kt">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">path</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">)</span>
+<span class="kt">int</span> <span class="nf">coro_open</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">path</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="kt">int</span> <span class="n">fd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">flags</span><span class="p">);</span>
     <span class="k">if</span> <span class="p">(</span><span class="n">fd</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span>
@@ -531,44 +578,6 @@ leave the cleanup to <a class="reference external" href="http://github.com/lpere
                 Tags:
                 <a href="tags/trick.html">trick</a>, <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/c.html">C</a></span>
         </div>
-        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
-            <span>August 10, 2012</span>
-        </div>
-        <div class="section">
-            <h1><a href="2012/08/10/hash_trie.html">Hash trie</a></h1>
-<p><a class="reference external" href="https://en.wikipedia.org/wiki/Trie">Tries</a> are very useful data structures if you need to perform longest
-subprefix matching. Unfortunately, simple implementations uses a lot of
-memory, which is often solved by collapsing common prefixes in a single node
-(like a <a class="reference external" href="https://en.wikipedia.org/wiki/Radix_tree">Radix tree</a>). However, this adds to the implementation complexity,
-which is something I like to avoid.</p>
-<p><a class="reference external" href="http://github.com/lpereira/lwan">Lwan</a>’s original trie implementation required 256 pointers per trie node
-(one per possible byte). This is not only wasteful, but also meant lwan would
-get a lot of cache misses.</p>
-<p>Instead of just using a <a class="reference external" href="https://en.wikipedia.org/wiki/Radix_tree">Radix tree</a>, I decided to keep the same basic
-implementation but lower the number of pointers per node to just 8 – and hash
-each key byte by calculating <span class="docutils literal"><span class="pre">MOD</span> <span class="pre">8</span></span>. This was a very cheap optimization,
-which works pretty well.</p>
-<p>But this optimization leads to the same problem found in <a class="reference external" href="https://en.wikipedia.org/wiki/Hash_table">hash tables</a>:
-<a class="reference external" href="https://en.wikipedia.org/wiki/Collision_(computer_science)">collisions</a>. The problem is minimized by the fact that collisions can only
-happen when using keys with the same length – which is uncommon in the basic
-use case for these tries in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>: matching URLs by their prefix to
-determine which handler to call.</p>
-<p>Nonetheless, this is easily fixed by adding a linked list to each leaf node.
-To avoid having to perform one last string comparison if there’s just one
-node in this linked list (and hence no collisions), <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>’s trie assume it
-was a match.</p>
-
-        </div>
-        <div class="postmeta">
-        <div class="author">
-            <span>Posted by Leandro Pereira</span>
-        </div>
-        
-        <div class="tags">
-            <span>
-                Tags:
-                <a href="tags/data_structure.html">data-structure</a>, <a href="tags/programming.html">programming</a>, <a href="tags/lwan.html">lwan</a></span>
-        </div>
         </div><div class="archive_link">
         <a href="archive.html"> &mdash; Blog Archive &mdash; </a>
     </div><ul class="related clearfix">
@@ -583,6 +592,8 @@ was a match.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="2016/11/08/infect_to_protect.html">Infect to Protect</a>
+        </li><li>
             <a href="2015/05/01/initializing_a_heap_allocated_structure_in_c.html">Initializing a heap-allocated structure in C</a>
         </li><li>
             <a href="2014/11/02/hybrid_c_pascal_strings.html">Hybrid C/Pascal Strings</a>
@@ -600,22 +611,23 @@ was a match.</p>
             <a href="2012/11/11/mustache_templates_in_c.html">Mustache templates in C</a>
         </li><li>
             <a href="2012/10/27/programming_on_an_arduino_without_a_pc.html">Programming on an Arduino without a PC</a>
-        </li><li>
-            <a href="2012/10/14/vectored_i_o_with_mmap___to_serve_files.html">Vectored I/O with mmap() to serve files</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
     <h1>Tags Cloud</h1>
       <a href="tags/arduino.html" style="font-size: 8pt">arduino</a>&nbsp;&nbsp;
+      <a href="tags/assembly.html" style="font-size: 8pt">assembly</a>&nbsp;&nbsp;
+      <a href="tags/bpf.html" style="font-size: 8pt">bpf</a>&nbsp;&nbsp;
       <a href="tags/c.html" style="font-size: 17pt">C</a>&nbsp;&nbsp;
       <a href="tags/c.html" style="font-size: 8pt">c</a>&nbsp;&nbsp;
       <a href="tags/conferences.html" style="font-size: 8pt">conferences</a>&nbsp;&nbsp;
+      <a href="tags/container.html" style="font-size: 8pt">container</a>&nbsp;&nbsp;
       <a href="tags/data_structure.html" style="font-size: 8pt">data-structure</a>&nbsp;&nbsp;
       <a href="tags/efl.html" style="font-size: 8pt">efl</a>&nbsp;&nbsp;
       <a href="tags/enlightenment.html" style="font-size: 8pt">enlightenment</a>&nbsp;&nbsp;
       <a href="tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
-      <a href="tags/linux.html" style="font-size: 8pt">linux</a>&nbsp;&nbsp;
+      <a href="tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
       <a href="tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
       <a href="tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
       <a href="tags/profusion.html" style="font-size: 9pt">profusion</a>&nbsp;&nbsp;

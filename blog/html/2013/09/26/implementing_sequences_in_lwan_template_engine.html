@@ -28,7 +28,7 @@
         <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
         <script src="../../../_static/plugins.js"></script>
         <script src="../../../_static/main.js"></script>
-        <link rel="next" title="Partially Applied Functions in C" href="../../07/20/partial_functions_in_c.html" /><link rel="prev" title="Reducing Lwan memory usage by 94%" href="../../12/08/reducing_lwan_memory_usage.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
+        <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Partially Applied Functions in C" href="../../07/20/partial_functions_in_c.html" /><link rel="prev" title="Reducing Lwan memory usage by 94%" href="../../12/08/reducing_lwan_memory_usage.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
         VERSION:     '1.5',
@@ -94,9 +94,9 @@ between the iteration tags, repeating the process when the iteration-end tag
 is found and the coroutine yields <span class="docutils literal"><span class="pre">true</span></span> again.</p>
 <p>The coroutine is supposed to clean up after itself before returning a
 <span class="docutils literal"><span class="pre">false</span></span> value.</p>
-<div class="figure align-center">
+<div class="figure align-center" id="id1">
 <img alt="rubegoldbergmachine" src="https://i.imgur.com/7P2yadJ.jpg" />
-<p class="caption">Professor Butts would be proud. Maybe. <a class="reference external" href="https://en.wikipedia.org/wiki/File:Rubenvent.jpg">Source</a>.</p>
+<p class="caption"><span class="caption-text">Professor Butts would be proud. Maybe. <a class="reference external" href="https://en.wikipedia.org/wiki/File:Rubenvent.jpg">Source</a>.</span></p>
 </div>
 <p>A sample generator function is shown below. It iterates over a directory
 with <span class="docutils literal"><span class="pre">readdir()</span></span>, returning <span class="docutils literal"><span class="pre">1</span></span> on new item availability and <span class="docutils literal"><span class="pre">0</span></span> when there
@@ -106,7 +106,7 @@ is all contained within a single function.</p>
 structure &#8211; calling <span class="docutils literal"><span class="pre">coro_yield()</span></span> will of course maintain the stack
 alive, so local variables can be used outside this function as long as a
 reference to them can be obtained.</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="kt">int</span> <span class="nf">dir_list_generator</span><span class="p">(</span><span class="kt">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">)</span>
+<div class="highlight-c"><div class="highlight"><pre><span></span><span class="kt">int</span> <span class="nf">dir_list_generator</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="kt">DIR</span> <span class="o">*</span><span class="n">dir</span><span class="p">;</span>
     <span class="k">struct</span> <span class="n">dirent</span> <span class="o">*</span><span class="n">ent</span><span class="p">;</span>
@@ -160,6 +160,8 @@ about programming.  But I digress.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2016/11/08/infect_to_protect.html">Infect to Protect</a>
+        </li><li>
             <a href="../../../2015/05/01/initializing_a_heap_allocated_structure_in_c.html">Initializing a heap-allocated structure in C</a>
         </li><li>
             <a href="../../../2014/11/02/hybrid_c_pascal_strings.html">Hybrid C/Pascal Strings</a>
@@ -177,22 +179,23 @@ about programming.  But I digress.</p>
             <a href="../../../2012/11/11/mustache_templates_in_c.html">Mustache templates in C</a>
         </li><li>
             <a href="../../../2012/10/27/programming_on_an_arduino_without_a_pc.html">Programming on an Arduino without a PC</a>
-        </li><li>
-            <a href="../../../2012/10/14/vectored_i_o_with_mmap___to_serve_files.html">Vectored I/O with mmap() to serve files</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
     <h1>Tags Cloud</h1>
       <a href="../../../tags/arduino.html" style="font-size: 8pt">arduino</a>&nbsp;&nbsp;
+      <a href="../../../tags/assembly.html" style="font-size: 8pt">assembly</a>&nbsp;&nbsp;
+      <a href="../../../tags/bpf.html" style="font-size: 8pt">bpf</a>&nbsp;&nbsp;
       <a href="../../../tags/c.html" style="font-size: 17pt">C</a>&nbsp;&nbsp;
       <a href="../../../tags/c.html" style="font-size: 8pt">c</a>&nbsp;&nbsp;
       <a href="../../../tags/conferences.html" style="font-size: 8pt">conferences</a>&nbsp;&nbsp;
+      <a href="../../../tags/container.html" style="font-size: 8pt">container</a>&nbsp;&nbsp;
       <a href="../../../tags/data_structure.html" style="font-size: 8pt">data-structure</a>&nbsp;&nbsp;
       <a href="../../../tags/efl.html" style="font-size: 8pt">efl</a>&nbsp;&nbsp;
       <a href="../../../tags/enlightenment.html" style="font-size: 8pt">enlightenment</a>&nbsp;&nbsp;
       <a href="../../../tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="../../../tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
-      <a href="../../../tags/linux.html" style="font-size: 8pt">linux</a>&nbsp;&nbsp;
+      <a href="../../../tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
       <a href="../../../tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
       <a href="../../../tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
       <a href="../../../tags/profusion.html" style="font-size: 9pt">profusion</a>&nbsp;&nbsp;

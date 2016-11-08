@@ -28,7 +28,7 @@
         <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
         <script src="../../../_static/plugins.js"></script>
         <script src="../../../_static/main.js"></script>
-        <link rel="next" title="Reducing Lwan memory usage by 94%" href="../../../2013/12/08/reducing_lwan_memory_usage.html" /><link rel="prev" title="Life of a HTTP request, as seen by my toy web server" href="../../10/06/life_of_a_http_request.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
+        <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Reducing Lwan memory usage by 94%" href="../../../2013/12/08/reducing_lwan_memory_usage.html" /><link rel="prev" title="Life of a HTTP request, as seen by my toy web server" href="../../10/06/life_of_a_http_request.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
         VERSION:     '1.5',
@@ -70,7 +70,7 @@ numbers.  Although this works, it is quite boring, performance-wise.</p>
 <p>The second approach was using the naïve algorithm, which basically divides
 the number by <span class="docutils literal"><span class="pre">10</span></span> in succession, writing backwards the result of modulus by
 <span class="docutils literal"><span class="pre">10</span></span> to a string, and then reversing the string when the number reaches <span class="docutils literal"><span class="pre">0</span></span>.</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="c1">// Code based on https://code.google.com/p/stringencoders/</span>
+<div class="highlight-c"><div class="highlight"><pre><span></span><span class="c1">// Code based on https://code.google.com/p/stringencoders/</span>
 <span class="kt">size_t</span> <span class="nf">naive_uint32_to_str</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">value</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">str</span><span class="p">)</span> <span class="p">{</span>
     <span class="kt">char</span> <span class="o">*</span><span class="n">wstr</span> <span class="o">=</span> <span class="n">str</span><span class="p">;</span>
     <span class="c1">// Conversion. Number is reversed.</span>
@@ -90,7 +90,7 @@ me.  Why not just write the string backwards already?</p>
 trick of multiplying the size of an integer in bytes by <span class="docutils literal"><span class="pre">3</span></span> to obtain an
 approximation of the number of digits for <span class="docutils literal"><span class="pre">MAX_INT</span></span>, including the zero
 terminator, regardless of what <span class="docutils literal"><span class="pre">sizeof(int)</span></span> is.</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="cp">#define INT_TO_STR_BUFFER_SIZE (3 * sizeof(int))</span>
+<div class="highlight-c"><div class="highlight"><pre><span></span><span class="cp">#define INT_TO_STR_BUFFER_SIZE (3 * sizeof(int))</span>
 
 <span class="kt">char</span> <span class="o">*</span><span class="nf">lwan_uint32_to_str</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">value</span><span class="p">,</span>
             <span class="kt">char</span> <span class="n">buffer</span><span class="p">[</span><span class="k">static</span> <span class="n">INT_TO_STR_BUFFER_SIZE</span><span class="p">],</span>
@@ -122,7 +122,7 @@ each digit, and they use a lookup table as well.</p>
 there&#8217;s a table for all pair of digits, from <cite>00</cite> to <cite>99</cite>.  This cuts the
 amount of divisions by half, yielding a significantly faster algorithm:
 around 31% faster than the above snippet:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="kt">size_t</span> <span class="nf">facebook_uint32_to_str</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">value</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">dst</span><span class="p">)</span>
+<div class="highlight-c"><div class="highlight"><pre><span></span><span class="kt">size_t</span> <span class="nf">facebook_uint32_to_str</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">value</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">dst</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="k">static</span> <span class="k">const</span> <span class="kt">char</span> <span class="n">digits</span><span class="p">[</span><span class="mi">201</span><span class="p">]</span> <span class="o">=</span>
         <span class="s">&quot;0001020304050607080910111213141516171819&quot;</span>
@@ -164,17 +164,17 @@ won&#8217;t be significant for small numbers (one and two digits); but if you&#8
 optimizing to this level, using a constant won&#8217;t hurt.  So much so, that it
 is consistently faster on my machine (a Core i7 2640M laptop, with an
 up-to-date 64-bit Arch Linux):</p>
-<div class="figure align-center">
+<div class="figure align-center" id="id1">
 <a class="reference internal image-reference" href="https://i.imgur.com/9V0PsPK.png"><img alt="relativespeedup" src="https://i.imgur.com/9V0PsPK.png" style="width: 100%;" /></a>
-<p class="caption">Relative speedup of <span class="docutils literal"><span class="pre">facebook_uint32_to_str()</span></span> using <span class="docutils literal"><span class="pre">digits10()</span></span> and a
-constant value</p>
+<p class="caption"><span class="caption-text">Relative speedup of <span class="docutils literal"><span class="pre">facebook_uint32_to_str()</span></span> using <span class="docutils literal"><span class="pre">digits10()</span></span> and a
+constant value</span></p>
 </div>
 <p>That chart was obtained by using a <a class="reference external" href="https://gist.github.com/lpereira/c0bf3ca3148321395037">benchmark program</a> I wrote that will
 test all these ways of converting an integer to their string representation.
 To compare with other methods, here&#8217;s the full chart:</p>
-<div class="figure align-center">
+<div class="figure align-center" id="id2">
 <a class="reference internal image-reference" href="https://i.imgur.com/b2enLNt.png"><img alt="benchmark" src="https://i.imgur.com/b2enLNt.png" style="width: 100%;" /></a>
-<p class="caption">Results for <span class="docutils literal"><span class="pre">snprintf()</span></span> omitted to not skew results. Spoiler: it&#8217;s slow.</p>
+<p class="caption"><span class="caption-text">Results for <span class="docutils literal"><span class="pre">snprintf()</span></span> omitted to not skew results. Spoiler: it&#8217;s slow.</span></p>
 </div>
 <p>Unfortunately, there&#8217;s a licencing issue that won&#8217;t let me use this code in
 Lwan.  The blog post doesn&#8217;t mention the license.  I&#8217;ve found this <a class="reference external" href="https://mail-archives.apache.org/mod_mbox/apr-dev/200704.mbox/%3C344-65769&#64;sneakemail.com%3E">two-digit
@@ -205,6 +205,8 @@ had this idea first.  My go-to source of this kind of thing is usually
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2016/11/08/infect_to_protect.html">Infect to Protect</a>
+        </li><li>
             <a href="../../../2015/05/01/initializing_a_heap_allocated_structure_in_c.html">Initializing a heap-allocated structure in C</a>
         </li><li>
             <a href="../../11/02/hybrid_c_pascal_strings.html">Hybrid C/Pascal Strings</a>
@@ -222,22 +224,23 @@ had this idea first.  My go-to source of this kind of thing is usually
             <a href="../../../2012/11/11/mustache_templates_in_c.html">Mustache templates in C</a>
         </li><li>
             <a href="../../../2012/10/27/programming_on_an_arduino_without_a_pc.html">Programming on an Arduino without a PC</a>
-        </li><li>
-            <a href="../../../2012/10/14/vectored_i_o_with_mmap___to_serve_files.html">Vectored I/O with mmap() to serve files</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
     <h1>Tags Cloud</h1>
       <a href="../../../tags/arduino.html" style="font-size: 8pt">arduino</a>&nbsp;&nbsp;
+      <a href="../../../tags/assembly.html" style="font-size: 8pt">assembly</a>&nbsp;&nbsp;
+      <a href="../../../tags/bpf.html" style="font-size: 8pt">bpf</a>&nbsp;&nbsp;
       <a href="../../../tags/c.html" style="font-size: 17pt">C</a>&nbsp;&nbsp;
       <a href="../../../tags/c.html" style="font-size: 8pt">c</a>&nbsp;&nbsp;
       <a href="../../../tags/conferences.html" style="font-size: 8pt">conferences</a>&nbsp;&nbsp;
+      <a href="../../../tags/container.html" style="font-size: 8pt">container</a>&nbsp;&nbsp;
       <a href="../../../tags/data_structure.html" style="font-size: 8pt">data-structure</a>&nbsp;&nbsp;
       <a href="../../../tags/efl.html" style="font-size: 8pt">efl</a>&nbsp;&nbsp;
       <a href="../../../tags/enlightenment.html" style="font-size: 8pt">enlightenment</a>&nbsp;&nbsp;
       <a href="../../../tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="../../../tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
-      <a href="../../../tags/linux.html" style="font-size: 8pt">linux</a>&nbsp;&nbsp;
+      <a href="../../../tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
       <a href="../../../tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
       <a href="../../../tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
       <a href="../../../tags/profusion.html" style="font-size: 9pt">profusion</a>&nbsp;&nbsp;
