@@ -382,7 +382,7 @@ a challenge.
 Another way would be the following: Grab a list of undefined symbols a
 program uses, and find them in the shared libraries it links to.  Then scan
 the executable and the libraries for sequences like ``mov eax, 57; syscall``
-(for the oldschool ``fork(2)`` syscall on x86-64) or ``mov eax, 57; call
+(for the oldschool ``fork(2)`` syscall on x86-64) or ``mov rdi, 57; call
 syscall@plt``.  This is still not foolproof, since not necessarily a system
 call number (loaded into ``eax``) will be hardcoded within a program or
 shared library.
