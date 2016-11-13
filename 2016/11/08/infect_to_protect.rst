@@ -108,17 +108,17 @@ seccomp-BPF extension.
 BPF stands for `Berkeley Packet
 Filter <https://en.wikipedia.org/wiki/Berkeley_Packet_Filter>`__. A
 famous use of BPFs is in the tcpdump program, where rules such as "only
-give me back TCP connections with the RST flag set" can be passed to the
+give me back TCP fragments with the RST flag set" can be passed to the
 kernel; packets that don’t match the filter are not copied back to the
 userland, reducing a lot of the chatter between the two lands.
 
 Obviously, this must be extremely performant, since kernel time must be
-conserved at all costs (the kernel is there only to serve userland,
-after all). Linux has many ways to speed up BPF programs, including an
-in-kernel JIT. Some restrictions are in place that wouldn’t allow BPF
-programs to take an infinite amount of time to execute, and this `blog
-post <https://blog.cloudflare.com/bpf-the-forgotten-bytecode/>`__ is a
-good introductory reading material on the subject.
+conserved at all costs (the kernel is there only to serve userland, after
+all).  Linux has many ways to speed up BPF programs, including an in-kernel
+JIT compiler.  Some restrictions are in place that wouldn’t allow BPF
+programs to take an infinite amount of time to execute, and this `blog post
+<https://blog.cloudflare.com/bpf-the-forgotten-bytecode/>`__ is a good
+introductory reading material on the subject.
 
 Another, slightly less famous use of BPFs is with the seccomp-BPF
 extension. Instead of filtering network packets, processes can, for
