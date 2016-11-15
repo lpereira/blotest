@@ -246,7 +246,7 @@ certainly glad GDB has layouts that displays both the `disassembly and
 the
 registers <https://reverseengineering.stackexchange.com/questions/1935/how-to-handle-stripped-binaries-with-gdb-no-source-no-symbols-and-gdb-only-sho>`__.
 
-.. figure:: http://data.photofunky.net/output/image/f/b/5/0/fb50ca/photofunky.gif
+.. figure:: https://data.photofunky.net/output/image/f/b/5/0/fb50ca/photofunky.gif
    :alt: Step-by-step debugging
    :align: center
    :width: 50%
