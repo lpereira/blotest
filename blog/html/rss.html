@@ -5,8 +5,114 @@
         <link>http://tia.mat.br/blog/html/</link>
         <description>Geek in training</description>
         <language>en-us</language>
-        <pubDate>Tue, 08 Nov 2016 00:00:00 -0800</pubDate>
+        <pubDate>Wed, 01 Mar 2017 00:00:00 -0800</pubDate>
         
+        <item>
+            <link>http://tia.mat.br/blog/html/2017/03/01/parsing_json.html</link>
+            <guid>http://tia.mat.br/blog/html/2017/03/01/parsing_json.html</guid>
+            <title><![CDATA[Parsing JSON]]></title>
+            <description><![CDATA[<h1>Parsing JSON</h1>
+<p>There are many libraries out there to parse JSON files.  It might be a
+futile attempt, then, to write yet another one.  However, when you’re
+working on a RTOS where memory is golden, and the alternatives don’t look
+that great, you got to do something about it.</p>
+<p>Recently I wrote a <a class="reference external" href="http://www.json.org">JSON</a> parser for a project at
+work.  This parser uses constant memory, regardless of the amount of data
+it’s working with, and deserializes directly to a C struct.  Similar, in
+spirit, to the JSON parser that’s part of the Golang standard library, that
+encodes and decodes data based on a tagged structure.</p>
+<p>The lexer is the usual state machine, where the state itself is a function
+pointer to a function that handles that particular state.</p>
+<p>I’ve been using this technique for a while, and I found that it’s a very
+clean and efficient way of describing state machines, specially for lexers.</p>
+<p>I began using it after a coworker wrote a <a class="reference external" href="https://github.com/solettaproject/soletta/blob/3bda9802b243c2052555cf88263f754d34458414/src/shared/sol-fbp-internal-scanner.c">parser for a DSL</a>
+using it – and he got the idea from the – you guessed – Golang template
+package.  (There’s a <a class="reference external" href="https://www.youtube.com/watch?v=HxaD_trXwRE">nice talk by Rob Pike about it</a> – I recommend this talk
+not only for the lexing goodness, but also for the tips on how to evolve a
+concurrent design.)</p>
+<p>The parser implementation itself is nothing to write home about.  However,
+by using the same idea used in Lwan’s mustache template engine to <a class="reference external" href="https://tia.mat.br/posts/2012/11/11/mustache_templates_in_c.html">obtain
+the variables</a>, it
+manages to do some things that are not common in JSON parsers written in C:</p>
+<ul class="simple">
+<li>It will accept only values of known types for a particular key.</li>
+<li>It will save the decoded value directly in a struct field.</li>
+<li>It won’t try to decode the same field twice.</li>
+</ul>
+<p>The first point is crucial when working with data received from the network,
+which is precisely the kind of thing I’m dealing with.  This avoids problems
+such as type confusion and such, and moves the responsibility of checking
+the types to the library rather than the user of the library.</p>
+<p>By saving the decoded value directly into a struct field, it does use a
+predictable amount of memory.  This is good, as it’s not going to balloon
+out of control, or require some guesswork to know beforehand how many tokens
+are going to be necessary to deserialize some values.  The C compiler
+already knows exactly how many bytes a struct needs.</p>
+<p>Some fields might be optional in a JSON blob.  So the parser uses a bitmask
+to mark which fields have been decoded (and returns that, so that the
+library user can efficiently test if a value has been deserialized or not).
+Since it was easy to do, the library refuses to decode a key that has been
+deserialized before.</p>
+<p>So, a typical use is the following:</p>
+<div class="highlight-c"><div class="highlight"><pre><span/><span class="cm">/* First, define a struct to hold the values. */</span>
+<span class="k">struct</span> <span class="n">values</span> <span class="p">{</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">some_string</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">some_int</span><span class="p">;</span>
+    <span class="kt">bool</span> <span class="n">some_bool</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="cm">/* Then, define a descriptor for that struct. */</span>
+<span class="k">static</span> <span class="k">const</span> <span class="k">struct</span> <span class="n">json_descr</span> <span class="n">values_descr</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">FIELD</span><span class="p">(</span><span class="k">struct</span> <span class="n">values</span><span class="p">,</span> <span class="n">some_string</span><span class="p">,</span> <span class="n">JSON_TOK_STRING</span><span class="p">),</span>
+    <span class="n">FIELD</span><span class="p">(</span><span class="k">struct</span> <span class="n">values</span><span class="p">,</span> <span class="n">some_int</span><span class="p">,</span> <span class="n">JSON_TOK_NUMBER</span><span class="p">),</span>
+    <span class="n">FIELD</span><span class="p">(</span><span class="k">struct</span> <span class="n">values</span><span class="p">,</span> <span class="n">some_bool</span><span class="p">,</span> <span class="n">JSON_TOK_TRUE</span><span class="p">),</span>
+<span class="p">};</span>
+<span class="cm">/* (FIELD is just a macro that saves the offsetof()</span>
+<span class="cm"> * each struct member so that a pointer can be produced</span>
+<span class="cm"> * afterwards.)  */</span>
+
+<span class="cm">/* It's now just a matter of parsing the JSON now. */</span>
+<span class="k">struct</span> <span class="n">values</span> <span class="n">values</span><span class="p">;</span>
+<span class="kt">int32_t</span> <span class="n">ret</span> <span class="o">=</span> <span class="n">json_parse</span><span class="p">(</span><span class="n">serialized</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="n">serialized</span><span class="p">),</span>
+    <span class="n">values_descr</span><span class="p">,</span> <span class="n">ARRAY_SIZE</span><span class="p">(</span><span class="n">values_descr</span><span class="p">),</span> <span class="o">&amp;</span><span class="n">values</span><span class="p">);</span>
+
+<span class="cm">/* Bits 0, 1, and 2 of ret will be set if some_string,</span>
+<span class="cm"> * some_int, and some_bool have been successfully</span>
+<span class="cm"> * deserialized.  */</span>
+</pre></div>
+</div>
+<p>Another thing that could be done – but that has not been implemented yet,
+is to do the opposite as well: the descriptor and a struct to produce
+JSON-encoded data.  This has many advantages over the usual JSON libraries
+that require generating a JSON tree in memory just to serialize it
+afterwards.</p>
+<p>And although I’m quite happy with this code, there are still some
+limitations that I’ll address whenever I have the need.</p>
+<p>Mainly, there’s no way to parse nested objects or arrays.  I’ve written code
+to do this but these changes haven’t gotten any fuzz-testing action so I’m
+holding them off it until my living room heater^Wcomputer has worked on the
+problem for at least a week.</p>
+<p>Another one that’s not a deal breaker for an embedded OS is the lack of
+floating pointing numbers (only integers for now).  Parsing floating point
+is <a class="reference external" href="http://www.netlib.org/fp/dtoa.c">trickier than it sounds</a>, and
+there’s no <span class="docutils literal"><span class="pre">strtod()</span></span> in Zephyr’s minimal libc.</p>
+<p>As a minor issue to work around, there’s the return value: this limits the
+number of fields to be parsed to 32; that should be plenty for most uses.
+However, in the unlikely event that’s not sufficient, this can be worked
+around by having multiple descriptors.</p>
+<p>And, finally, there’s the JSON encoding part that I’ve mentioned already.</p>
+<p>The major problem with this piece of code, that can’t be fixed by writing
+more code, is that I can’t use it with Lwan due to licensing reasons:
+although it is open source, part of the <a class="reference external" href="http://www.zephyrproject.org">Zephyr project</a>, it is licensed under the Apache 2
+license, which is incompatible with the GPL2+ used by Lwan (would have to
+bump it to [L]GPL3).</p>
+<p>(For those that might ask how fast is it: it’s fast enough. I didn’t
+measure, I didn’t compare, and I don’t really care: it’s readable,
+maintainable, and does the job.)</p>
+]]></description>
+             <pubDate>Wed, 01 Mar 2017 00:00:00 -0800</pubDate>
+        </item>
+    
         <item>
             <link>http://tia.mat.br/blog/html/2016/11/08/infect_to_protect.html</link>
             <guid>http://tia.mat.br/blog/html/2016/11/08/infect_to_protect.html</guid>

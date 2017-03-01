@@ -57,6 +57,58 @@
                 </li>
               </ul>
           </nav><div class="main-container" role="main"><div class="main wrapper body clearfix"><article><div class="timestamp postmeta">
+            <span>August 11, 2012</span>
+        </div>
+        <div class="section">
+            <h1><a href="2012/08/11/deferred_statements_in_c.html">Deferred statements in C</a></h1>
+<p><a class="reference external" href="http://golang.org">Golang</a> has a lot of nice features – and one I found pretty interesting is
+called <a class="reference external" href="http://blog.golang.org/2010/08/defer-panic-and-recover.html">deferred statements</a>. This can be implemented in C++ pretty easily
+through <a class="reference external" href="https://en.wikipedia.org/wiki/Resource_Acquisition_Is_Initialization">RAII</a>, but in C we’re pretty much out of luck. Or are we?</p>
+<p>In <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>, I’m using my own home-cooked <a class="reference external" href="https://en.wikipedia.org/wiki/Coroutine">coroutine</a> implementation. All
+requests are handled by coroutines, so that it makes easy to condition the
+execution of deferred statements with the cleanup of a coroutine. And that’s
+what I did, by implementing <span class="docutils literal"><span class="pre">coro_defer()</span></span>, which adds hooks that will be
+called sequentially by <span class="docutils literal"><span class="pre">coro_free()</span></span>.</p>
+<p>This can be used for various purposes, including garbage collection and other
+miscellaneous cleanup code:</p>
+<div class="highlight-c"><div class="highlight"><pre><span/><span class="kt">void</span><span class="o">*</span> <span class="nf">coro_malloc</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">sz</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="n">sz</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">ptr</span><span class="p">)</span>
+            <span class="n">coro_defer</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="n">free</span><span class="p">,</span> <span class="n">ptr</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">ptr</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">void</span><span class="o">*</span> <span class="nf">coro_strdup</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">str</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">dup</span> <span class="o">=</span> <span class="n">strdup</span><span class="p">(</span><span class="n">str</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">dup</span><span class="p">)</span>
+            <span class="n">coro_defer</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="n">free</span><span class="p">,</span> <span class="n">ptr</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">dup</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">coro_open</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">path</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">fd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">flags</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">fd</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">coro_defer</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="n">close</span><span class="p">,</span> <span class="n">INT_TO_PTR</span><span class="p">(</span><span class="n">fd</span><span class="p">));</span>
+    <span class="k">return</span> <span class="n">fd</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>This way, one can easily allocate memory, lock mutexes, open files – and
+leave the cleanup to <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>.</p>
+
+        </div>
+        <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="tags/trick.html">trick</a>, <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/c.html">C</a></span>
+        </div>
+        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
             <span>August 10, 2012</span>
         </div>
         <div class="section">
@@ -231,6 +283,8 @@ thank my employer, ProFUSION Embedded Systems, for sponsoring my trip.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="2017/03/01/parsing_json.html">Parsing JSON</a>
+        </li><li>
             <a href="2016/11/08/infect_to_protect.html">Infect to Protect</a>
         </li><li>
             <a href="2015/05/01/initializing_a_heap_allocated_structure_in_c.html">Initializing a heap-allocated structure in C</a>
@@ -248,8 +302,6 @@ thank my employer, ProFUSION Embedded Systems, for sponsoring my trip.</p>
             <a href="2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a>
         </li><li>
             <a href="2012/11/11/mustache_templates_in_c.html">Mustache templates in C</a>
-        </li><li>
-            <a href="2012/10/27/programming_on_an_arduino_without_a_pc.html">Programming on an Arduino without a PC</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
@@ -257,7 +309,7 @@ thank my employer, ProFUSION Embedded Systems, for sponsoring my trip.</p>
       <a href="tags/arduino.html" style="font-size: 8pt">arduino</a>&nbsp;&nbsp;
       <a href="tags/assembly.html" style="font-size: 8pt">assembly</a>&nbsp;&nbsp;
       <a href="tags/bpf.html" style="font-size: 8pt">bpf</a>&nbsp;&nbsp;
-      <a href="tags/c.html" style="font-size: 17pt">C</a>&nbsp;&nbsp;
+      <a href="tags/c.html" style="font-size: 16pt">C</a>&nbsp;&nbsp;
       <a href="tags/c.html" style="font-size: 8pt">c</a>&nbsp;&nbsp;
       <a href="tags/conferences.html" style="font-size: 8pt">conferences</a>&nbsp;&nbsp;
       <a href="tags/container.html" style="font-size: 8pt">container</a>&nbsp;&nbsp;
@@ -267,15 +319,17 @@ thank my employer, ProFUSION Embedded Systems, for sponsoring my trip.</p>
       <a href="tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
       <a href="tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
-      <a href="tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
+      <a href="tags/lwan.html" style="font-size: 16pt">lwan</a>&nbsp;&nbsp;
       <a href="tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
+      <a href="tags/parser.html" style="font-size: 8pt">parser</a>&nbsp;&nbsp;
       <a href="tags/profusion.html" style="font-size: 9pt">profusion</a>&nbsp;&nbsp;
       <a href="tags/programming.html" style="font-size: 20pt">programming</a>&nbsp;&nbsp;
       <a href="tags/strace.html" style="font-size: 8pt">strace</a>&nbsp;&nbsp;
       <a href="tags/template.html" style="font-size: 8pt">template</a>&nbsp;&nbsp;
       <a href="tags/tizen.html" style="font-size: 8pt">tizen</a>&nbsp;&nbsp;
       <a href="tags/trick.html" style="font-size: 14pt">trick</a>&nbsp;&nbsp;
-      <a href="tags/tricks.html" style="font-size: 8pt">tricks</a>
+      <a href="tags/tricks.html" style="font-size: 8pt">tricks</a>&nbsp;&nbsp;
+      <a href="tags/zephyr.html" style="font-size: 8pt">zephyr</a>
 </div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
 
         <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2015, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->

@@ -4,6 +4,7 @@ Sitemap
 .. toctree::
    :maxdepth: 1
 
+   2017/03/01/parsing_json
    2016/11/08/infect_to_protect
    2016/11/06/reverse_quarantine
    2015/05/01/initializing_a_heap_allocated_structure_in_c

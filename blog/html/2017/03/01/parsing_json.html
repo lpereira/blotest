@@ -1,0 +1,241 @@
+<!DOCTYPE html><!--[if lt IE 7]>      <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width">
+        <title>Parsing JSON &mdash; Leandro Pereira</title>
+            <link rel="stylesheet" href="../../../_static/normalize.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/sphinx.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/main.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/flat.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+            <link rel="stylesheet" href="../../../_static/font-awesome.min.css" type="text/css">
+        <link rel="shortcut icon" href="../../../_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
+        <script src="../../../_static/vendor/modernizr-2.6.2.min.js"></script>
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+        <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
+        <script src="../../../_static/plugins.js"></script>
+        <script src="../../../_static/main.js"></script>
+        <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Infect to Protect" href="../../../2016/11/08/infect_to_protect.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
+<style type="text/css">img {max-width: 100%;}</style>
+</head>
+    <body role="document">
+        <!--[if lt IE 7]>
+            <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
+        <![endif]-->
+
+      <div id="container"><header role="banner">
+            <hgroup>
+              <h1><a href="../../../index.html">Leandro Pereira</a></h1><h2>Geek in training</h2></hgroup>
+          </header>
+      <nav role="navigation">
+            <ul><li class="main-nav">
+                  <a href="../../../index.html">Home</a>
+                </li>
+              <li class="main-nav">
+                  <a href="../../../pages/about.html">About</a>
+                </li>
+              </ul>
+          </nav><div class="main-container" role="main"><div class="main wrapper body clearfix"><article><div class="timestamp postmeta">
+            <span>March 01, 2017</span>
+        </div>
+    <div class="section" id="parsing-json">
+<h1>Parsing JSON</h1>
+<p>There are many libraries out there to parse JSON files.  It might be a
+futile attempt, then, to write yet another one.  However, when you&#8217;re
+working on a RTOS where memory is golden, and the alternatives don&#8217;t look
+that great, you got to do something about it.</p>
+<p>Recently I wrote a <a class="reference external" href="http://www.json.org">JSON</a> parser for a project at
+work.  This parser uses constant memory, regardless of the amount of data
+it&#8217;s working with, and deserializes directly to a C struct.  Similar, in
+spirit, to the JSON parser that&#8217;s part of the Golang standard library, that
+encodes and decodes data based on a tagged structure.</p>
+<p>The lexer is the usual state machine, where the state itself is a function
+pointer to a function that handles that particular state.</p>
+<p>I&#8217;ve been using this technique for a while, and I found that it&#8217;s a very
+clean and efficient way of describing state machines, specially for lexers.</p>
+<p>I began using it after a coworker wrote a <a class="reference external" href="https://github.com/solettaproject/soletta/blob/3bda9802b243c2052555cf88263f754d34458414/src/shared/sol-fbp-internal-scanner.c">parser for a DSL</a>
+using it &#8211; and he got the idea from the &#8211; you guessed &#8211; Golang template
+package.  (There&#8217;s a <a class="reference external" href="https://www.youtube.com/watch?v=HxaD_trXwRE">nice talk by Rob Pike about it</a> &#8211; I recommend this talk
+not only for the lexing goodness, but also for the tips on how to evolve a
+concurrent design.)</p>
+<p>The parser implementation itself is nothing to write home about.  However,
+by using the same idea used in Lwan&#8217;s mustache template engine to <a class="reference external" href="https://tia.mat.br/posts/2012/11/11/mustache_templates_in_c.html">obtain
+the variables</a>, it
+manages to do some things that are not common in JSON parsers written in C:</p>
+<ul class="simple">
+<li>It will accept only values of known types for a particular key.</li>
+<li>It will save the decoded value directly in a struct field.</li>
+<li>It won&#8217;t try to decode the same field twice.</li>
+</ul>
+<p>The first point is crucial when working with data received from the network,
+which is precisely the kind of thing I&#8217;m dealing with.  This avoids problems
+such as type confusion and such, and moves the responsibility of checking
+the types to the library rather than the user of the library.</p>
+<p>By saving the decoded value directly into a struct field, it does use a
+predictable amount of memory.  This is good, as it&#8217;s not going to balloon
+out of control, or require some guesswork to know beforehand how many tokens
+are going to be necessary to deserialize some values.  The C compiler
+already knows exactly how many bytes a struct needs.</p>
+<p>Some fields might be optional in a JSON blob.  So the parser uses a bitmask
+to mark which fields have been decoded (and returns that, so that the
+library user can efficiently test if a value has been deserialized or not).
+Since it was easy to do, the library refuses to decode a key that has been
+deserialized before.</p>
+<p>So, a typical use is the following:</p>
+<div class="highlight-c"><div class="highlight"><pre><span></span><span class="cm">/* First, define a struct to hold the values. */</span>
+<span class="k">struct</span> <span class="n">values</span> <span class="p">{</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">some_string</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">some_int</span><span class="p">;</span>
+    <span class="kt">bool</span> <span class="n">some_bool</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="cm">/* Then, define a descriptor for that struct. */</span>
+<span class="k">static</span> <span class="k">const</span> <span class="k">struct</span> <span class="n">json_descr</span> <span class="n">values_descr</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">FIELD</span><span class="p">(</span><span class="k">struct</span> <span class="n">values</span><span class="p">,</span> <span class="n">some_string</span><span class="p">,</span> <span class="n">JSON_TOK_STRING</span><span class="p">),</span>
+    <span class="n">FIELD</span><span class="p">(</span><span class="k">struct</span> <span class="n">values</span><span class="p">,</span> <span class="n">some_int</span><span class="p">,</span> <span class="n">JSON_TOK_NUMBER</span><span class="p">),</span>
+    <span class="n">FIELD</span><span class="p">(</span><span class="k">struct</span> <span class="n">values</span><span class="p">,</span> <span class="n">some_bool</span><span class="p">,</span> <span class="n">JSON_TOK_TRUE</span><span class="p">),</span>
+<span class="p">};</span>
+<span class="cm">/* (FIELD is just a macro that saves the offsetof()</span>
+<span class="cm"> * each struct member so that a pointer can be produced</span>
+<span class="cm"> * afterwards.)  */</span>
+
+<span class="cm">/* It&#39;s now just a matter of parsing the JSON now. */</span>
+<span class="k">struct</span> <span class="n">values</span> <span class="n">values</span><span class="p">;</span>
+<span class="kt">int32_t</span> <span class="n">ret</span> <span class="o">=</span> <span class="n">json_parse</span><span class="p">(</span><span class="n">serialized</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="n">serialized</span><span class="p">),</span>
+    <span class="n">values_descr</span><span class="p">,</span> <span class="n">ARRAY_SIZE</span><span class="p">(</span><span class="n">values_descr</span><span class="p">),</span> <span class="o">&amp;</span><span class="n">values</span><span class="p">);</span>
+
+<span class="cm">/* Bits 0, 1, and 2 of ret will be set if some_string,</span>
+<span class="cm"> * some_int, and some_bool have been successfully</span>
+<span class="cm"> * deserialized.  */</span>
+</pre></div>
+</div>
+<p>Another thing that could be done &#8211; but that has not been implemented yet,
+is to do the opposite as well: the descriptor and a struct to produce
+JSON-encoded data.  This has many advantages over the usual JSON libraries
+that require generating a JSON tree in memory just to serialize it
+afterwards.</p>
+<p>And although I&#8217;m quite happy with this code, there are still some
+limitations that I&#8217;ll address whenever I have the need.</p>
+<p>Mainly, there&#8217;s no way to parse nested objects or arrays.  I&#8217;ve written code
+to do this but these changes haven&#8217;t gotten any fuzz-testing action so I&#8217;m
+holding them off it until my living room heater^Wcomputer has worked on the
+problem for at least a week.</p>
+<p>Another one that&#8217;s not a deal breaker for an embedded OS is the lack of
+floating pointing numbers (only integers for now).  Parsing floating point
+is <a class="reference external" href="http://www.netlib.org/fp/dtoa.c">trickier than it sounds</a>, and
+there&#8217;s no <span class="docutils literal"><span class="pre">strtod()</span></span> in Zephyr&#8217;s minimal libc.</p>
+<p>As a minor issue to work around, there&#8217;s the return value: this limits the
+number of fields to be parsed to 32; that should be plenty for most uses.
+However, in the unlikely event that&#8217;s not sufficient, this can be worked
+around by having multiple descriptors.</p>
+<p>And, finally, there&#8217;s the JSON encoding part that I&#8217;ve mentioned already.</p>
+<p>The major problem with this piece of code, that can&#8217;t be fixed by writing
+more code, is that I can&#8217;t use it with Lwan due to licensing reasons:
+although it is open source, part of the <a class="reference external" href="http://www.zephyrproject.org">Zephyr project</a>, it is licensed under the Apache 2
+license, which is incompatible with the GPL2+ used by Lwan (would have to
+bump it to [L]GPL3).</p>
+<p>(For those that might ask how fast is it: it&#8217;s fast enough. I didn&#8217;t
+measure, I didn&#8217;t compare, and I don&#8217;t really care: it&#8217;s readable,
+maintainable, and does the job.)</p>
+</div>
+
+    <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="../../../tags/programming.html">programming</a>, <a href="../../../tags/zephyr.html">zephyr</a>, <a href="../../../tags/parser.html">parser</a></span>
+        </div>
+        </div><ul class="related clearfix">
+            <li class="left"></li>
+            <li class="right"><a href="../../../2016/11/08/infect_to_protect.html">Infect to Protect</a> &raquo; </li>
+        </ul></article><aside class="sidebar"><section><div class="widget" id="searchbox" role="search">
+    <h1><a href="#searchbox">Search</a></h1>
+    <form action="../../../search.html" method="get">
+        <input type="text" name="q" />
+        <button type="submit"><span class="fa fa-search"></span></button>
+    </form>
+</div></section><section><div class="widget">
+    <h1>Recent Posts</h1>
+    <ul><li>
+            <a href="#">Parsing JSON</a>
+        </li><li>
+            <a href="../../../2016/11/08/infect_to_protect.html">Infect to Protect</a>
+        </li><li>
+            <a href="../../../2015/05/01/initializing_a_heap_allocated_structure_in_c.html">Initializing a heap-allocated structure in C</a>
+        </li><li>
+            <a href="../../../2014/11/02/hybrid_c_pascal_strings.html">Hybrid C/Pascal Strings</a>
+        </li><li>
+            <a href="../../../2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
+        </li><li>
+            <a href="../../../2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
+        </li><li>
+            <a href="../../../2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage by 94%</a>
+        </li><li>
+            <a href="../../../2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a>
+        </li><li>
+            <a href="../../../2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a>
+        </li><li>
+            <a href="../../../2012/11/11/mustache_templates_in_c.html">Mustache templates in C</a>
+        </li></ul>
+</div>
+</section><section><div class="widget">
+    <h1>Tags Cloud</h1>
+      <a href="../../../tags/arduino.html" style="font-size: 8pt">arduino</a>&nbsp;&nbsp;
+      <a href="../../../tags/assembly.html" style="font-size: 8pt">assembly</a>&nbsp;&nbsp;
+      <a href="../../../tags/bpf.html" style="font-size: 8pt">bpf</a>&nbsp;&nbsp;
+      <a href="../../../tags/c.html" style="font-size: 16pt">C</a>&nbsp;&nbsp;
+      <a href="../../../tags/c.html" style="font-size: 8pt">c</a>&nbsp;&nbsp;
+      <a href="../../../tags/conferences.html" style="font-size: 8pt">conferences</a>&nbsp;&nbsp;
+      <a href="../../../tags/container.html" style="font-size: 8pt">container</a>&nbsp;&nbsp;
+      <a href="../../../tags/data_structure.html" style="font-size: 8pt">data-structure</a>&nbsp;&nbsp;
+      <a href="../../../tags/efl.html" style="font-size: 8pt">efl</a>&nbsp;&nbsp;
+      <a href="../../../tags/enlightenment.html" style="font-size: 8pt">enlightenment</a>&nbsp;&nbsp;
+      <a href="../../../tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
+      <a href="../../../tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
+      <a href="../../../tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
+      <a href="../../../tags/lwan.html" style="font-size: 16pt">lwan</a>&nbsp;&nbsp;
+      <a href="../../../tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
+      <a href="../../../tags/parser.html" style="font-size: 8pt">parser</a>&nbsp;&nbsp;
+      <a href="../../../tags/profusion.html" style="font-size: 9pt">profusion</a>&nbsp;&nbsp;
+      <a href="../../../tags/programming.html" style="font-size: 20pt">programming</a>&nbsp;&nbsp;
+      <a href="../../../tags/strace.html" style="font-size: 8pt">strace</a>&nbsp;&nbsp;
+      <a href="../../../tags/template.html" style="font-size: 8pt">template</a>&nbsp;&nbsp;
+      <a href="../../../tags/tizen.html" style="font-size: 8pt">tizen</a>&nbsp;&nbsp;
+      <a href="../../../tags/trick.html" style="font-size: 14pt">trick</a>&nbsp;&nbsp;
+      <a href="../../../tags/tricks.html" style="font-size: 8pt">tricks</a>&nbsp;&nbsp;
+      <a href="../../../tags/zephyr.html" style="font-size: 8pt">zephyr</a>
+</div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
+
+        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2015, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
+
+      </div> <!--! end of #container --><!--[if lt IE 7 ]>
+          <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"></script>
+          <script>window.attachEvent('onload',function(){CFInstall.check({mode:'overlay'})})</script>
+        <![endif]-->
+    </body>
+</html>

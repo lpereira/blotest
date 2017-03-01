@@ -57,6 +57,120 @@
                 </li>
               </ul>
           </nav><div class="main-container" role="main"><div class="main wrapper body clearfix"><article><div class="timestamp postmeta">
+            <span>March 01, 2017</span>
+        </div>
+        <div class="section">
+            <h1><a href="2017/03/01/parsing_json.html">Parsing JSON</a></h1>
+<p>There are many libraries out there to parse JSON files.  It might be a
+futile attempt, then, to write yet another one.  However, when you’re
+working on a RTOS where memory is golden, and the alternatives don’t look
+that great, you got to do something about it.</p>
+<p>Recently I wrote a <a class="reference external" href="http://www.json.org">JSON</a> parser for a project at
+work.  This parser uses constant memory, regardless of the amount of data
+it’s working with, and deserializes directly to a C struct.  Similar, in
+spirit, to the JSON parser that’s part of the Golang standard library, that
+encodes and decodes data based on a tagged structure.</p>
+<p>The lexer is the usual state machine, where the state itself is a function
+pointer to a function that handles that particular state.</p>
+<p>I’ve been using this technique for a while, and I found that it’s a very
+clean and efficient way of describing state machines, specially for lexers.</p>
+<p>I began using it after a coworker wrote a <a class="reference external" href="https://github.com/solettaproject/soletta/blob/3bda9802b243c2052555cf88263f754d34458414/src/shared/sol-fbp-internal-scanner.c">parser for a DSL</a>
+using it – and he got the idea from the – you guessed – Golang template
+package.  (There’s a <a class="reference external" href="https://www.youtube.com/watch?v=HxaD_trXwRE">nice talk by Rob Pike about it</a> – I recommend this talk
+not only for the lexing goodness, but also for the tips on how to evolve a
+concurrent design.)</p>
+<p>The parser implementation itself is nothing to write home about.  However,
+by using the same idea used in Lwan’s mustache template engine to <a class="reference external" href="https://tia.mat.br/posts/2012/11/11/mustache_templates_in_c.html">obtain
+the variables</a>, it
+manages to do some things that are not common in JSON parsers written in C:</p>
+<ul class="simple">
+<li>It will accept only values of known types for a particular key.</li>
+<li>It will save the decoded value directly in a struct field.</li>
+<li>It won’t try to decode the same field twice.</li>
+</ul>
+<p>The first point is crucial when working with data received from the network,
+which is precisely the kind of thing I’m dealing with.  This avoids problems
+such as type confusion and such, and moves the responsibility of checking
+the types to the library rather than the user of the library.</p>
+<p>By saving the decoded value directly into a struct field, it does use a
+predictable amount of memory.  This is good, as it’s not going to balloon
+out of control, or require some guesswork to know beforehand how many tokens
+are going to be necessary to deserialize some values.  The C compiler
+already knows exactly how many bytes a struct needs.</p>
+<p>Some fields might be optional in a JSON blob.  So the parser uses a bitmask
+to mark which fields have been decoded (and returns that, so that the
+library user can efficiently test if a value has been deserialized or not).
+Since it was easy to do, the library refuses to decode a key that has been
+deserialized before.</p>
+<p>So, a typical use is the following:</p>
+<div class="highlight-c"><div class="highlight"><pre><span/><span class="cm">/* First, define a struct to hold the values. */</span>
+<span class="k">struct</span> <span class="n">values</span> <span class="p">{</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">some_string</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">some_int</span><span class="p">;</span>
+    <span class="kt">bool</span> <span class="n">some_bool</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="cm">/* Then, define a descriptor for that struct. */</span>
+<span class="k">static</span> <span class="k">const</span> <span class="k">struct</span> <span class="n">json_descr</span> <span class="n">values_descr</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">FIELD</span><span class="p">(</span><span class="k">struct</span> <span class="n">values</span><span class="p">,</span> <span class="n">some_string</span><span class="p">,</span> <span class="n">JSON_TOK_STRING</span><span class="p">),</span>
+    <span class="n">FIELD</span><span class="p">(</span><span class="k">struct</span> <span class="n">values</span><span class="p">,</span> <span class="n">some_int</span><span class="p">,</span> <span class="n">JSON_TOK_NUMBER</span><span class="p">),</span>
+    <span class="n">FIELD</span><span class="p">(</span><span class="k">struct</span> <span class="n">values</span><span class="p">,</span> <span class="n">some_bool</span><span class="p">,</span> <span class="n">JSON_TOK_TRUE</span><span class="p">),</span>
+<span class="p">};</span>
+<span class="cm">/* (FIELD is just a macro that saves the offsetof()</span>
+<span class="cm"> * each struct member so that a pointer can be produced</span>
+<span class="cm"> * afterwards.)  */</span>
+
+<span class="cm">/* It's now just a matter of parsing the JSON now. */</span>
+<span class="k">struct</span> <span class="n">values</span> <span class="n">values</span><span class="p">;</span>
+<span class="kt">int32_t</span> <span class="n">ret</span> <span class="o">=</span> <span class="n">json_parse</span><span class="p">(</span><span class="n">serialized</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="n">serialized</span><span class="p">),</span>
+    <span class="n">values_descr</span><span class="p">,</span> <span class="n">ARRAY_SIZE</span><span class="p">(</span><span class="n">values_descr</span><span class="p">),</span> <span class="o">&amp;</span><span class="n">values</span><span class="p">);</span>
+
+<span class="cm">/* Bits 0, 1, and 2 of ret will be set if some_string,</span>
+<span class="cm"> * some_int, and some_bool have been successfully</span>
+<span class="cm"> * deserialized.  */</span>
+</pre></div>
+</div>
+<p>Another thing that could be done – but that has not been implemented yet,
+is to do the opposite as well: the descriptor and a struct to produce
+JSON-encoded data.  This has many advantages over the usual JSON libraries
+that require generating a JSON tree in memory just to serialize it
+afterwards.</p>
+<p>And although I’m quite happy with this code, there are still some
+limitations that I’ll address whenever I have the need.</p>
+<p>Mainly, there’s no way to parse nested objects or arrays.  I’ve written code
+to do this but these changes haven’t gotten any fuzz-testing action so I’m
+holding them off it until my living room heater^Wcomputer has worked on the
+problem for at least a week.</p>
+<p>Another one that’s not a deal breaker for an embedded OS is the lack of
+floating pointing numbers (only integers for now).  Parsing floating point
+is <a class="reference external" href="http://www.netlib.org/fp/dtoa.c">trickier than it sounds</a>, and
+there’s no <span class="docutils literal"><span class="pre">strtod()</span></span> in Zephyr’s minimal libc.</p>
+<p>As a minor issue to work around, there’s the return value: this limits the
+number of fields to be parsed to 32; that should be plenty for most uses.
+However, in the unlikely event that’s not sufficient, this can be worked
+around by having multiple descriptors.</p>
+<p>And, finally, there’s the JSON encoding part that I’ve mentioned already.</p>
+<p>The major problem with this piece of code, that can’t be fixed by writing
+more code, is that I can’t use it with Lwan due to licensing reasons:
+although it is open source, part of the <a class="reference external" href="http://www.zephyrproject.org">Zephyr project</a>, it is licensed under the Apache 2
+license, which is incompatible with the GPL2+ used by Lwan (would have to
+bump it to [L]GPL3).</p>
+<p>(For those that might ask how fast is it: it’s fast enough. I didn’t
+measure, I didn’t compare, and I don’t really care: it’s readable,
+maintainable, and does the job.)</p>
+
+        </div>
+        <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="tags/programming.html">programming</a>, <a href="tags/zephyr.html">zephyr</a>, <a href="tags/parser.html">parser</a></span>
+        </div>
+        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
             <span>November 08, 2016</span>
         </div>
         <div class="section">
@@ -1523,143 +1637,6 @@ request.</p>
                 Tags:
                 <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/c.html">C</a></span>
         </div>
-        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
-            <span>June 23, 2014</span>
-        </div>
-        <div class="section">
-            <h1><a href="2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a></h1>
-<p>There are various ways to convert integers to their string representation.
-These conversions are rarely a bottleneck, but they often show up while
-profiling certain applications.  For instance, they’re very common in
-<a class="reference external" href="http://lwan.ws">Lwan</a> while building the response headers.</p>
-<p>To use Lwan as an example: initially, <span class="docutils literal"><span class="pre">snprintf()</span></span> was used to convert
-numbers.  Although this works, it is quite boring, performance-wise.</p>
-<p>The second approach was using the naïve algorithm, which basically divides
-the number by <span class="docutils literal"><span class="pre">10</span></span> in succession, writing backwards the result of modulus by
-<span class="docutils literal"><span class="pre">10</span></span> to a string, and then reversing the string when the number reaches <span class="docutils literal"><span class="pre">0</span></span>.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="c1">// Code based on https://code.google.com/p/stringencoders/</span>
-<span class="kt">size_t</span> <span class="nf">naive_uint32_to_str</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">value</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">str</span><span class="p">)</span> <span class="p">{</span>
-    <span class="kt">char</span> <span class="o">*</span><span class="n">wstr</span> <span class="o">=</span> <span class="n">str</span><span class="p">;</span>
-    <span class="c1">// Conversion. Number is reversed.</span>
-    <span class="k">do</span>
-       <span class="o">*</span><span class="n">wstr</span><span class="o">++</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span><span class="p">)</span> <span class="n">decimal_digits</span><span class="p">[</span><span class="n">uvalue</span> <span class="o">%</span> <span class="mi">10</span><span class="p">];</span>
-    <span class="k">while</span> <span class="p">(</span><span class="n">uvalue</span> <span class="o">/=</span> <span class="mi">10</span><span class="p">);</span>
-    <span class="o">*</span><span class="n">wstr</span> <span class="o">=</span> <span class="sc">'\0'</span><span class="p">;</span>
-    <span class="c1">// Reverse string</span>
-    <span class="n">strreverse</span><span class="p">(</span><span class="n">str</span><span class="p">,</span> <span class="n">wstr</span> <span class="o">-</span> <span class="mi">1</span><span class="p">);</span>
-    <span class="k">return</span> <span class="n">wstr</span> <span class="o">-</span> <span class="n">str</span><span class="p">;</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-<p>This was fine for a while, but that string reversion step always bothered
-me.  Why not just write the string backwards already?</p>
-<p>I’ve then changed the code in Lwan to the following snippet. Note the nice
-trick of multiplying the size of an integer in bytes by <span class="docutils literal"><span class="pre">3</span></span> to obtain an
-approximation of the number of digits for <span class="docutils literal"><span class="pre">MAX_INT</span></span>, including the zero
-terminator, regardless of what <span class="docutils literal"><span class="pre">sizeof(int)</span></span> is.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="cp">#define INT_TO_STR_BUFFER_SIZE (3 * sizeof(int))</span>
-
-<span class="kt">char</span> <span class="o">*</span><span class="nf">lwan_uint32_to_str</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">value</span><span class="p">,</span>
-            <span class="kt">char</span> <span class="n">buffer</span><span class="p">[</span><span class="k">static</span> <span class="n">INT_TO_STR_BUFFER_SIZE</span><span class="p">],</span>
-            <span class="kt">size_t</span> <span class="o">*</span><span class="n">len</span><span class="p">)</span> <span class="p">{</span>
-    <span class="kt">char</span> <span class="o">*</span><span class="n">p</span> <span class="o">=</span> <span class="n">buffer</span> <span class="o">+</span> <span class="n">INT_TO_STR_BUFFER_SIZE</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span>
-
-    <span class="o">*</span><span class="n">p</span> <span class="o">=</span> <span class="sc">'\0'</span><span class="p">;</span>
-    <span class="k">do</span> <span class="p">{</span>
-        <span class="o">*--</span><span class="n">p</span> <span class="o">=</span> <span class="s">"0123456789"</span><span class="p">[</span><span class="n">value</span> <span class="o">%</span> <span class="mi">10</span><span class="p">];</span>
-    <span class="p">}</span> <span class="k">while</span> <span class="p">(</span><span class="n">value</span> <span class="o">/=</span> <span class="mi">10</span><span class="p">);</span>
-
-    <span class="kt">size_t</span> <span class="n">difference</span> <span class="o">=</span> <span class="p">(</span><span class="kt">size_t</span><span class="p">)(</span><span class="n">p</span> <span class="o">-</span> <span class="n">buffer</span><span class="p">);</span>
-    <span class="o">*</span><span class="n">len</span> <span class="o">=</span> <span class="p">(</span><span class="kt">size_t</span><span class="p">)(</span><span class="n">INT_TO_STR_BUFFER_SIZE</span> <span class="o">-</span> <span class="n">difference</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span>
-
-    <span class="k">return</span> <span class="n">p</span><span class="p">;</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-<p>Reducing writes to the array made this algorithm significantly faster.
-However, I eventually did what one should always avoid when tinkering with
-this kind of thing: I’ve changed the array lookup to an addition, without
-measuring if it would perform better, and committed the code anyway.  The
-lookup table is ~9% faster.  Ouch!</p>
-<p>Last year, the Facebook Engineering team <a class="reference external" href="https://www.facebook.com/notes/facebook-engineering/three-optimization-tips-for-c/10151361643253920">posted a function</a> to convert
-integers to strings that manages to be even faster.  They do use the same
-idea of avoiding having to reverse the string after they’re done converting
-each digit, and they use a lookup table as well.</p>
-<p>But the nice trick is that, instead of having a lookup table for 10 digits,
-there’s a table for all pair of digits, from <cite>00</cite> to <cite>99</cite>.  This cuts the
-amount of divisions by half, yielding a significantly faster algorithm:
-around 31% faster than the above snippet:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="kt">size_t</span> <span class="nf">facebook_uint32_to_str</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">value</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">dst</span><span class="p">)</span>
-<span class="p">{</span>
-    <span class="k">static</span> <span class="k">const</span> <span class="kt">char</span> <span class="n">digits</span><span class="p">[</span><span class="mi">201</span><span class="p">]</span> <span class="o">=</span>
-        <span class="s">"0001020304050607080910111213141516171819"</span>
-        <span class="s">"2021222324252627282930313233343536373839"</span>
-        <span class="s">"4041424344454647484950515253545556575859"</span>
-        <span class="s">"6061626364656667686970717273747576777879"</span>
-        <span class="s">"8081828384858687888990919293949596979899"</span><span class="p">;</span>
-    <span class="kt">size_t</span> <span class="k">const</span> <span class="n">length</span> <span class="o">=</span> <span class="n">digits10</span><span class="p">(</span><span class="n">value</span><span class="p">);</span>
-    <span class="kt">size_t</span> <span class="n">next</span> <span class="o">=</span> <span class="n">length</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span>
-    <span class="k">while</span> <span class="p">(</span><span class="n">value</span> <span class="o">&gt;=</span> <span class="mi">100</span><span class="p">)</span> <span class="p">{</span>
-        <span class="k">auto</span> <span class="k">const</span> <span class="n">i</span> <span class="o">=</span> <span class="p">(</span><span class="n">value</span> <span class="o">%</span> <span class="mi">100</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span><span class="p">;</span>
-        <span class="n">value</span> <span class="o">/=</span> <span class="mi">100</span><span class="p">;</span>
-        <span class="n">dst</span><span class="p">[</span><span class="n">next</span><span class="p">]</span> <span class="o">=</span> <span class="n">digits</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">];</span>
-        <span class="n">dst</span><span class="p">[</span><span class="n">next</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">digits</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
-        <span class="n">next</span> <span class="o">-=</span> <span class="mi">2</span><span class="p">;</span>
-    <span class="p">}</span>
-    <span class="c1">// Handle last 1-2 digits</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">value</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">)</span> <span class="p">{</span>
-        <span class="n">dst</span><span class="p">[</span><span class="n">next</span><span class="p">]</span> <span class="o">=</span> <span class="sc">'0'</span> <span class="o">+</span> <span class="kt">uint32_t</span><span class="p">(</span><span class="n">value</span><span class="p">);</span>
-    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-        <span class="k">auto</span> <span class="n">i</span> <span class="o">=</span> <span class="kt">uint32_t</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span><span class="p">;</span>
-        <span class="n">dst</span><span class="p">[</span><span class="n">next</span><span class="p">]</span> <span class="o">=</span> <span class="n">digits</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">];</span>
-        <span class="n">dst</span><span class="p">[</span><span class="n">next</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">digits</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
-    <span class="p">}</span>
-    <span class="k">return</span> <span class="n">length</span><span class="p">;</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-<p>The <span class="docutils literal"><span class="pre">digits10()</span></span> function is also another function that calculates the
-number of digits of a number in a very efficient manner.  Even being
-performant, though, one can get rid of the call altogether: using a constant
-like <span class="docutils literal"><span class="pre">numeric_limits&lt;uint32_t&gt;::digits10</span></span> will keep the same interface.
-This is possible because the <span class="docutils literal"><span class="pre">dst</span></span> buffer should be large enough to hold
-all the digits of the largest 32-bit unsigned integer anyway.</p>
-<p>Because of implementation details – the function basically compares numbers
-to powers of 10 and recurses when the number of digits surpasses the maximum
-power that they’re comparing to – the speedup of using a constant length
-won’t be significant for small numbers (one and two digits); but if you’re
-optimizing to this level, using a constant won’t hurt.  So much so, that it
-is consistently faster on my machine (a Core i7 2640M laptop, with an
-up-to-date 64-bit Arch Linux):</p>
-<div class="figure align-center" id="id1">
-<a class="reference internal image-reference" href="2014/06/23/https://i.imgur.com/9V0PsPK.png"><img alt="relativespeedup" src="https://i.imgur.com/9V0PsPK.png" style="width: 100%;"/></a>
-<p class="caption"><span class="caption-text">Relative speedup of <span class="docutils literal"><span class="pre">facebook_uint32_to_str()</span></span> using <span class="docutils literal"><span class="pre">digits10()</span></span> and a
-constant value</span></p>
-</div>
-<p>That chart was obtained by using a <a class="reference external" href="https://gist.github.com/lpereira/c0bf3ca3148321395037">benchmark program</a> I wrote that will
-test all these ways of converting an integer to their string representation.
-To compare with other methods, here’s the full chart:</p>
-<div class="figure align-center" id="id2">
-<a class="reference internal image-reference" href="2014/06/23/https://i.imgur.com/b2enLNt.png"><img alt="benchmark" src="https://i.imgur.com/b2enLNt.png" style="width: 100%;"/></a>
-<p class="caption"><span class="caption-text">Results for <span class="docutils literal"><span class="pre">snprintf()</span></span> omitted to not skew results. Spoiler: it’s slow.</span></p>
-</div>
-<p>Unfortunately, there’s a licencing issue that won’t let me use this code in
-Lwan.  The blog post doesn’t mention the license.  I’ve found this <a class="reference external" href="https://mail-archives.apache.org/mod_mbox/apr-dev/200704.mbox/%3C344-65769@sneakemail.com%3E">two-digit
-lookup table in places unrelated to Facebook</a> as well, so I’m not sure who
-had this idea first.  My go-to source of this kind of thing is usually
-<a class="reference external" href="http://www.hackersdelight.org/">Hacker’s Delight</a>, but even then it’s not there.</p>
-
-        </div>
-        <div class="postmeta">
-        <div class="author">
-            <span>Posted by Leandro Pereira</span>
-        </div>
-        
-        <div class="tags">
-            <span>
-                Tags:
-                <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/trick.html">trick</a>, <a href="tags/c.html">C</a></span>
-        </div>
         </div><div class="archive_link">
         <a href="archive.html"> &mdash; Blog Archive &mdash; </a>
     </div><ul class="related clearfix">
@@ -1674,6 +1651,8 @@ had this idea first.  My go-to source of this kind of thing is usually
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="2017/03/01/parsing_json.html">Parsing JSON</a>
+        </li><li>
             <a href="2016/11/08/infect_to_protect.html">Infect to Protect</a>
         </li><li>
             <a href="2015/05/01/initializing_a_heap_allocated_structure_in_c.html">Initializing a heap-allocated structure in C</a>
@@ -1691,8 +1670,6 @@ had this idea first.  My go-to source of this kind of thing is usually
             <a href="2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a>
         </li><li>
             <a href="2012/11/11/mustache_templates_in_c.html">Mustache templates in C</a>
-        </li><li>
-            <a href="2012/10/27/programming_on_an_arduino_without_a_pc.html">Programming on an Arduino without a PC</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
@@ -1700,7 +1677,7 @@ had this idea first.  My go-to source of this kind of thing is usually
       <a href="tags/arduino.html" style="font-size: 8pt">arduino</a>&nbsp;&nbsp;
       <a href="tags/assembly.html" style="font-size: 8pt">assembly</a>&nbsp;&nbsp;
       <a href="tags/bpf.html" style="font-size: 8pt">bpf</a>&nbsp;&nbsp;
-      <a href="tags/c.html" style="font-size: 17pt">C</a>&nbsp;&nbsp;
+      <a href="tags/c.html" style="font-size: 16pt">C</a>&nbsp;&nbsp;
       <a href="tags/c.html" style="font-size: 8pt">c</a>&nbsp;&nbsp;
       <a href="tags/conferences.html" style="font-size: 8pt">conferences</a>&nbsp;&nbsp;
       <a href="tags/container.html" style="font-size: 8pt">container</a>&nbsp;&nbsp;
@@ -1710,15 +1687,17 @@ had this idea first.  My go-to source of this kind of thing is usually
       <a href="tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
       <a href="tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
-      <a href="tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
+      <a href="tags/lwan.html" style="font-size: 16pt">lwan</a>&nbsp;&nbsp;
       <a href="tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
+      <a href="tags/parser.html" style="font-size: 8pt">parser</a>&nbsp;&nbsp;
       <a href="tags/profusion.html" style="font-size: 9pt">profusion</a>&nbsp;&nbsp;
       <a href="tags/programming.html" style="font-size: 20pt">programming</a>&nbsp;&nbsp;
       <a href="tags/strace.html" style="font-size: 8pt">strace</a>&nbsp;&nbsp;
       <a href="tags/template.html" style="font-size: 8pt">template</a>&nbsp;&nbsp;
       <a href="tags/tizen.html" style="font-size: 8pt">tizen</a>&nbsp;&nbsp;
       <a href="tags/trick.html" style="font-size: 14pt">trick</a>&nbsp;&nbsp;
-      <a href="tags/tricks.html" style="font-size: 8pt">tricks</a>
+      <a href="tags/tricks.html" style="font-size: 8pt">tricks</a>&nbsp;&nbsp;
+      <a href="tags/zephyr.html" style="font-size: 8pt">zephyr</a>
 </div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
 
         <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2015, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
