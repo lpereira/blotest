@@ -31,9 +31,10 @@
         <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Partially Applied Functions in C" href="../../07/20/partial_functions_in_c.html" /><link rel="prev" title="Reducing Lwan memory usage by 94%" href="../../12/08/reducing_lwan_memory_usage.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     '1.5',
+        VERSION:     '1.6.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
+        SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
     </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
@@ -61,13 +62,13 @@
         </div>
     <div class="section" id="implementing-sequences-in-lwan-template-engine">
 <h1>Implementing sequences in lwan template engine</h1>
-<p>When I wrote about lwan&#8217;s templating engine on a <a class="reference external" href="http://tia.mat.br/blog/html/2012/11/11/mustache_templates_in_c.html">blog post</a> last year, I
-purposedly ommitted the fact that it didn&#8217;t support sequences. Took me
-almost a year, but I&#8217;ve finally implemented it this week. (Lwan is usually a
+<p>When I wrote about lwan’s templating engine on a <a class="reference external" href="http://tia.mat.br/blog/html/2012/11/11/mustache_templates_in_c.html">blog post</a> last year, I
+purposedly ommitted the fact that it didn’t support sequences. Took me
+almost a year, but I’ve finally implemented it this week. (Lwan is usually a
 low priority weekend project. Maybe that should do as an excuse for my
 laziness.)</p>
 <p>It took me three tries to get this right. <a class="reference external" href="https://en.wikipedia.org/wiki/Rube_Goldberg_machine">Rube Goldberg machine</a> kind of
-right, but there&#8217;s always some elegance in ingenuity.</p>
+right, but there’s always some elegance in ingenuity.</p>
 <p>The first try would require one to create the list beforehand, and then pass
 it to the template engine to render.  Not only cumbersome, but would require
 the creation of (potentially) large amounts of temporary objects.</p>
@@ -100,10 +101,10 @@ is found and the coroutine yields <span class="docutils literal"><span class="pr
 </div>
 <p>A sample generator function is shown below. It iterates over a directory
 with <span class="docutils literal"><span class="pre">readdir()</span></span>, returning <span class="docutils literal"><span class="pre">1</span></span> on new item availability and <span class="docutils literal"><span class="pre">0</span></span> when there
-isn&#8217;t anything else to do. Notice that initialization, iteration, and cleanup
+isn’t anything else to do. Notice that initialization, iteration, and cleanup
 is all contained within a single function.</p>
-<p>Also, notice that there&#8217;s no need to copy any values to and from the
-structure &#8211; calling <span class="docutils literal"><span class="pre">coro_yield()</span></span> will of course maintain the stack
+<p>Also, notice that there’s no need to copy any values to and from the
+structure – calling <span class="docutils literal"><span class="pre">coro_yield()</span></span> will of course maintain the stack
 alive, so local variables can be used outside this function as long as a
 reference to them can be obtained.</p>
 <div class="highlight-c"><div class="highlight"><pre><span></span><span class="kt">int</span> <span class="nf">dir_list_generator</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">)</span>
@@ -129,11 +130,11 @@ reference to them can be obtained.</p>
 <p>The details of how the variable descriptors are set up are explained in the
 <a class="reference external" href="https://github.com/lpereira/lwan/commit/a4188d73a00cec4c99d50473803c44bfb2218d13">commit message</a> that introduced this change.  (The commit itself is quite
 buggy, but whatever I could find has been fixed in <a class="reference external" href="https://github.com/lpereira/lwan">HEAD</a> already.)</p>
-<p>In an ideal world, one would use something akin to Golang&#8217;s <a class="reference external" href="http://golang.org/doc/effective_go.html#channels">Channels</a>, but
+<p>In an ideal world, one would use something akin to Golang’s <a class="reference external" href="http://golang.org/doc/effective_go.html#channels">Channels</a>, but
 if I were to implement them in lwan it would take perhaps another year.
-Plus, they wouldn&#8217;t be as efficient as setting some pointers.  But they
-might be useful in the future, so I&#8217;m not completely discarding the idea.
-Although I&#8217;ve never written a single line of Go code, I&#8217;m reading a lot
+Plus, they wouldn’t be as efficient as setting some pointers.  But they
+might be useful in the future, so I’m not completely discarding the idea.
+Although I’ve never written a single line of Go code, I’m reading a lot
 about it recently and it is sort of positively impacting the way I think
 about programming.  But I digress.</p>
 </div>
@@ -160,6 +161,8 @@ about programming.  But I digress.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
+        </li><li>
             <a href="../../../2017/03/01/parsing_json.html">Parsing JSON</a>
         </li><li>
             <a href="../../../2016/11/08/infect_to_protect.html">Infect to Protect</a>
@@ -177,8 +180,6 @@ about programming.  But I digress.</p>
             <a href="#">Implementing sequences in lwan template engine</a>
         </li><li>
             <a href="../../07/20/partial_functions_in_c.html">Partially Applied Functions in C</a>
-        </li><li>
-            <a href="../../../2012/11/11/mustache_templates_in_c.html">Mustache templates in C</a>
         </li></ul>
 </div>
 </section><section><div class="widget">

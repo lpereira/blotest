@@ -31,9 +31,10 @@
         <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Hybrid C/Pascal Strings" href="../../../2014/11/02/hybrid_c_pascal_strings.html" /><link rel="prev" title="Infect to Protect" href="../../../2016/11/08/infect_to_protect.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     '1.5',
+        VERSION:     '1.6.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
+        SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
     </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
@@ -71,7 +72,7 @@ lucky, and <span class="docutils literal"><span class="pre">sizeof(struct</span>
 <span class="docutils literal"><span class="pre">sizeof(struct</span> <span class="pre">foobar)</span></span>, but we might not.</p>
 <p>There are lots of tools out there that will catch these mistakes: static
 analyzers such as the one from Clang, and Memcheck from Valgrind are just
-two examples that should be in any C programmer&#8217;s toolbelt.</p>
+two examples that should be in any C programmer’s toolbelt.</p>
 <p>Even then, people often resort to a a nicer idiom: <span class="docutils literal"><span class="pre">sizeof(*foobar)</span></span>,
 which not only avoids these problems, but also is somewhat future-proof,
 should the type of <span class="docutils literal"><span class="pre">foobar</span></span> change:</p>
@@ -88,7 +89,7 @@ block:</p>
 </div>
 <p>Not always one would want to zero out the whole memory chunk just to fill
 out important fields afterwards, though.</p>
-<p>Here&#8217;s a trick that&#8217;s being used in a yet-to-be-released project I&#8217;ve been
+<p>Here’s a trick that’s being used in a yet-to-be-released project I’ve been
 working on and off for the past few months. It starts by defining the
 generic-chunk-of-memory equivalent of <span class="docutils literal"><span class="pre">strdup()</span></span>, <span class="docutils literal"><span class="pre">memdup()</span></span>:</p>
 <div class="highlight-c"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="o">*</span><span class="nf">memdup</span><span class="p">(</span><span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">src</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">sz</span><span class="p">)</span> <span class="p">{</span>
@@ -112,18 +113,18 @@ generic-chunk-of-memory equivalent of <span class="docutils literal"><span class
 </div>
 <p>The compiler will check if <span class="docutils literal"><span class="pre">field</span></span>, <span class="docutils literal"><span class="pre">other_field</span></span>, and <span class="docutils literal"><span class="pre">yet_another_field</span></span>
 are actually part of <span class="docutils literal"><span class="pre">struct</span> <span class="pre">foobar</span></span>, and will abort compilation of a field
-isn&#8217;t there or is of the wrong type.</p>
+isn’t there or is of the wrong type.</p>
 <p>The cast prevents the allocated memory block from being assigned to the wrong
 type. (C will happily cast any <span class="docutils literal"><span class="pre">void*</span></span> to any other pointer.)</p>
-<p>The amount of memory allocated will be exactly what&#8217;s needed by the
+<p>The amount of memory allocated will be exactly what’s needed by the
 structure, and all fields that not mentioned will be initialized with their
 default values as per <a class="reference external" href="https://gcc.gnu.org/onlinedocs/gcc/Designated-Inits.html">designated initializer rules</a>.</p>
 <p>If <span class="docutils literal"><span class="pre">memdup()</span></span> is inlined, a good compiler will generate pretty good code,
-that&#8217;s often byte-by-byte equivalent to allocating directly with
+that’s often byte-by-byte equivalent to allocating directly with
 <span class="docutils literal"><span class="pre">malloc()</span></span>, initializing all the fields by hand, etc.</p>
 <p>If GCC is being used, the <span class="docutils literal"><span class="pre">__auto_type</span></span> <a class="reference external" href="https://gcc.gnu.org/onlinedocs/gcc/Typeof.html">extension</a> can be used, to avoid
 having to type <span class="docutils literal"><span class="pre">struct</span> <span class="pre">foobar</span></span> twice. This has been suggested by <a class="reference external" href="https://plus.google.com/117917253135468806554/posts/DcBUyuicdLW">Thiago
-Macieira</a>. I&#8217;d use this sparingly, though.</p>
+Macieira</a>. I’d use this sparingly, though.</p>
 <div class="highlight-c"><div class="highlight"><pre><span></span><span class="n">__auto_type</span> <span class="n">foobar</span> <span class="o">=</span> <span class="n">ALLOC_INIT</span><span class="p">(</span><span class="k">struct</span> <span class="n">foobar</span><span class="p">,</span> <span class="p">{</span>
         <span class="p">.</span><span class="n">field</span> <span class="o">=</span> <span class="n">value</span><span class="p">,</span>
         <span class="p">.</span><span class="n">other_field</span> <span class="o">=</span> <span class="n">other_value</span><span class="p">,</span>
@@ -131,9 +132,9 @@ Macieira</a>. I&#8217;d use this sparingly, though.</p>
 <span class="p">});</span>
 </pre></div>
 </div>
-<p>It&#8217;s a pretty nice idiom that I haven&#8217;t seen anywhere else, and I&#8217;m blogging
-here as the project I&#8217;m working on might not ever see the light of day and
-it would be a shame if at least this didn&#8217;t become public.</p>
+<p>It’s a pretty nice idiom that I haven’t seen anywhere else, and I’m blogging
+here as the project I’m working on might not ever see the light of day and
+it would be a shame if at least this didn’t become public.</p>
 </div>
 
     <div class="postmeta">
@@ -158,6 +159,8 @@ it would be a shame if at least this didn&#8217;t become public.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
+        </li><li>
             <a href="../../../2017/03/01/parsing_json.html">Parsing JSON</a>
         </li><li>
             <a href="../../../2016/11/08/infect_to_protect.html">Infect to Protect</a>
@@ -175,8 +178,6 @@ it would be a shame if at least this didn&#8217;t become public.</p>
             <a href="../../../2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a>
         </li><li>
             <a href="../../../2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a>
-        </li><li>
-            <a href="../../../2012/11/11/mustache_templates_in_c.html">Mustache templates in C</a>
         </li></ul>
 </div>
 </section><section><div class="widget">

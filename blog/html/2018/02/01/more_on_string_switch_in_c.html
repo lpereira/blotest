@@ -1,0 +1,380 @@
+<!DOCTYPE html><!--[if lt IE 7]>      <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width">
+        <title>More on string switch in C &mdash; Leandro Pereira</title>
+            <link rel="stylesheet" href="../../../_static/normalize.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/sphinx.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/main.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/flat.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+            <link rel="stylesheet" href="../../../_static/font-awesome.min.css" type="text/css">
+        <link rel="shortcut icon" href="../../../_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
+        <script src="../../../_static/vendor/modernizr-2.6.2.min.js"></script>
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+        <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
+        <script src="../../../_static/plugins.js"></script>
+        <script src="../../../_static/main.js"></script>
+        <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Parsing JSON" href="../../../2017/03/01/parsing_json.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        SOURCELINK_SUFFIX: '.txt',
+        HAS_SOURCE:  true
+      };
+    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
+<style type="text/css">img {max-width: 100%;}</style>
+</head>
+    <body role="document">
+        <!--[if lt IE 7]>
+            <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
+        <![endif]-->
+
+      <div id="container"><header role="banner">
+            <hgroup>
+              <h1><a href="../../../index.html">Leandro Pereira</a></h1><h2>Geek in training</h2></hgroup>
+          </header>
+      <nav role="navigation">
+            <ul><li class="main-nav">
+                  <a href="../../../index.html">Home</a>
+                </li>
+              <li class="main-nav">
+                  <a href="../../../pages/about.html">About</a>
+                </li>
+              </ul>
+          </nav><div class="main-container" role="main"><div class="main wrapper body clearfix"><article><div class="timestamp postmeta">
+            <span>February 01, 2018</span>
+        </div>
+    <div class="section" id="more-on-string-switch-in-c">
+<h1>More on string switch in C</h1>
+<p>Talking about uncommon programming tricks the other day, the subject of
+switching on strings in C came to be.  If you follow this blog, you know
+it’s something actually possible to do with a little bit of ingenuity; in
+fact, it’s one of the things that I use in Lwan to parse the HTTP requests.
+I didn’t spend too much time in that blog post to explain why it is faster,
+so I’m rectifying this now.</p>
+<p>In order to understand why it’s so fast, let me step aside for a moment and
+show a function every C programmer should be able to write: <span class="docutils literal"><span class="pre">strlen()</span></span>.</p>
+<div class="highlight-c"><div class="highlight"><pre><span></span><span class="kt">size_t</span> <span class="nf">strlen</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">size_t</span> <span class="n">len</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="k">while</span> <span class="p">(</span><span class="o">*</span><span class="n">s</span> <span class="o">!=</span> <span class="sc">&#39;\0&#39;</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">len</span><span class="o">++</span><span class="p">;</span>
+        <span class="n">s</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">len</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Style issues aside, this is pretty much the simplest way to implement this
+function.  And, maybe the one that generates the slowest code.  There are
+many reasons here, so let’s explore some of them.</p>
+<p>One of them is that CPUs are able to fetch more than a single byte at a time
+from the memory (or even the cache).  And it takes roughly the same time for
+it to fetch 8 bits than it takes to fetch 32 bits.  People that write C
+libraries know about this fact, so that the version that your operating
+system provides is most likely going to exploit this.  Let’s rewrite the
+<span class="docutils literal"><span class="pre">strlen()</span></span> function, then:</p>
+<div class="highlight-c"><div class="highlight"><pre><span></span><span class="kt">size_t</span> <span class="nf">strlen</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">size_t</span> <span class="n">len</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="k">while</span> <span class="p">(</span><span class="nb">true</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kt">uint32_t</span> <span class="n">v</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="o">*</span><span class="p">)</span><span class="n">s</span><span class="p">;</span>
+
+        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">&#39;\0&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">3</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">8</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">&#39;\0&#39;</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">2</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">&#39;\0&#39;</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">24</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">&#39;\0&#39;</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span><span class="p">;</span>
+
+        <span class="n">len</span> <span class="o">+=</span> <span class="mi">4</span><span class="p">;</span>
+        <span class="n">s</span> <span class="o">+=</span> <span class="mi">4</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>There is a big issue in this code: it is invoking undefined behavior.  The
+explanation of why this is illegal in C will follow, but for now, let’s just
+assume that the integer cast from a character pointer is valid.</p>
+<p>With that assumption in mind, what this program is doing is in fact very
+simple: it is reducing the amount of expensive operations (fetching things
+from memory), and is increasing the amount of cheap operations (masking bits
+and comparing integers).  In fact, that’s a recurring theme whenever you’re
+trying to optimize any algorithm: the computer can’t run a piece of code faster,
+but you can make the computer run smarter code that produces the same output.</p>
+<p>This program, however, will most likely crash on some platforms, or be
+really slow on others.  The reason is that it is trying to read a pointer
+that is not aligned.  Some CPU designers decided to increase the complexity
+and perform more work behind the scenes to make this work, and some decided
+it wasn’t worth the trouble and will just generate an exception.  The major
+problem, however, is that this is precisely the undefined behavior I was talking
+about.  So, let’s fix this function, by modifying it slightly so that the fast
+path operates on aligned pointers:</p>
+<div class="highlight-c"><div class="highlight"><pre><span></span><span class="k">static</span> <span class="kr">inline</span> <span class="kt">bool</span> <span class="nf">is_ptr_aligned</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">uintptr_t</span> <span class="n">p</span> <span class="o">=</span> <span class="p">(</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">ptr</span><span class="p">;</span>
+
+    <span class="cm">/* Assuming a 32-bit machine with 4-byte alignment for</span>
+<span class="cm">     * integers.  Executing &quot;AND (n - 1)&quot; is equivalent to &quot;MOD</span>
+<span class="cm">     * (n)&quot;, without an expensive division operation; this is</span>
+<span class="cm">     * true for every (n), as long as (n) is a power of 2.</span>
+<span class="cm">     * Compilers can do this optimization on constant values,</span>
+<span class="cm">     * but I prefer to be explicit. */</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">p</span> <span class="o">&amp;</span> <span class="mh">0x3</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">size_t</span> <span class="nf">strlen</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">size_t</span> <span class="n">len</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="cm">/* Read one byte at a time until the pointer is aligned. */</span>
+    <span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">is_ptr_aligned</span><span class="p">(</span><span class="n">s</span><span class="p">))</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">*</span><span class="n">s</span> <span class="o">==</span> <span class="sc">&#39;\0&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">len</span><span class="p">;</span>
+        <span class="n">s</span><span class="o">++</span><span class="p">;</span>
+        <span class="n">len</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="cm">/* Pointer is aligned, try the faster version now. */</span>
+    <span class="k">while</span> <span class="p">(</span><span class="nb">true</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kt">uint32_t</span> <span class="n">v</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="o">*</span><span class="p">)</span><span class="n">s</span><span class="p">;</span>
+
+        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">&#39;\0&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">3</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">8</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">&#39;\0&#39;</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">2</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">&#39;\0&#39;</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">24</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">&#39;\0&#39;</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span><span class="p">;</span>
+
+        <span class="n">len</span> <span class="o">+=</span> <span class="mi">4</span><span class="p">;</span>
+        <span class="n">s</span> <span class="o">+=</span> <span class="mi">4</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>There is still an even faster way, that is to improve the way the NUL byte
+is found in a word.  The excellent (and one of my favorite websites) “<a class="reference external" href="https://graphics.stanford.edu/~seander/bithacks.html#ZeroInWord">Bit
+Twiddling Hacks</a>” web
+page has a method to find out if a word contains a NUL byte; it doesn’t tell
+which byte is the NUL byte, but we don’t need to know that in the fast path:</p>
+<div class="highlight-c"><div class="highlight"><pre><span></span><span class="kt">size_t</span> <span class="nf">strlen</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">size_t</span> <span class="n">len</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="kt">uint32_t</span> <span class="n">v</span><span class="p">;</span>
+
+    <span class="cm">/* Read one byte at a time until the pointer is aligned. */</span>
+    <span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">is_ptr_aligned</span><span class="p">(</span><span class="n">s</span><span class="p">))</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">*</span><span class="n">s</span> <span class="o">==</span> <span class="sc">&#39;\0&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">len</span><span class="p">;</span>
+        <span class="n">s</span><span class="o">++</span><span class="p">;</span>
+        <span class="n">len</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="cm">/* Pointer is aligned, try the faster version now. */</span>
+    <span class="k">while</span> <span class="p">(</span><span class="nb">true</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="o">*</span><span class="p">)</span><span class="n">s</span><span class="p">;</span>
+
+        <span class="cm">/* Use a fast bit twiddling hack to find if the</span>
+<span class="cm">         * next 4 bytes in the string has a 0 byte. If</span>
+<span class="cm">         * it does, find out which byte it is. */</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">-</span> <span class="mh">0x01010101</span><span class="p">)</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">v</span> <span class="o">&amp;</span> <span class="mh">0x80808080</span><span class="p">)</span>
+            <span class="k">break</span><span class="p">;</span>
+
+        <span class="n">len</span> <span class="o">+=</span> <span class="mi">4</span><span class="p">;</span>
+        <span class="n">s</span> <span class="o">+=</span> <span class="mi">4</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">&#39;\0&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">3</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">8</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">&#39;\0&#39;</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">&#39;\0&#39;</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+
+    <span class="k">return</span> <span class="n">len</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Another thing to consider in these functions is that they’re not endian
+neutral.  A decent implementation would ensure that it would work both on
+little-endian and on big-endian machines.  A decent programmer would even
+build and test these; I didn’t.</p>
+<p>Yet another thing to consider is that hand-tuned assembly versions, most
+likely written to make use of vector instructions, are the ones that your
+computer are executing at this very instant; but they all draw from these
+very same ideas: read memory less often, compare in bulk.</p>
+<p>Also, there are most likely better ways to write these functions, even without
+vector instructions.  But this is besides the point of explaining why the
+string switch trick works so well.</p>
+<p>Now, this kind of optimization happens on pratically all string handling functions
+in the C standard library.  And functions that perform substring comparison,
+such as <span class="docutils literal"><span class="pre">strncmp()</span></span>, are no exception.</p>
+<p>When faced with the necessity to check for a bunch of strings, the idiomatic
+C way of doing so would be the following:</p>
+<div class="highlight-c"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">strncmp</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s">&quot;GET &quot;</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">HTTP_METHOD_GET</span><span class="p">;</span>
+<span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">strncmp</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s">&quot;POST &quot;</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">HTTP_METHOD_POST</span><span class="p">;</span>
+<span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">strncmp</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s">&quot;DELETE &quot;</span><span class="p">,</span> <span class="mi">7</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">HTTP_METHOD_DELETE</span><span class="p">;</span>
+<span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">strncmp</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s">&quot;HEAD &quot;</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">HTTP_METHOD_HEAD</span><span class="p">;</span>
+<span class="cm">/* ... */</span>
+<span class="k">return</span> <span class="n">HTTP_METHOD_UNKNOWN</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>It’s not difficult to imagine that each invocation of <span class="docutils literal"><span class="pre">strncmp()</span></span> would have to
+do things that are similar to what our toy <span class="docutils literal"><span class="pre">strlen()</span></span> implementation had to do:
+align the pointer (which is slow) before it could start the fast path.  But, in
+this case, things are even worse, because, if the pointer isn’t aligned, it
+might not even get to the point where the fast path will make sense, because the
+strings it is comparing against are very close to the alignment of the word
+size for this computer!</p>
+<p>So, to recap, what the string switch does is the following:</p>
+<div class="highlight-c"><div class="highlight"><pre><span></span><span class="k">static</span> <span class="kr">inline</span> <span class="kt">uint32_t</span> <span class="nf">string_to_uint32</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">uint32_t</span> <span class="n">v</span><span class="p">;</span>
+
+    <span class="n">memcpy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">v</span><span class="p">));</span>
+
+    <span class="k">return</span> <span class="n">v</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="cp">#define STRING_SWITCH(s) switch (string_to_uint32(s))</span>
+<span class="cp">#define MCC(a, b, c, d) ((a) &lt;&lt; 24 | (b) &lt;&lt; 16 | (c) &lt;&lt; 8 | (d))</span>
+<span class="k">enum</span> <span class="p">{</span>
+    <span class="n">METHOD_GET</span> <span class="o">=</span> <span class="n">MCC</span><span class="p">(</span><span class="sc">&#39;G&#39;</span><span class="p">,</span> <span class="sc">&#39;E&#39;</span><span class="p">,</span> <span class="sc">&#39;T&#39;</span><span class="p">,</span> <span class="sc">&#39; &#39;</span><span class="p">),</span>
+    <span class="n">METHOD_POST</span> <span class="o">=</span> <span class="n">MCC</span><span class="p">(</span><span class="sc">&#39;P&#39;</span><span class="p">,</span> <span class="sc">&#39;O&#39;</span><span class="p">,</span> <span class="sc">&#39;S&#39;</span><span class="p">,</span> <span class="sc">&#39;T&#39;</span><span class="p">),</span>
+    <span class="n">METHOD_DELETE</span> <span class="o">=</span> <span class="n">MCC</span><span class="p">(</span><span class="sc">&#39;D&#39;</span><span class="p">,</span> <span class="sc">&#39;E&#39;</span><span class="p">,</span> <span class="sc">&#39;L&#39;</span><span class="p">,</span> <span class="sc">&#39;E&#39;</span><span class="p">),</span>
+    <span class="n">METHOD_HEAD</span> <span class="o">=</span> <span class="n">MCC</span><span class="p">(</span><span class="sc">&#39;H&#39;</span><span class="p">,</span> <span class="sc">&#39;E&#39;</span><span class="p">,</span> <span class="sc">&#39;A&#39;</span><span class="p">,</span> <span class="sc">&#39;D&#39;</span><span class="p">),</span>
+    <span class="cm">/* ... */</span>
+<span class="p">};</span>
+
+<span class="n">STRING_SWITCH</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
+<span class="k">case</span> <span class="nl">METHOD_GET</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">HTTP_METHOD_GET</span><span class="p">;</span>
+<span class="k">case</span> <span class="nl">METHOD_POST</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">HTTP_METHOD_POST</span><span class="p">;</span>
+<span class="k">case</span> <span class="nl">METHOD_DELETE</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">HTTP_METHOD_DELETE</span><span class="p">;</span>
+<span class="k">case</span> <span class="nl">METHOD_HEAD</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">HTTP_METHOD_HEAD</span><span class="p">;</span>
+<span class="cm">/* ... */</span>
+<span class="k">default</span><span class="o">:</span>
+    <span class="k">return</span> <span class="n">HTTP_METHOD_UNKNOWN</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The good thing about the switch statement in C is that it is maybe the
+highest level statement in the language: the compiler can get really
+creative in how its code is generate.  It’s not uncommon for it to generate
+jump tables or even binary searches.  So this implementation would actually
+be faster than the various calls to <span class="docutils literal"><span class="pre">strncmp()</span></span> because:</p>
+<ol class="arabic simple">
+<li>Comparing integers is dirt cheap.</li>
+<li>The compiler knows what <span class="docutils literal"><span class="pre">memcpy()</span></span> does, so it’s very likely that on
+architectures where unaligned memory access is fine and there’s no
+performance penalty (any Intel Core CPU after Sandy Bridge for instance),
+it’ll be just a regular old MOV instruction when the size is small
+and known at compile time.</li>
+<li>Even if the compiler didn’t know what <span class="docutils literal"><span class="pre">memcpy()</span></span> does, it would only
+fill a register once, by doing potentially expensive byte-by-byte copies
+because of unaligned pointer access, and then proceed to just compare
+integers.</li>
+<li>There is less function call overhead; specially nice since this is
+most likely not going through the PLT.</li>
+<li>The compiler can reorder the comparisons as it see fit, often producing
+very tight code.</li>
+<li>These kinds of micro-optimizations don’t necessarily have to be
+completely unreadable and full of magical constants.</li>
+</ol>
+</div>
+
+    <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="../../../tags/lwan.html">lwan</a>, <a href="../../../tags/programming.html">programming</a>, <a href="../../../tags/trick.html">trick</a>, <a href="../../../tags/c.html">C</a></span>
+        </div>
+        </div><ul class="related clearfix">
+            <li class="left"></li>
+            <li class="right"><a href="../../../2017/03/01/parsing_json.html">Parsing JSON</a> &raquo; </li>
+        </ul></article><aside class="sidebar"><section><div class="widget" id="searchbox" role="search">
+    <h1><a href="#searchbox">Search</a></h1>
+    <form action="../../../search.html" method="get">
+        <input type="text" name="q" />
+        <button type="submit"><span class="fa fa-search"></span></button>
+    </form>
+</div></section><section><div class="widget">
+    <h1>Recent Posts</h1>
+    <ul><li>
+            <a href="#">More on string switch in C</a>
+        </li><li>
+            <a href="../../../2017/03/01/parsing_json.html">Parsing JSON</a>
+        </li><li>
+            <a href="../../../2016/11/08/infect_to_protect.html">Infect to Protect</a>
+        </li><li>
+            <a href="../../../2015/05/01/initializing_a_heap_allocated_structure_in_c.html">Initializing a heap-allocated structure in C</a>
+        </li><li>
+            <a href="../../../2014/11/02/hybrid_c_pascal_strings.html">Hybrid C/Pascal Strings</a>
+        </li><li>
+            <a href="../../../2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
+        </li><li>
+            <a href="../../../2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
+        </li><li>
+            <a href="../../../2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage by 94%</a>
+        </li><li>
+            <a href="../../../2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a>
+        </li><li>
+            <a href="../../../2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a>
+        </li></ul>
+</div>
+</section><section><div class="widget">
+    <h1>Tags Cloud</h1>
+      <a href="../../../tags/arduino.html" style="font-size: 8pt">arduino</a>&nbsp;&nbsp;
+      <a href="../../../tags/assembly.html" style="font-size: 8pt">assembly</a>&nbsp;&nbsp;
+      <a href="../../../tags/bpf.html" style="font-size: 8pt">bpf</a>&nbsp;&nbsp;
+      <a href="../../../tags/c.html" style="font-size: 16pt">C</a>&nbsp;&nbsp;
+      <a href="../../../tags/c.html" style="font-size: 8pt">c</a>&nbsp;&nbsp;
+      <a href="../../../tags/conferences.html" style="font-size: 8pt">conferences</a>&nbsp;&nbsp;
+      <a href="../../../tags/container.html" style="font-size: 8pt">container</a>&nbsp;&nbsp;
+      <a href="../../../tags/data_structure.html" style="font-size: 8pt">data-structure</a>&nbsp;&nbsp;
+      <a href="../../../tags/efl.html" style="font-size: 8pt">efl</a>&nbsp;&nbsp;
+      <a href="../../../tags/enlightenment.html" style="font-size: 8pt">enlightenment</a>&nbsp;&nbsp;
+      <a href="../../../tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
+      <a href="../../../tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
+      <a href="../../../tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
+      <a href="../../../tags/lwan.html" style="font-size: 16pt">lwan</a>&nbsp;&nbsp;
+      <a href="../../../tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
+      <a href="../../../tags/parser.html" style="font-size: 8pt">parser</a>&nbsp;&nbsp;
+      <a href="../../../tags/profusion.html" style="font-size: 9pt">profusion</a>&nbsp;&nbsp;
+      <a href="../../../tags/programming.html" style="font-size: 20pt">programming</a>&nbsp;&nbsp;
+      <a href="../../../tags/strace.html" style="font-size: 8pt">strace</a>&nbsp;&nbsp;
+      <a href="../../../tags/template.html" style="font-size: 8pt">template</a>&nbsp;&nbsp;
+      <a href="../../../tags/tizen.html" style="font-size: 8pt">tizen</a>&nbsp;&nbsp;
+      <a href="../../../tags/trick.html" style="font-size: 14pt">trick</a>&nbsp;&nbsp;
+      <a href="../../../tags/tricks.html" style="font-size: 8pt">tricks</a>&nbsp;&nbsp;
+      <a href="../../../tags/zephyr.html" style="font-size: 8pt">zephyr</a>
+</div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
+
+        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2015, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
+
+      </div> <!--! end of #container --><!--[if lt IE 7 ]>
+          <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"></script>
+          <script>window.attachEvent('onload',function(){CFInstall.check({mode:'overlay'})})</script>
+        <![endif]-->
+    </body>
+</html>

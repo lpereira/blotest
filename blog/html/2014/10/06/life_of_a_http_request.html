@@ -31,9 +31,10 @@
         <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Integer to string conversion" href="../../06/23/integer_to_string_conversion.html" /><link rel="prev" title="Hybrid C/Pascal Strings" href="../../11/02/hybrid_c_pascal_strings.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     '1.5',
+        VERSION:     '1.6.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
+        SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
     </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
@@ -63,22 +64,22 @@
 <h1>Life of a HTTP request, as seen by my toy web server</h1>
 <p>When learning a new programming language, I tend to write two things with
 it: a language interpreter (usually a FORTH-like language or Brainfuck if
-I&#8217;m feeling lazy), and a HTTP server.  Sometimes, just as a challenge or a
-way to quench my boredom, I do this even though I&#8217;ve been working with a
+I’m feeling lazy), and a HTTP server.  Sometimes, just as a challenge or a
+way to quench my boredom, I do this even though I’ve been working with a
 particular language for some time, as is the case with C.</p>
-<p>None of these projects I&#8217;ve written over the years have been as complex as
+<p>None of these projects I’ve written over the years have been as complex as
 <a class="reference external" href="http://lwan.ws">Lwan</a> ended up being: most of them were nothing but weekend hacks and were
 never able to hold my attention for more than a few dozen hours.</p>
-<p>It&#8217;s to be expected, then, that I might have a thing or two to say about it.
-In fact, I&#8217;ve been <a class="reference external" href="http://tia.mat.br/blog/html/tags/lwan.html">doing this in homeopathic doses</a> over the almost two years
-since I&#8217;ve started the project.  Never actually connected all the dots,
+<p>It’s to be expected, then, that I might have a thing or two to say about it.
+In fact, I’ve been <a class="reference external" href="http://tia.mat.br/blog/html/tags/lwan.html">doing this in homeopathic doses</a> over the almost two years
+since I’ve started the project.  Never actually connected all the dots,
 leaving out important details.</p>
 <p>This article is an attempt to describe, from the perspective of Lwan, the
 life of a HTTP request — from the socket being accepted to the response
 being sent — and explaining details and reasoning behind the implementation.</p>
 <div class="section" id="creating-the-listening-socket-accepting-connections">
 <h2>Creating the listening socket &amp; accepting connections</h2>
-<p>There&#8217;s nothing really special here: sockets are either created using the
+<p>There’s nothing really special here: sockets are either created using the
 <a class="reference external" href="http://linux.die.net/man/2/socket">standard POSIX stuff</a>, or are passed down from <a class="reference external" href="http://0pointer.net/blog/projects/socket-activation.html">systemd</a>.  In either case, TCP
 <a class="reference external" href="http://lwn.net/Articles/508865/">Fastopen</a> and <a class="reference external" href="http://linux.die.net/man/7/tcp#TCP_QUICKACK">Quickack</a> are enabled, in addition to socket lingering.  The
 socket is left in its default, blocking mode. The <a class="reference external" href="http://www.linuxjournal.com/files/linuxjournal.com/linuxjournal/articles/023/2333/2333s2.html">listen() backlog</a> is the
@@ -105,7 +106,7 @@ maximum allowed by the system.</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>It&#8217;s a blocking file descriptor since the main thread (responsible for
+<p>It’s a blocking file descriptor since the main thread (responsible for
 accepting all the sockets and scheduling clients) blocks on a call to
 <a class="reference external" href="http://linux.die.net/man/2/accept4">accept4()</a> instead of something like <a class="reference external" href="http://linux.die.net/man/4/epoll">Epoll</a>.  This <a class="reference external" href="http://linux.die.net/man/2/accept">accept()</a> variant is
 Linux-only and, among other things, lets one specify flags in sockets
@@ -163,12 +164,12 @@ descriptors are always allocated from the lowest possible number.</p>
 <p>Since this structure is quite small, this leads to a form of implicit
 lock called <a class="reference external" href="https://en.wikipedia.org/wiki/False_sharing">false sharing</a>, which is solved with a scheduler that is
 aware of that problem and groups two connection structures per cache
-line.  It&#8217;s simpler than it sounds:</p>
+line.  It’s simpler than it sounds:</p>
 <div class="highlight-c"><div class="highlight"><pre><span></span><span class="kt">int</span> <span class="kr">thread</span> <span class="o">=</span> <span class="p">((</span><span class="n">fd</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">%</span> <span class="n">n_threads</span><span class="p">;</span>
 </pre></div>
 </div>
 <p>A <a class="reference external" href="https://en.wikipedia.org/wiki/Round-robin_scheduling">round robin scheduler</a> is used on other architectures.</p>
-<p>An interesting curiosity about the connection structure is that it doesn&#8217;t
+<p>An interesting curiosity about the connection structure is that it doesn’t
 store the file descriptor: pointer arithmetic is performed to obtain it, as
 the the base address for the connection array is known.</p>
 <div class="highlight-c"><div class="highlight"><pre><span></span><span class="n">ALWAYS_INLINE</span> <span class="kt">int</span>
@@ -180,10 +181,10 @@ the the base address for the connection array is known.</p>
 </div>
 <p>After a thread has been chosen by the scheduler, the file descriptor number
 is sent to a <a class="reference external" href="https://en.wikipedia.org/wiki/Unix_domain_socket">Unix domain socket</a> created with <a class="reference external" href="http://linux.die.net/man/2/socketpair">socketpair()</a> to that particular
-thread&#8217;s Epoll. This part used to use <a class="reference external" href="http://linux.die.net/man/2/epoll_ctl">epoll_ctl()</a> directly — which, although
+thread’s Epoll. This part used to use <a class="reference external" href="http://linux.die.net/man/2/epoll_ctl">epoll_ctl()</a> directly — which, although
 threadsafe, had a problem: <a class="reference external" href="http://linux.die.net/man/2/epoll_wait">epoll_wait()</a> will never timeout on a socket if
 nothing was read from it previously. By writing to that socketpair, Epoll
-awakens, the file descriptor is added to it, and that thread&#8217;s death queue
+awakens, the file descriptor is added to it, and that thread’s death queue
 can handle the timeout by itself.</p>
 <p>The sole purpose of each thread is to react to Epoll events, such as:</p>
 <ul class="simple">
@@ -194,7 +195,7 @@ terminating connections);</li>
 <li>Connection hung up.</li>
 </ul>
 <p>Epoll events are used as signals to create, destroy, resume, and reset
-coroutines: there&#8217;s one for each connection, and they&#8217;re used both as
+coroutines: there’s one for each connection, and they’re used both as
 lightweight threads and as resource management facilities.</p>
 </div>
 <div class="section" id="coroutines">
@@ -231,7 +232,7 @@ pretty efficient: essentially just a call to <span class="docutils literal"><spa
 <p>Request handlers can be written using an API that’s completely synchronous
 on the surface but behind the curtains, I/O happens in the background
 (client sockets are non-blocking) and control is given to the next coroutine
-as commanded by each thread&#8217;s loop.</p>
+as commanded by each thread’s loop.</p>
 <p>Execution resumes where the coroutine left off. This saves a lot of code,
 not only making things easier to reason about, but also simplifying resource
 management by having a single cleanup point.</p>
@@ -374,7 +375,7 @@ increases implementation complexity, though, but combined with the string
 switch trick, this might yield a good performance boost.</p>
 <p>Yet another technique investigated was to <a class="reference external" href="https://gist.github.com/lpereira/c744c08c74ca600e58ff">generate machine code to perform
 lookup</a>: essentially turning a data structure into executable code. The idea
-works but the instruction cache pressure isn&#8217;t worth the trouble. I&#8217;m still
+works but the instruction cache pressure isn’t worth the trouble. I’m still
 partial to this solution, though, so I might revisit it later: <a class="reference external" href="http://www.varnish-cache.org">Varnish</a> does
 something remotely similar with VCL and it seems to work, so this deserves a
 little bit more research.</p>
@@ -495,16 +496,16 @@ saved the day.</p>
 <div class="section" id="file-serving-module">
 <h3>File serving module</h3>
 <p>Since files can be served using the <span class="docutils literal"><span class="pre">sendfile()</span></span> system call, the kind of
-handlers used by Hello World can&#8217;t be used: responses are sent using
+handlers used by Hello World can’t be used: responses are sent using
 <span class="docutils literal"><span class="pre">writev()</span></span> to send both response headers and contents in one kernel roundtrip.
-Because of this, there&#8217;s a different kind of handler that gives more control
+Because of this, there’s a different kind of handler that gives more control
 as to how the response is sent: the (for the lack of a better name)
 streaming handlers. Streaming handlers are expected to send the whole
 response themselves.</p>
-<p>To convert a &#8220;normal&#8221; handler into a streaming handler is simple: just set a
+<p>To convert a “normal” handler into a streaming handler is simple: just set a
 few pointers in the “normal” handler and return. With the exception of
 producing error responses automatically — streaming handlers function
-exactly the same as a &#8220;normal&#8221; handler that does not send the response
+exactly the same as a “normal” handler that does not send the response
 headers automatically.</p>
 <div class="highlight-c"><div class="highlight"><pre><span></span><span class="k">static</span> <span class="n">lwan_http_status_t</span>
 <span class="nf">serve_files_handle_cb</span><span class="p">(</span><span class="n">lwan_request_t</span> <span class="o">*</span><span class="n">request</span><span class="p">,</span>
@@ -659,7 +660,7 @@ template, and a few other things.</p>
 practical if using a language that’s more expressive than C. However,
 without requiring (too much) boilerplate, a substantial amount of its
 specification is implemented, in a pretty efficient way, and suits all Lwan
-uses pretty well. (Being performant <a class="reference external" href="http://blog.codinghorror.com/the-sad-tragedy-of-micro-optimization-theater/">might not matter</a>, though, but I&#8217;m
+uses pretty well. (Being performant <a class="reference external" href="http://blog.codinghorror.com/the-sad-tragedy-of-micro-optimization-theater/">might not matter</a>, though, but I’m
 here to have fun, not solve problems.)</p>
 <p>Not everything is implemented exactly as in the standard, though: that’s
 mostly for laziness reasons, but the non-dynamic nature of C would make
@@ -703,7 +704,7 @@ much more efficient value lookup mechanism can be used instead.</p>
 <h3>Obtaining variables</h3>
 <p>To use the templating mechanism, one should have a structure for each
 template. Structures are cheap and provide some welcome compile-time type
-checking that wouldn&#8217;t be possible otherwise.</p>
+checking that wouldn’t be possible otherwise.</p>
 <div class="highlight-c"><div class="highlight"><pre><span></span><span class="k">typedef</span> <span class="k">struct</span> <span class="n">hello_t</span> <span class="p">{</span>
   <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">;</span>
   <span class="kt">int</span> <span class="n">age</span><span class="p">;</span>
@@ -944,11 +945,11 @@ structures help reducing cache pressure.</p>
 </div>
 <div class="section" id="closing-words">
 <h2>Closing words</h2>
-<p>That&#8217;s pretty much it: when a response has been sent, the connection can
+<p>That’s pretty much it: when a response has been sent, the connection can
 either be closed, or a new request can be serviced in the same connection.
-Repeat ad infinitum and there&#8217;s the <a class="reference external" href="http://lwan.ws">HTTP server</a>.</p>
-<p>If you&#8217;ve made this far, I invite you to take a look at the <a class="reference external" href="https://github.com/lpereira/lwan">full source code</a>.
-There are things that were not mentioned in this article. It&#8217;s also a young
+Repeat ad infinitum and there’s the <a class="reference external" href="http://lwan.ws">HTTP server</a>.</p>
+<p>If you’ve made this far, I invite you to take a look at the <a class="reference external" href="https://github.com/lpereira/lwan">full source code</a>.
+There are things that were not mentioned in this article. It’s also a young
 Free Software project with no entry barrier: just fork and issue a pull
 request.</p>
 </div>
@@ -976,6 +977,8 @@ request.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
+        </li><li>
             <a href="../../../2017/03/01/parsing_json.html">Parsing JSON</a>
         </li><li>
             <a href="../../../2016/11/08/infect_to_protect.html">Infect to Protect</a>
@@ -993,8 +996,6 @@ request.</p>
             <a href="../../../2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a>
         </li><li>
             <a href="../../../2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a>
-        </li><li>
-            <a href="../../../2012/11/11/mustache_templates_in_c.html">Mustache templates in C</a>
         </li></ul>
 </div>
 </section><section><div class="widget">

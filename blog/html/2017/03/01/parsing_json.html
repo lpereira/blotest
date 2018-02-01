@@ -28,12 +28,13 @@
         <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
         <script src="../../../_static/plugins.js"></script>
         <script src="../../../_static/main.js"></script>
-        <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Infect to Protect" href="../../../2016/11/08/infect_to_protect.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
+        <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Infect to Protect" href="../../../2016/11/08/infect_to_protect.html" /><link rel="prev" title="More on string switch in C" href="../../../2018/02/01/more_on_string_switch_in_c.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     '1.5',
+        VERSION:     '1.6.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
+        SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
     </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
@@ -62,38 +63,38 @@
     <div class="section" id="parsing-json">
 <h1>Parsing JSON</h1>
 <p>There are many libraries out there to parse JSON files.  It might be a
-futile attempt, then, to write yet another one.  However, when you&#8217;re
-working on a RTOS where memory is golden, and the alternatives don&#8217;t look
+futile attempt, then, to write yet another one.  However, when you’re
+working on a RTOS where memory is golden, and the alternatives don’t look
 that great, you got to do something about it.</p>
 <p>Recently I wrote a <a class="reference external" href="http://www.json.org">JSON</a> parser for a project at
 work.  This parser uses constant memory, regardless of the amount of data
-it&#8217;s working with, and deserializes directly to a C struct.  Similar, in
-spirit, to the JSON parser that&#8217;s part of the Golang standard library, that
+it’s working with, and deserializes directly to a C struct.  Similar, in
+spirit, to the JSON parser that’s part of the Golang standard library, that
 encodes and decodes data based on a tagged structure.</p>
 <p>The lexer is the usual state machine, where the state itself is a function
 pointer to a function that handles that particular state.</p>
-<p>I&#8217;ve been using this technique for a while, and I found that it&#8217;s a very
+<p>I’ve been using this technique for a while, and I found that it’s a very
 clean and efficient way of describing state machines, specially for lexers.</p>
 <p>I began using it after a coworker wrote a <a class="reference external" href="https://github.com/solettaproject/soletta/blob/3bda9802b243c2052555cf88263f754d34458414/src/shared/sol-fbp-internal-scanner.c">parser for a DSL</a>
-using it &#8211; and he got the idea from the &#8211; you guessed &#8211; Golang template
-package.  (There&#8217;s a <a class="reference external" href="https://www.youtube.com/watch?v=HxaD_trXwRE">nice talk by Rob Pike about it</a> &#8211; I recommend this talk
+using it – and he got the idea from the – you guessed – Golang template
+package.  (There’s a <a class="reference external" href="https://www.youtube.com/watch?v=HxaD_trXwRE">nice talk by Rob Pike about it</a> – I recommend this talk
 not only for the lexing goodness, but also for the tips on how to evolve a
 concurrent design.)</p>
 <p>The parser implementation itself is nothing to write home about.  However,
-by using the same idea used in Lwan&#8217;s mustache template engine to <a class="reference external" href="https://tia.mat.br/posts/2012/11/11/mustache_templates_in_c.html">obtain
+by using the same idea used in Lwan’s mustache template engine to <a class="reference external" href="https://tia.mat.br/posts/2012/11/11/mustache_templates_in_c.html">obtain
 the variables</a>, it
 manages to do some things that are not common in JSON parsers written in C:</p>
 <ul class="simple">
 <li>It will accept only values of known types for a particular key.</li>
 <li>It will save the decoded value directly in a struct field.</li>
-<li>It won&#8217;t try to decode the same field twice.</li>
+<li>It won’t try to decode the same field twice.</li>
 </ul>
 <p>The first point is crucial when working with data received from the network,
-which is precisely the kind of thing I&#8217;m dealing with.  This avoids problems
+which is precisely the kind of thing I’m dealing with.  This avoids problems
 such as type confusion and such, and moves the responsibility of checking
 the types to the library rather than the user of the library.</p>
 <p>By saving the decoded value directly into a struct field, it does use a
-predictable amount of memory.  This is good, as it&#8217;s not going to balloon
+predictable amount of memory.  This is good, as it’s not going to balloon
 out of control, or require some guesswork to know beforehand how many tokens
 are going to be necessary to deserialize some values.  The C compiler
 already knows exactly how many bytes a struct needs.</p>
@@ -130,33 +131,33 @@ deserialized before.</p>
 <span class="cm"> * deserialized.  */</span>
 </pre></div>
 </div>
-<p>Another thing that could be done &#8211; but that has not been implemented yet,
+<p>Another thing that could be done – but that has not been implemented yet,
 is to do the opposite as well: the descriptor and a struct to produce
 JSON-encoded data.  This has many advantages over the usual JSON libraries
 that require generating a JSON tree in memory just to serialize it
 afterwards.</p>
-<p>And although I&#8217;m quite happy with this code, there are still some
-limitations that I&#8217;ll address whenever I have the need.</p>
-<p>Mainly, there&#8217;s no way to parse nested objects or arrays.  I&#8217;ve written code
-to do this but these changes haven&#8217;t gotten any fuzz-testing action so I&#8217;m
+<p>And although I’m quite happy with this code, there are still some
+limitations that I’ll address whenever I have the need.</p>
+<p>Mainly, there’s no way to parse nested objects or arrays.  I’ve written code
+to do this but these changes haven’t gotten any fuzz-testing action so I’m
 holding them off it until my living room heater^Wcomputer has worked on the
 problem for at least a week.</p>
-<p>Another one that&#8217;s not a deal breaker for an embedded OS is the lack of
+<p>Another one that’s not a deal breaker for an embedded OS is the lack of
 floating pointing numbers (only integers for now).  Parsing floating point
 is <a class="reference external" href="http://www.netlib.org/fp/dtoa.c">trickier than it sounds</a>, and
-there&#8217;s no <span class="docutils literal"><span class="pre">strtod()</span></span> in Zephyr&#8217;s minimal libc.</p>
-<p>As a minor issue to work around, there&#8217;s the return value: this limits the
+there’s no <span class="docutils literal"><span class="pre">strtod()</span></span> in Zephyr’s minimal libc.</p>
+<p>As a minor issue to work around, there’s the return value: this limits the
 number of fields to be parsed to 32; that should be plenty for most uses.
-However, in the unlikely event that&#8217;s not sufficient, this can be worked
+However, in the unlikely event that’s not sufficient, this can be worked
 around by having multiple descriptors.</p>
-<p>And, finally, there&#8217;s the JSON encoding part that I&#8217;ve mentioned already.</p>
-<p>The major problem with this piece of code, that can&#8217;t be fixed by writing
-more code, is that I can&#8217;t use it with Lwan due to licensing reasons:
+<p>And, finally, there’s the JSON encoding part that I’ve mentioned already.</p>
+<p>The major problem with this piece of code, that can’t be fixed by writing
+more code, is that I can’t use it with Lwan due to licensing reasons:
 although it is open source, part of the <a class="reference external" href="http://www.zephyrproject.org">Zephyr project</a>, it is licensed under the Apache 2
 license, which is incompatible with the GPL2+ used by Lwan (would have to
 bump it to [L]GPL3).</p>
-<p>(For those that might ask how fast is it: it&#8217;s fast enough. I didn&#8217;t
-measure, I didn&#8217;t compare, and I don&#8217;t really care: it&#8217;s readable,
+<p>(For those that might ask how fast is it: it’s fast enough. I didn’t
+measure, I didn’t compare, and I don’t really care: it’s readable,
 maintainable, and does the job.)</p>
 </div>
 
@@ -171,7 +172,7 @@ maintainable, and does the job.)</p>
                 <a href="../../../tags/programming.html">programming</a>, <a href="../../../tags/zephyr.html">zephyr</a>, <a href="../../../tags/parser.html">parser</a></span>
         </div>
         </div><ul class="related clearfix">
-            <li class="left"></li>
+            <li class="left"> &laquo; <a href="../../../2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a></li>
             <li class="right"><a href="../../../2016/11/08/infect_to_protect.html">Infect to Protect</a> &raquo; </li>
         </ul></article><aside class="sidebar"><section><div class="widget" id="searchbox" role="search">
     <h1><a href="#searchbox">Search</a></h1>
@@ -182,6 +183,8 @@ maintainable, and does the job.)</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
+        </li><li>
             <a href="#">Parsing JSON</a>
         </li><li>
             <a href="../../../2016/11/08/infect_to_protect.html">Infect to Protect</a>
@@ -199,8 +202,6 @@ maintainable, and does the job.)</p>
             <a href="../../../2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a>
         </li><li>
             <a href="../../../2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a>
-        </li><li>
-            <a href="../../../2012/11/11/mustache_templates_in_c.html">Mustache templates in C</a>
         </li></ul>
 </div>
 </section><section><div class="widget">

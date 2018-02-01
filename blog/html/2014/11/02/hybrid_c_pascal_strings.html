@@ -31,9 +31,10 @@
         <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Life of a HTTP request, as seen by my toy web server" href="../../10/06/life_of_a_http_request.html" /><link rel="prev" title="Initializing a heap-allocated structure in C" href="../../../2015/05/01/initializing_a_heap_allocated_structure_in_c.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     '1.5',
+        VERSION:     '1.6.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
+        SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
     </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
@@ -61,7 +62,7 @@
         </div>
     <div class="section" id="hybrid-c-pascal-strings">
 <h1>Hybrid C/Pascal Strings</h1>
-<p>I&#8217;ve been thinking for a while on how to reduce the overhead in <a class="reference external" href="http://lwan.ws">Lwan</a>&#8216;s
+<p>I’ve been thinking for a while on how to reduce the overhead in <a class="reference external" href="http://lwan.ws">Lwan</a>’s
 string buffer, when the strings are small. There are a number of
 ways of accomplishing this.</p>
 <p>A somewhat common way is what <span class="docutils literal"><span class="pre">std::string</span></span> does: it reuses the bits
@@ -69,7 +70,7 @@ reserved for <cite>effective string length</cite>, <cite>allocated buffer size</
 <cite>pointer to buffer</cite> to store the string contents inline.</p>
 <p>A <a class="reference external" href="http://tulrich.com/rants-2009.html#d2009-01-03T00:00:00Z">clever improvement</a> is, when the string is small, to turn the
 <cite>effective string length</cite> counter to a <cite>bytes remaining counter</cite>, and
-put it after the buffer that&#8217;s storing the string; this way, when the
+put it after the buffer that’s storing the string; this way, when the
 string is at full capacity, this serves as a <span class="docutils literal"><span class="pre">\0</span></span> terminator, which
 is very useful for compatibility with C.  And, of course, as a result,
 one more byte can be stored in that string.</p>
@@ -80,9 +81,9 @@ size of the string. If someone were to implement this in C, the
 advantage would turn into a disadvantage, as most string-handling
 routines present in the standard library would be then rendered useless.</p>
 <p>Or would it?</p>
-<p>I&#8217;m sure I&#8217;m not the first person to come up with the idea of having a
+<p>I’m sure I’m not the first person to come up with the idea of having a
 C/Pascal String hybrid.  But at least the <a class="reference external" href="https://en.wikipedia.org/wiki/String_(computer_science)">Wikipedia</a> article on
-Strings doesn&#8217;t seem to mention this variant I just came up with:</p>
+Strings doesn’t seem to mention this variant I just came up with:</p>
 <ul class="simple">
 <li>Keep the <span class="docutils literal"><span class="pre">\0</span></span> to terminate the string. This helps reusing the
 string handling routines from the C standard library, which are usually
@@ -96,10 +97,10 @@ blocks and find the position of the <span class="docutils literal"><span class="
 8), with an overhead of only two bytes, while retaining compatibility
 with C strings.  With SIMD, the maximum string size could be easily
 doubled or quadrupled.</p>
-<p>Of course, this isn&#8217;t actually an improvement on the kind of small
-string optimization performed by <span class="docutils literal"><span class="pre">std::string</span></span>, so I&#8217;m not yet
-convinced this is the way to go. This is one of the reasons I haven&#8217;t
-yet implemented this, but I might use the fact that I&#8217;m currently
+<p>Of course, this isn’t actually an improvement on the kind of small
+string optimization performed by <span class="docutils literal"><span class="pre">std::string</span></span>, so I’m not yet
+convinced this is the way to go. This is one of the reasons I haven’t
+yet implemented this, but I might use the fact that I’m currently
 enjoying some vacation time and write a prototype.</p>
 </div>
 
@@ -125,6 +126,8 @@ enjoying some vacation time and write a prototype.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
+        </li><li>
             <a href="../../../2017/03/01/parsing_json.html">Parsing JSON</a>
         </li><li>
             <a href="../../../2016/11/08/infect_to_protect.html">Infect to Protect</a>
@@ -142,8 +145,6 @@ enjoying some vacation time and write a prototype.</p>
             <a href="../../../2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a>
         </li><li>
             <a href="../../../2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a>
-        </li><li>
-            <a href="../../../2012/11/11/mustache_templates_in_c.html">Mustache templates in C</a>
         </li></ul>
 </div>
 </section><section><div class="widget">

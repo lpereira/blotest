@@ -31,9 +31,10 @@
         <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Implementing sequences in lwan template engine" href="../../09/26/implementing_sequences_in_lwan_template_engine.html" /><link rel="prev" title="Integer to string conversion" href="../../../2014/06/23/integer_to_string_conversion.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     '1.5',
+        VERSION:     '1.6.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
+        SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
     </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
@@ -61,23 +62,23 @@
         </div>
     <div class="section" id="reducing-lwan-memory-usage-by-94">
 <h1>Reducing Lwan memory usage by 94%</h1>
-<p>One of the things that bothers me when I&#8217;m writing software is that I <a class="reference external" href="https://www.youtube.com/watch?v=csyL9EC0S0c">never
+<p>One of the things that bothers me when I’m writing software is that I <a class="reference external" href="https://www.youtube.com/watch?v=csyL9EC0S0c">never
 get things right the first time</a>.  It takes me quite a few iterations to
-achieve a good result &#8211; be it performance, memory usage, or a good
-architecture.  Getting things to a &#8220;good enough&#8221; state is also very frequent
+achieve a good result – be it performance, memory usage, or a good
+architecture.  Getting things to a “good enough” state is also very frequent
 as projects need to move forward; however, written code often ends up in
 sort of a low priority refactoring thread inside my head.  Sometimes this
-thread is able to produce a thing or two, and I&#8217;m able to revisit these
+thread is able to produce a thing or two, and I’m able to revisit these
 things.</p>
 <div class="figure align-center" id="id1">
 <img alt="projectmovingforward" src="https://farm1.staticflickr.com/64/169229347_f554a9c9ea.jpg" />
-<p class="caption"><span class="caption-text">Project moving forward picture by <a class="reference external" href="http://www.flickr.com/photos/tsdesign/">Todd Smith</a>. Sometimes you&#8217;re so
+<p class="caption"><span class="caption-text">Project moving forward picture by <a class="reference external" href="http://www.flickr.com/photos/tsdesign/">Todd Smith</a>. Sometimes you’re so
 focused on the goal that you end up not appreciating the journey.</span></p>
 </div>
 <div class="section" id="background-toys">
 <h2>Background toys</h2>
 <p>One of the things that were in that refactoring thread was <a class="reference external" href="http://github.com/lpereira/lwan">my toy web
-server</a>&#8216;s memory usage.  It would consume a whopping <strong>855MB</strong> of memory
+server</a>’s memory usage.  It would consume a whopping <strong>855MB</strong> of memory
 while idling; recent commits dropped this amount to a mere <strong>32MB</strong> (with
 maybe some more room to spare).  It used to use <strong>2670%</strong> more memory.</p>
 <p>This was only possible because I know the code inside out and was able to
@@ -106,13 +107,13 @@ all of them in a single unsigned integer.  Memory usage dropped again.</p>
 <p>Then a few months passed, and out of the blue I realized that there was
 something wrong in the architecture: the same structure I was using to track
 request state, I was also using to track connection state.</p>
-<p>So I moved all things that only matters to a connection to a structure &#8211;
-which is the structure that&#8217;s preallocated on startup &#8211; and made the
-request structure be allocated in the request processor routine&#8217;s stack.
-This stack lives in a coroutine &#8211; which won&#8217;t use more memory than it was
+<p>So I moved all things that only matters to a connection to a structure –
+which is the structure that’s preallocated on startup – and made the
+request structure be allocated in the request processor routine’s stack.
+This stack lives in a coroutine – which won’t use more memory than it was
 already allocated for the coroutine stack.  Another worthy reduction of
 memory usage.</p>
-<p>This also made keep-alive connections a tiny bit faster, as there&#8217;s no need to
+<p>This also made keep-alive connections a tiny bit faster, as there’s no need to
 <span class="docutils literal"><span class="pre">memset()</span></span> the request structure to clean state for the next request
 anymore.</p>
 <div class="figure align-center" id="id3">
@@ -122,9 +123,9 @@ anymore.</p>
 </div>
 <div class="section" id="reducing-it-further">
 <h2>Reducing it further</h2>
-<p>There&#8217;s another possibility for memory reduction, but I&#8217;m not sure if it is
+<p>There’s another possibility for memory reduction, but I’m not sure if it is
 worthy implementing.</p>
-<p>Lwan uses <span class="docutils literal"><span class="pre">epoll()</span></span> &#8211; and when a file descriptor is added to a poller,
+<p>Lwan uses <span class="docutils literal"><span class="pre">epoll()</span></span> – and when a file descriptor is added to a poller,
 one can pass arbitrary data inside <span class="docutils literal"><span class="pre">epoll_data_t</span></span>, up to 64-bit in size.
 Both the file descriptor and the remote IP address could then be passed as
 this data, removing both fields from the connection structure.</p>
@@ -133,20 +134,20 @@ active; everything else is either useless to identify the connection (the
 file descriptor is used as an index in an array of connections) or changes
 all the time, such as the flags (which would incur the penalty of calling
 <span class="docutils literal"><span class="pre">epoll_ctl()</span></span> every time they change).</p>
-<p>This would reduce structures by a few megabytes, which isn&#8217;t really worth
+<p>This would reduce structures by a few megabytes, which isn’t really worth
 the effort considering IPv6 support would need to be implemented someday and
 this trick would be then rendered useless.  Maybe my refactoring thread will
 be able to answer that in a few months.</p>
-<p>I&#8217;m still considering if it is worthy the trouble of leaking the
+<p>I’m still considering if it is worthy the trouble of leaking the
 request/connection abstraction and removing an integer from the request
 structure so all request-related flags would be set in the connection
 structure.</p>
-<p><strong>Update (11 Dec):</strong> I&#8217;ve found another way to remove these two structure
-members; I&#8217;ve committed this code on a <a class="reference external" href="https://github.com/lpereira/lwan/tree/32-byte-connection-struct">separate branch</a> as further tests
+<p><strong>Update (11 Dec):</strong> I’ve found another way to remove these two structure
+members; I’ve committed this code on a <a class="reference external" href="https://github.com/lpereira/lwan/tree/32-byte-connection-struct">separate branch</a> as further tests
 must be performed.  In the same circumstances as the other tests, the server
 is now using 2MiB less memory.  Basically:</p>
 <ol class="arabic simple">
-<li>The remote IP address can be obtained through the <span class="docutils literal"><span class="pre">getpeername()</span></span> function; since it&#8217;s not usually required, the need to keep this information around is reduced.</li>
+<li>The remote IP address can be obtained through the <span class="docutils literal"><span class="pre">getpeername()</span></span> function; since it’s not usually required, the need to keep this information around is reduced.</li>
 <li>The socket file descriptor can be calculated by pointer arithmetic. Each connection has a reference to the huge connection array that it is part of; subtracting this from the connection pointer yields the file descriptor.</li>
 </ol>
 </div>
@@ -174,6 +175,8 @@ is now using 2MiB less memory.  Basically:</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
+        </li><li>
             <a href="../../../2017/03/01/parsing_json.html">Parsing JSON</a>
         </li><li>
             <a href="../../../2016/11/08/infect_to_protect.html">Infect to Protect</a>
@@ -191,8 +194,6 @@ is now using 2MiB less memory.  Basically:</p>
             <a href="../../09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a>
         </li><li>
             <a href="../../07/20/partial_functions_in_c.html">Partially Applied Functions in C</a>
-        </li><li>
-            <a href="../../../2012/11/11/mustache_templates_in_c.html">Mustache templates in C</a>
         </li></ul>
 </div>
 </section><section><div class="widget">

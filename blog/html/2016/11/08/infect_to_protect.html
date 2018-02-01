@@ -31,9 +31,10 @@
         <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Initializing a heap-allocated structure in C" href="../../../2015/05/01/initializing_a_heap_allocated_structure_in_c.html" /><link rel="prev" title="Parsing JSON" href="../../../2017/03/01/parsing_json.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     '1.5',
+        VERSION:     '1.6.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
+        SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
     </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
@@ -128,7 +129,7 @@ in almost all of the programs in the base install (which is easier for a
 BSD system, since everything is kept under the same roof.)</p>
 <p>But, unlike <span class="docutils literal"><span class="pre">pledge(2)</span></span>, this thing can be applied to binaries that have
 been already built. No source code modifications are necessary. If your
-distribution can withstand the stench, &#8220;infected&#8221; binaries could be a
+distribution can withstand the stench, “infected” binaries could be a
 thing in the default installation.</p>
 </div>
 <div class="section" id="filtering-the-system-calls">
@@ -145,8 +146,8 @@ scenarios, this is perfectly acceptable. For others, there’s the
 seccomp-BPF extension.</p>
 <p>BPF stands for <a class="reference external" href="https://en.wikipedia.org/wiki/Berkeley_Packet_Filter">Berkeley Packet
 Filter</a>. A
-famous use of BPFs is in the tcpdump program, where rules such as &#8220;only
-give me back TCP fragments with the RST flag set&#8221; can be passed to the
+famous use of BPFs is in the tcpdump program, where rules such as “only
+give me back TCP fragments with the RST flag set” can be passed to the
 kernel; packets that don’t match the filter are not copied back to the
 userland, reducing a lot of the chatter between the two lands.</p>
 <p>Obviously, this must be extremely performant, since kernel time must be
@@ -202,12 +203,12 @@ call instruction) is pushed to the stack:</p>
 <span class="nl">bpf_end:</span>
 </pre></div>
 </div>
-<p>The <span class="docutils literal"><span class="pre">bpf</span></span> label doesn&#8217;t point to any x86 instruction: it contains only
+<p>The <span class="docutils literal"><span class="pre">bpf</span></span> label doesn’t point to any x86 instruction: it contains only
 macros that expands to the definitions of <span class="docutils literal"><span class="pre">struct</span> <span class="pre">sock_filter</span></span> as defined
 in <span class="docutils literal"><span class="pre">linux/filter.h</span></span>.  To copy the BPF program to the kernel, the <cite>prctl()</cite>
 call expects a <span class="docutils literal"><span class="pre">struct</span> <span class="pre">sock_fprog</span></span>, which contains the BPF program length
 (in number of <span class="docutils literal"><span class="pre">struct</span> <span class="pre">sock_filter</span></span> elements), and a pointer to the base of
-that array.  Since there&#8217;s no way to know where this code is gong to land in
+that array.  Since there’s no way to know where this code is gong to land in
 memory beforehand, this trick comes in handy: after the <span class="docutils literal"><span class="pre">call</span>
 <span class="pre">apply_filter</span></span> instruction, the top of the stack now contains the base
 address of that array.</p>
@@ -220,13 +221,13 @@ shoehorning it into the executable.</p>
 <div class="section" id="scoring-a-goal">
 <h2>Scoring a goal</h2>
 <p>For the proof of concept, I was initially going to write the infection
-program in Python, as I usually do for throwaway code.  However, I wasn&#8217;t
+program in Python, as I usually do for throwaway code.  However, I wasn’t
 successful in finding a working ELF library that would let me dump the
 modified executable.</p>
 <p>I was too lazy to actually fix or write support for that, so I kept
 looking for alternatives and ended up finding the
 <a class="reference external" href="http://www.muppetlabs.com/~breadbox/software/elfkickers.html">ELFkickers</a>
-suite from the always excellent Muppet Labs. It includes an &#8220;infect&#8221;
+suite from the always excellent Muppet Labs. It includes an “infect”
 program that does exactly what says in the tin: it takes in an
 executable file, and produces another executable file that creates a
 setuid shell before continuing to the original program. Exactly what one
@@ -319,7 +320,7 @@ exit_group(0)                           = ?
 +++ exited with 0 +++
 </pre></div>
 </div>
-<p>However, the magic happens after the &#8220;infected&#8221; binary is executed.
+<p>However, the magic happens after the “infected” binary is executed.
 First, without creating a socket:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span>…
 prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)  = 0
@@ -345,7 +346,7 @@ socket(AF_INET, SOCK_STREAM, IPPROTO_TCP) = 41
 </pre></div>
 </div>
 <p>And Seccomp kicks in and kills the program with a <span class="docutils literal"><span class="pre">SIGSYS</span></span> signal. As
-expected. <strong>It&#8217;s alive!</strong></p>
+expected. <strong>It’s alive!</strong></p>
 <div class="figure align-center">
 <img alt="It's alive!" src="https://i.imgur.com/sWwquxp.jpg" />
 </div>
@@ -369,7 +370,7 @@ more details.)</p>
 <p>The second way would involve running the program under <span class="docutils literal"><span class="pre">strace(1)</span></span> and
 record which system calls the program makes from a few runs.  If the test
 coverage for each run is sufficiently high, this will work very reliably;
-this isn&#8217;t always the case, so the mileage may vary.  Also, for certain
+this isn’t always the case, so the mileage may vary.  Also, for certain
 large, complicated programs, stracing it all automatically could prove to be
 a challenge.</p>
 <p>Another way would be the following: Grab a list of undefined symbols a
@@ -380,7 +381,7 @@ the executable and the libraries for sequences like <span class="docutils litera
 call number (loaded into <span class="docutils literal"><span class="pre">eax</span></span>) will be hardcoded within a program or
 shared library.</p>
 <p>There’s a fourth idea, as well, which involves both doing the automated
-static analysis on the binary and running strace to catch &#8220;runaway&#8221;
+static analysis on the binary and running strace to catch “runaway”
 syscalls. This can get quite complicated and it’s unlikely I’ll get it
 correct in the first few tries (and, yet, the same shortcomings will
 apply in the end.)</p>
@@ -397,7 +398,7 @@ this.)</p>
 and every system call will certainly be a bottleneck.  Also, BPF programs are
 limited in size, and a large whitelist that’s implemented the same way as the
 prototype will limit the possibility for more fine-grained filters.  Things
-like &#8220;the <span class="docutils literal"><span class="pre">socket(2)</span></span> call is allowed only for UNIX-domain sockets&#8221;, rather than
+like “the <span class="docutils literal"><span class="pre">socket(2)</span></span> call is allowed only for UNIX-domain sockets”, rather than
 allowing whatever call to <span class="docutils literal"><span class="pre">socket(2)</span></span> would be impractical.</p>
 <p>Since each syscall is identified by a number, a simple bitmap could be
 used to implement the whitelist. This will also free up some space in
@@ -449,7 +450,7 @@ runtimes very enticing.</p>
 past decades, without throwing away some of the sandboxing benefits that
 containers provide, all the while not introducing new concepts for
 users.</p>
-<p>Of course, something like this &#8211; even if properly implemented &#8211; won’t
+<p>Of course, something like this – even if properly implemented – won’t
 be a replacement for containers. Specially if one considers their role
 as packets ready for deployment, which have a lot of value for devops
 personnel.</p>
@@ -480,6 +481,8 @@ repository</a>.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
+        </li><li>
             <a href="../../../2017/03/01/parsing_json.html">Parsing JSON</a>
         </li><li>
             <a href="#">Infect to Protect</a>
@@ -497,8 +500,6 @@ repository</a>.</p>
             <a href="../../../2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a>
         </li><li>
             <a href="../../../2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a>
-        </li><li>
-            <a href="../../../2012/11/11/mustache_templates_in_c.html">Mustache templates in C</a>
         </li></ul>
 </div>
 </section><section><div class="widget">

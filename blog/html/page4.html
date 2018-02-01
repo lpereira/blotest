@@ -31,9 +31,10 @@
         <link rel="search" title="Search" href="search.html" /><link rel="prev" title="Newer" href="page3.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '1.5',
+        VERSION:     '1.6.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
+        SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
     </script><script type="text/javascript" src="_static/underscore.js"></script><script type="text/javascript" src="_static/doctools.js"></script>
@@ -57,6 +58,138 @@
                 </li>
               </ul>
           </nav><div class="main-container" role="main"><div class="main wrapper body clearfix"><article><div class="timestamp postmeta">
+            <span>August 12, 2012</span>
+        </div>
+        <div class="section">
+            <h1><a href="2012/08/12/file_serving_with_few_system_calls.html">File serving with few system calls</a></h1>
+<p>When I first wrote <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>, file serving was not a primary goal. I’ve added
+this capability later, never giving much thought to the number of system
+calls required to serve one file. As a result, static file serving was quite
+slow compared to “hello world” requests. Bored one day, I’ve decided to speed
+this as much as I could.</p>
+<p>Before optimizing, serving a file would look like this:</p>
+<div class="highlight-c"><div class="highlight"><pre><span/><span class="o">&lt;</span><span class="p">...</span> <span class="n">epoll_wait</span> <span class="n">resumed</span><span class="o">&gt;</span> <span class="p">{{</span><span class="n">EPOLLIN</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">8</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span>
+<span class="mi">4294967295</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">rt_sigprocmask</span><span class="p">(</span><span class="n">SIG_BLOCK</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="p">[],</span> <span class="mi">8</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">read</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s">"GET / HTTP/1.0</span><span class="se">\r\n</span><span class="s">"</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">16</span>
+<span class="n">getcwd</span><span class="p">(</span><span class="s">"/home/leandro/git/lwan/build"</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">29</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro/git/lwan/build/files_root"</span><span class="p">,</span>
+<span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFLNK</span><span class="o">|</span><span class="mo">0777</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">33</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">readlink</span><span class="p">(</span><span class="s">"/home/leandro/git/lwan/build/files_root"</span><span class="p">,</span>
+<span class="s">"/home/leandro/git/blotest/output/"</span><span class="p">,</span> <span class="mi">4095</span><span class="p">)</span> <span class="o">=</span> <span class="mi">33</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro/git"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0775</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span>
+<span class="o">=</span> <span class="mi">0</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro/git/blotest"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span>
+<span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro/git/blotest/output"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0775</span><span class="p">,</span>
+<span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">getcwd</span><span class="p">(</span><span class="s">"/home/leandro/git/lwan/build"</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">29</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro/git/lwan/build/files_root"</span><span class="p">,</span>
+<span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFLNK</span><span class="o">|</span><span class="mo">0777</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">33</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">readlink</span><span class="p">(</span><span class="s">"/home/leandro/git/lwan/build/files_root"</span><span class="p">,</span>
+<span class="s">"/home/leandro/git/blotest/output/"</span><span class="p">,</span> <span class="mi">4095</span><span class="p">)</span> <span class="o">=</span> <span class="mi">33</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro/git"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0775</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span>
+<span class="o">=</span> <span class="mi">0</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro/git/blotest"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0755</span><span class="p">,</span>
+<span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">lstat</span><span class="p">(</span><span class="s">"/home/leandro/git/blotest/output"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0775</span><span class="p">,</span>
+<span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">open</span><span class="p">(</span><span class="s">"/home/leandro/git/blotest/output"</span><span class="p">,</span> <span class="n">O_RDONLY</span><span class="o">|</span><span class="n">O_NOATIME</span><span class="p">)</span> <span class="o">=</span> <span class="mi">9</span>
+<span class="n">fstat</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFDIR</span><span class="o">|</span><span class="mo">0775</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">close</span><span class="p">(</span><span class="mi">9</span><span class="p">)</span>                    <span class="o">=</span> <span class="mi">0</span>
+<span class="n">open</span><span class="p">(</span><span class="s">"/home/leandro/git/blotest/output/index.html"</span><span class="p">,</span>
+<span class="n">O_RDONLY</span><span class="o">|</span><span class="n">O_NOATIME</span><span class="p">)</span> <span class="o">=</span> <span class="mi">9</span>
+<span class="n">fstat</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFREG</span><span class="o">|</span><span class="mo">0664</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">13200</span><span class="p">,</span> <span class="p">...})</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">setsockopt</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="n">SOL_TCP</span><span class="p">,</span> <span class="n">TCP_CORK</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">4</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">write</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s">"HTTP/1.0 200 OK</span><span class="se">\r\n</span><span class="s">Content-Length:"</span><span class="p">...,</span> <span class="mi">100</span><span class="p">)</span> <span class="o">=</span> <span class="mi">100</span>
+<span class="n">fadvise64</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">13200</span><span class="p">,</span> <span class="n">POSIX_FADV_SEQUENTIAL</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">sendfile</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="mi">1400</span><span class="p">)</span>  <span class="o">=</span> <span class="mi">1400</span>
+<span class="n">epoll_ctl</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="n">EPOLL_CTL_MOD</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="p">{</span><span class="n">EPOLLOUT</span><span class="o">|</span><span class="n">EPOLLERR</span><span class="o">|</span><span class="mh">0x2000</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+<span class="n">u64</span><span class="o">=</span><span class="mi">8</span><span class="p">}})</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">epoll_wait</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="p">{{</span><span class="n">EPOLLOUT</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">8</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">sendfile</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="mi">1400</span><span class="p">)</span>  <span class="o">=</span> <span class="mi">1400</span>
+<span class="n">epoll_wait</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="p">{{</span><span class="n">EPOLLOUT</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">8</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">sendfile</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="mi">1400</span><span class="p">)</span>  <span class="o">=</span> <span class="mi">1400</span>
+<span class="n">epoll_wait</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="p">{{</span><span class="n">EPOLLOUT</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">8</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">sendfile</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="mi">1400</span><span class="p">)</span>  <span class="o">=</span> <span class="mi">1400</span>
+<span class="n">epoll_wait</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="p">{{</span><span class="n">EPOLLOUT</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">8</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">sendfile</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="mi">1400</span><span class="p">)</span>  <span class="o">=</span> <span class="mi">1400</span>
+<span class="n">epoll_wait</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="p">{{</span><span class="n">EPOLLOUT</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">8</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">sendfile</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="mi">1400</span><span class="p">)</span>  <span class="o">=</span> <span class="mi">1400</span>
+<span class="n">epoll_wait</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="p">{{</span><span class="n">EPOLLOUT</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">8</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">sendfile</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="mi">1400</span><span class="p">)</span>  <span class="o">=</span> <span class="mi">1400</span>
+<span class="n">epoll_wait</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="p">{{</span><span class="n">EPOLLOUT</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">8</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">sendfile</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="mi">1400</span><span class="p">)</span>  <span class="o">=</span> <span class="mi">1400</span>
+<span class="n">epoll_wait</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="p">{{</span><span class="n">EPOLLOUT</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">8</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">sendfile</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="mi">1400</span><span class="p">)</span>  <span class="o">=</span> <span class="mi">1400</span>
+<span class="n">epoll_wait</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="p">{{</span><span class="n">EPOLLOUT</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">8</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">sendfile</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="mi">1400</span><span class="p">)</span>  <span class="o">=</span> <span class="mi">600</span>
+<span class="n">close</span><span class="p">(</span><span class="mi">9</span><span class="p">)</span>                    <span class="o">=</span> <span class="mi">0</span>
+<span class="n">epoll_ctl</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="n">EPOLL_CTL_MOD</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="p">{</span><span class="n">EPOLLIN</span><span class="o">|</span><span class="n">EPOLLERR</span><span class="o">|</span><span class="n">EPOLLET</span><span class="o">|</span><span class="mh">0x2000</span><span class="p">,</span>
+<span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">8</span><span class="p">}})</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">close</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span>                    <span class="o">=</span> <span class="mi">0</span>
+</pre></div>
+</div>
+<p>Yes. That many system calls – I was not kidding when I said that file serving
+was added as an afterthought. After some experiments, I’ve managed to turn
+that mess into this:</p>
+<div class="highlight-c"><div class="highlight"><pre><span/><span class="o">&lt;</span><span class="p">...</span> <span class="n">epoll_wait</span> <span class="n">resumed</span><span class="o">&gt;</span> <span class="p">{{</span><span class="n">EPOLLIN</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">9</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span>
+<span class="mi">4294967295</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">read</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="s">"GET / HTTP/1.0</span><span class="se">\r\n</span><span class="s">"</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">16</span>
+<span class="n">newfstatat</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="s">"index.html"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFREG</span><span class="o">|</span><span class="mo">0664</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">13200</span><span class="p">,</span>
+<span class="p">...},</span> <span class="mi">0</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">openat</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="s">"index.html"</span><span class="p">,</span> <span class="n">O_RDONLY</span><span class="o">|</span><span class="n">O_NOATIME</span><span class="p">)</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">sendto</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="s">"HTTP/1.0 200 OK</span><span class="se">\r\n</span><span class="s">Content-Length:"</span><span class="p">...,</span> <span class="mi">223</span><span class="p">,</span> <span class="n">MSG_MORE</span><span class="p">,</span>
+<span class="nb">NULL</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">=</span> <span class="mi">223</span>
+<span class="n">fadvise64</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">13200</span><span class="p">,</span> <span class="n">POSIX_FADV_SEQUENTIAL</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">sendfile</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">13200</span><span class="p">)</span> <span class="o">=</span> <span class="mi">13200</span>
+<span class="n">close</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>                   <span class="o">=</span> <span class="mi">0</span>
+</pre></div>
+</div>
+<p>Ah, much better! This was a result of these steps:</p>
+<ol class="arabic simple">
+<li>Caching the root directory information. This is mainly its
+<span class="docutils literal"><span class="pre">realpath()</span></span> and an open file descriptor to the directory.<ul>
+<li>The <span class="docutils literal"><span class="pre">realpath()</span></span> result is used with a <span class="docutils literal"><span class="pre">strncmp()</span></span> after so that requests to file outside the root directory are not served successfully. The string length for the root path is also calculated only once.</li>
+<li>The astute reader will notice the usage of the Linux-only <span class="docutils literal"><span class="pre">openat()</span></span> and <span class="docutils literal"><span class="pre">newfstatat()</span></span> system calls. These <span class="docutils literal"><span class="pre">-at()</span></span> variants perform much like their standard ones, but they work relative to the directory pointed to the file descriptor passed as the first parameter, avoiding some expensive path-to-inode conversions.</li>
+</ul>
+</li>
+<li>Using <span class="docutils literal"><span class="pre">sendto()</span></span> with <span class="docutils literal"><span class="pre">MSG_MORE</span></span> flag instead of using
+<span class="docutils literal"><span class="pre">TCP_CORK</span></span> flag. This makes for two less roundtrips to the kernel to
+set a socket option.</li>
+<li>Using <span class="docutils literal"><span class="pre">sendfile()</span></span> with the whole file instead of sending it in
+chunks, to avoid coroutine context switches. <span class="docutils literal"><span class="pre">sendfile()</span></span> might still
+block, but in this case, the coroutine will yield and the next time, try
+to send a smaller chunk.</li>
+<li>The <span class="docutils literal"><span class="pre">-at()</span></span> version of system calls are also being used by a
+replacement <span class="docutils literal"><span class="pre">realpath()</span></span> routine that I’ve adapted from <a class="reference external" href="http://www.gnu.org/software/libc/">glibc</a>. This
+improved the performance as well by not only reducing the number of
+system calls (the standard <span class="docutils literal"><span class="pre">realpath()</span></span> will perform a <span class="docutils literal"><span class="pre">lstat()</span></span> for
+every path component, whereas this version will only perform
+<span class="docutils literal"><span class="pre">newfstatat()</span></span> for relative components), but also using the lighter
+<span class="docutils literal"><span class="pre">-at()</span></span> variants.</li>
+</ol>
+<p>These improvements resulted in <em>very low overhead</em> while serving files. In
+fact, compared to a simple <em>hello world</em> handler and file serving – without
+keep-alive – the performance drop even comparing the I/O involved is about
+5%.</p>
+
+        </div>
+        <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="tags/strace.html">strace</a>, <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/c.html">C</a>, <a href="tags/linux.html">linux</a></span>
+        </div>
+        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
             <span>August 11, 2012</span>
         </div>
         <div class="section">
@@ -283,6 +416,8 @@ thank my employer, ProFUSION Embedded Systems, for sponsoring my trip.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
+        </li><li>
             <a href="2017/03/01/parsing_json.html">Parsing JSON</a>
         </li><li>
             <a href="2016/11/08/infect_to_protect.html">Infect to Protect</a>
@@ -300,8 +435,6 @@ thank my employer, ProFUSION Embedded Systems, for sponsoring my trip.</p>
             <a href="2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a>
         </li><li>
             <a href="2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a>
-        </li><li>
-            <a href="2012/11/11/mustache_templates_in_c.html">Mustache templates in C</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
