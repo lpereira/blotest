@@ -4,6 +4,7 @@ Sitemap
 .. toctree::
    :maxdepth: 1
 
+   2018/02/01/more_on_string_switch_in_c
    2017/03/01/parsing_json
    2016/11/08/infect_to_protect
    2016/11/06/reverse_quarantine
