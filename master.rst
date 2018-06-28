@@ -4,6 +4,7 @@ Sitemap
 .. toctree::
    :maxdepth: 1
 
+   2018/06/28/include_next_and_portability
    2018/02/01/more_on_string_switch_in_c
    2017/05/08/coreboot_luks
    2017/03/01/parsing_json
