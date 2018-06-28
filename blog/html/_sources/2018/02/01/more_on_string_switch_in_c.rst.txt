@@ -2,11 +2,14 @@ More on string switch in C
 ==========================
 
 Talking about uncommon programming tricks the other day, the subject of
-switching on strings in C came to be.  If you follow this blog, you know
-it's something actually possible to do with a little bit of ingenuity; in
-fact, it's one of the things that I use in Lwan to parse the HTTP requests. 
-I didn't spend too much time in that blog post to explain why it is faster,
-so I'm rectifying this now.
+switching on strings in C appeared on the table.
+
+If you follow this blog, you know it's something `actually possible to do
+with a little bit of ingenuity
+</posts/2012/08/09/string_switch_in_c.html>`_; in fact, it's one of the
+things that I use in Lwan to parse the HTTP requests.  I didn't spend too
+much time in that blog post to explain why it is faster, so I'm rectifying
+this now.
 
 In order to understand why it's so fast, let me step aside for a moment and
 show a function every C programmer should be able to write: ``strlen()``.
@@ -29,11 +32,11 @@ function.  And, maybe the one that generates the slowest code.  There are
 many reasons here, so let's explore some of them.
 
 One of them is that CPUs are able to fetch more than a single byte at a time
-from the memory (or even the cache).  And it takes roughly the same time for
-it to fetch 8 bits than it takes to fetch 32 bits.  People that write C
-libraries know about this fact, so that the version that your operating
-system provides is most likely going to exploit this.  Let's rewrite the
-``strlen()`` function, then:
+from memory (or cache).  And it takes roughly the same time for it to fetch
+8 bits than it takes to fetch 32 bits.  People that write C libraries know
+about this fact, so that the version that your operating system provides is
+most likely going to exploit this.  Let's rewrite the ``strlen()`` function,
+then:
 
 .. code-block:: c
 
@@ -43,11 +46,10 @@ system provides is most likely going to exploit this.  Let's rewrite the
 	    while (true) {
 		uint32_t v = *(uint32_t *)s;
 
-		if ((v & 0xff) == '\0')
-		    return len + 3;
-		if ((v >> 8) & 0xff) == '\0') return len + 2;
-		if ((v >> 16) & 0xff) == '\0') return len + 1;
-		if ((v >> 24) & 0xff) == '\0') return len;
+		if ((v & 0xff) == '\0') return len;
+		if (((v >> 8) & 0xff) == '\0') return len + 1;
+		if (((v >> 16) & 0xff) == '\0') return len + 2;
+		if (((v >> 24) & 0xff) == '\0') return len + 3;
 
 		len += 4;
 		s += 4;
@@ -76,7 +78,7 @@ path operates on aligned pointers:
 
 .. code-block:: c
 
-	static inline bool is_ptr_aligned(void *ptr) {
+	static inline bool is_ptr_aligned(const void *ptr) {
 	    uintptr_t p = (uintptr_t)ptr;
 
 	    /* Assuming a 32-bit machine with 4-byte alignment for
@@ -103,11 +105,10 @@ path operates on aligned pointers:
 	    while (true) {
 		uint32_t v = *(uint32_t *)s;
 
-		if ((v & 0xff) == '\0')
-		    return len + 3;
-		if ((v >> 8) & 0xff) == '\0') return len + 2;
-		if ((v >> 16) & 0xff) == '\0') return len + 1;
-		if ((v >> 24) & 0xff) == '\0') return len;
+		if ((v & 0xff) == '\0') return len;
+		if (((v >> 8) & 0xff) == '\0') return len + 1;
+		if (((v >> 16) & 0xff) == '\0') return len + 2;
+		if (((v >> 24) & 0xff) == '\0') return len + 3;
 
 		len += 4;
 		s += 4;
@@ -149,12 +150,11 @@ which byte is the NUL byte, but we don't need to know that in the fast path:
 		s += 4;
 	    }
 
-	    if ((v & 0xff) == '\0')
-		return len + 3;
-	    if ((v >> 8) & 0xff) == '\0') return len + 2;
-	    if ((v >> 16) & 0xff) == '\0') return len + 1;
+            if ((v & 0xff) == '\0') return len;
+            if (((v >> 8) & 0xff) == '\0') return len + 1;
+            if (((v >> 16) & 0xff) == '\0') return len + 2;
 
-	    return len;
+	    return len + 3;
 	}
 
 Another thing to consider in these functions is that they're not endian
@@ -237,7 +237,7 @@ So, to recap, what the string switch does is the following:
 
 The good thing about the switch statement in C is that it is maybe the
 highest level statement in the language: the compiler can get really
-creative in how its code is generate.  It's not uncommon for it to generate
+creative in how its code is generated.  It's not uncommon for it to generate
 jump tables or even binary searches.  So this implementation would actually
 be faster than the various calls to ``strncmp()`` because:
 
@@ -260,8 +260,8 @@ be faster than the various calls to ``strncmp()`` because:
 5. The compiler can reorder the comparisons as it see fit, often producing
    very tight code.
 
-6. These kinds of micro-optimizations don't necessarily have to be
-   completely unreadable and full of magical constants.
+These kinds of micro-optimizations don't necessarily have to be completely
+unreadable and full of magical constants.
 
 .. author:: default
 .. categories:: none

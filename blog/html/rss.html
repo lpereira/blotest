@@ -5,22 +5,93 @@
         <link>http://tia.mat.br/blog/html/</link>
         <description>Geek in training</description>
         <language>en-us</language>
-        <pubDate>Thu, 01 Feb 2018 00:00:00 -0800</pubDate>
+        <pubDate>Thu, 28 Jun 2018 00:00:00 -0700</pubDate>
         
+        <item>
+            <link>http://tia.mat.br/blog/html/2018/06/28/include_next_and_portability.html</link>
+            <guid>http://tia.mat.br/blog/html/2018/06/28/include_next_and_portability.html</guid>
+            <title><![CDATA[include_next and portability]]></title>
+            <description><![CDATA[<h1>include_next and portability</h1>
+<p>One of the decisions I took early on while writing Lwan was to only support
+Linux, and think about portability later; this decision was influenced by the
+way the <a class="reference external" href="https://www.openbsd.org/papers/portability.pdf">OpenBSD project approaches portability</a>.</p>
+<p>In retrospect, this was a good decision: this avoided many of the pitfalls
+associated in <a class="reference external" href="http://wiki.c2.com/?PrematureAbstraction">writing abstractions too early in the game</a>.  It also made the code cleaner:
+the abundance of C preprocessor usage, common in some portable code, hinders
+legibility and maintainability.  Of course, this decision made it
+challenging to port it to other operating systems.</p>
+<p>I was content with this decision – until people began asking for BSD and Mac
+ports.  With the exception of some system calls (e.g.  epoll, or the Linux
+<a class="reference external" href="http://man7.org/linux/man-pages/man2/sendfile.2.html">sendfile</a> variant), porting shouldn’t be surprising.  Ideally, having the code
+largely <span class="docutils literal"><span class="pre">#ifdef</span></span> free would be ideal, so I had to find a way to make this happen.</p>
+<p>While reading the GCC manual, I found out about an extension – that also
+happens to be <a class="reference external" href="https://clang.llvm.org/docs/LanguageExtensions.html">implemented by Clang</a> – that fit perfectly
+this scenario: <a class="reference external" href="https://gcc.gnu.org/onlinedocs/cpp/Wrapper-Headers.html">wrapper headers</a>.  It’s a C
+preprocessor extension that includes the next file in the include lookup
+path.  With this extension, it’s possible to write our own substitute header
+files, named after standard header files:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="cp">#include</span><span class="cpf">_next &lt;stdlib.h&gt; /* Include stdlib.h from system includes */</span><span class="cp"/>
+
+<span class="cp">#ifndef MISSING_STDLIB_H_</span>
+<span class="cp">#define MISSING_STDLIB_H_</span>
+
+<span class="cp">#if !defined(HAVE_MKOSTEMP)</span>
+<span class="kt">int</span> <span class="nf">mkostemp</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">tmpl</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">);</span>
+<span class="cp">#endif</span>
+
+<span class="cp">#if !defined(HAVE_REALLOCARRAY)</span>
+<span class="kt">void</span> <span class="o">*</span><span class="nf">reallocarray</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">optr</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nmemb</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">size</span><span class="p">);</span>
+<span class="cp">#endif</span>
+
+<span class="cp">#endif </span><span class="cm">/* MISSING_STDLIB_H_ */</span><span class="cp"/>
+</pre></div>
+</div>
+<p>Have it in a directory named, say, “missing”, and modify the header lookup path
+so it is looked up first by the compiler.  This is easily accomplished in CMake
+by specifying an include directory with the <span class="docutils literal"><span class="pre">BEFORE</span></span> option:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">include_directories</span><span class="p">(</span><span class="n">BEFORE</span> <span class="n">src</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">missing</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>(This just ensures that <span class="docutils literal"><span class="pre">src/lib/missing</span></span> will be passed before any other <span class="docutils literal"><span class="pre">-I</span></span>
+argument to the compiler, regardless of the order any other
+<span class="docutils literal"><span class="pre">include_directories()</span></span> macro is invoked.  Your build system might differ, this
+is copied straight from Lwan’s.)</p>
+<p>Then it’s just the matter of implementing these functions in terms of other
+functions available in the system, and code using it will be none the wise: a
+<span class="docutils literal"><span class="pre">#include</span> <span class="pre">&lt;stdlib.h&gt;</span></span> line will include our wrapper header, which in turn will
+include the system’s <span class="docutils literal"><span class="pre">stdlib.h</span></span> header; it then might define, in this example,
+additional prototypes, based on what the build system could determine during the
+configuration phase.</p>
+<p>This way, most <span class="docutils literal"><span class="pre">#ifdefs</span></span> are hidden away in a single file, making it a lot easier
+to maintain and read the code.  No application-specific abstraction layer with
+quirky semantics; just the familiar quirkiness from POSIX.</p>
+<p>One of the things I’m particular proud of is the miniature <a class="reference external" href="http://man7.org/linux/man-pages/man7/epoll.7.html">epoll(7)</a> implementation on top
+of <a class="reference external" href="https://www.freebsd.org/cgi/man.cgi?query=kqueue&amp;sektion=2">kqueue</a>
+(available in BSD systems).  I considered moving Lwan to use an abstraction
+library (such as <a class="reference external" href="http://libevent.org/">libevent</a> or <a class="reference external" href="https://libuv.org/">libuv</a>) just for this, but was able to keep using its
+event-handling loop as is.  Not only I understand 100% of it, it was a
+worthwhile learning experience.  With ~120 lines of C code, this epoll
+implementation is easier to wrap my head around than the thousands of lines
+of code from those libraries.</p>
+]]></description>
+             <pubDate>Thu, 28 Jun 2018 00:00:00 -0700</pubDate>
+        </item>
+    
         <item>
             <link>http://tia.mat.br/blog/html/2018/02/01/more_on_string_switch_in_c.html</link>
             <guid>http://tia.mat.br/blog/html/2018/02/01/more_on_string_switch_in_c.html</guid>
             <title><![CDATA[More on string switch in C]]></title>
             <description><![CDATA[<h1>More on string switch in C</h1>
 <p>Talking about uncommon programming tricks the other day, the subject of
-switching on strings in C came to be.  If you follow this blog, you know
-it’s something actually possible to do with a little bit of ingenuity; in
-fact, it’s one of the things that I use in Lwan to parse the HTTP requests.
-I didn’t spend too much time in that blog post to explain why it is faster,
-so I’m rectifying this now.</p>
+switching on strings in C appeared on the table.</p>
+<p>If you follow this blog, you know it’s something <a class="reference external" href="/posts/2012/08/09/string_switch_in_c.html">actually possible to do
+with a little bit of ingenuity</a>; in fact, it’s one of the
+things that I use in Lwan to parse the HTTP requests.  I didn’t spend too
+much time in that blog post to explain why it is faster, so I’m rectifying
+this now.</p>
 <p>In order to understand why it’s so fast, let me step aside for a moment and
 show a function every C programmer should be able to write: <span class="docutils literal"><span class="pre">strlen()</span></span>.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="kt">size_t</span> <span class="nf">strlen</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="kt">size_t</span> <span class="nf">strlen</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
     <span class="kt">size_t</span> <span class="n">len</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
 
     <span class="k">while</span> <span class="p">(</span><span class="o">*</span><span class="n">s</span> <span class="o">!=</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="p">{</span>
@@ -36,22 +107,21 @@ show a function every C programmer should be able to write: <span class="docutil
 function.  And, maybe the one that generates the slowest code.  There are
 many reasons here, so let’s explore some of them.</p>
 <p>One of them is that CPUs are able to fetch more than a single byte at a time
-from the memory (or even the cache).  And it takes roughly the same time for
-it to fetch 8 bits than it takes to fetch 32 bits.  People that write C
-libraries know about this fact, so that the version that your operating
-system provides is most likely going to exploit this.  Let’s rewrite the
-<span class="docutils literal"><span class="pre">strlen()</span></span> function, then:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="kt">size_t</span> <span class="nf">strlen</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
+from memory (or cache).  And it takes roughly the same time for it to fetch
+8 bits than it takes to fetch 32 bits.  People that write C libraries know
+about this fact, so that the version that your operating system provides is
+most likely going to exploit this.  Let’s rewrite the <span class="docutils literal"><span class="pre">strlen()</span></span> function,
+then:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="kt">size_t</span> <span class="nf">strlen</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
     <span class="kt">size_t</span> <span class="n">len</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
 
     <span class="k">while</span> <span class="p">(</span><span class="nb">true</span><span class="p">)</span> <span class="p">{</span>
         <span class="kt">uint32_t</span> <span class="n">v</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="o">*</span><span class="p">)</span><span class="n">s</span><span class="p">;</span>
 
-        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">3</span><span class="p">;</span>
-        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">8</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">2</span><span class="p">;</span>
-        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
-        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">24</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">8</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">2</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">24</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">3</span><span class="p">;</span>
 
         <span class="n">len</span> <span class="o">+=</span> <span class="mi">4</span><span class="p">;</span>
         <span class="n">s</span> <span class="o">+=</span> <span class="mi">4</span><span class="p">;</span>
@@ -76,7 +146,7 @@ it wasn’t worth the trouble and will just generate an exception.  The major
 problem, however, is that this is precisely the undefined behavior I was talking
 about.  So, let’s fix this function, by modifying it slightly so that the fast
 path operates on aligned pointers:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">static</span> <span class="kr">inline</span> <span class="kt">bool</span> <span class="nf">is_ptr_aligned</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">)</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">static</span> <span class="kr">inline</span> <span class="kt">bool</span> <span class="nf">is_ptr_aligned</span><span class="p">(</span><span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">)</span> <span class="p">{</span>
     <span class="kt">uintptr_t</span> <span class="n">p</span> <span class="o">=</span> <span class="p">(</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">ptr</span><span class="p">;</span>
 
     <span class="cm">/* Assuming a 32-bit machine with 4-byte alignment for</span>
@@ -103,11 +173,10 @@ path operates on aligned pointers:</p>
     <span class="k">while</span> <span class="p">(</span><span class="nb">true</span><span class="p">)</span> <span class="p">{</span>
         <span class="kt">uint32_t</span> <span class="n">v</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="o">*</span><span class="p">)</span><span class="n">s</span><span class="p">;</span>
 
-        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">3</span><span class="p">;</span>
-        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">8</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">2</span><span class="p">;</span>
-        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
-        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">24</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">8</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">2</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">24</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">3</span><span class="p">;</span>
 
         <span class="n">len</span> <span class="o">+=</span> <span class="mi">4</span><span class="p">;</span>
         <span class="n">s</span> <span class="o">+=</span> <span class="mi">4</span><span class="p">;</span>
@@ -120,7 +189,7 @@ is found in a word.  The excellent (and one of my favorite websites) “<a class
 Twiddling Hacks</a>” web
 page has a method to find out if a word contains a NUL byte; it doesn’t tell
 which byte is the NUL byte, but we don’t need to know that in the fast path:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="kt">size_t</span> <span class="nf">strlen</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="kt">size_t</span> <span class="nf">strlen</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
     <span class="kt">size_t</span> <span class="n">len</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
     <span class="kt">uint32_t</span> <span class="n">v</span><span class="p">;</span>
 
@@ -146,12 +215,11 @@ which byte is the NUL byte, but we don’t need to know that in the fast path:</
         <span class="n">s</span> <span class="o">+=</span> <span class="mi">4</span><span class="p">;</span>
     <span class="p">}</span>
 
-    <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">3</span><span class="p">;</span>
-    <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">8</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">2</span><span class="p">;</span>
-    <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">8</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">2</span><span class="p">;</span>
 
-    <span class="k">return</span> <span class="n">len</span><span class="p">;</span>
+    <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">3</span><span class="p">;</span>
 <span class="p">}</span>
 </pre></div>
 </div>
@@ -171,7 +239,7 @@ in the C standard library.  And functions that perform substring comparison,
 such as <span class="docutils literal"><span class="pre">strncmp()</span></span>, are no exception.</p>
 <p>When faced with the necessity to check for a bunch of strings, the idiomatic
 C way of doing so would be the following:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">strncmp</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s">"GET "</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">strncmp</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s">"GET "</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">HTTP_METHOD_GET</span><span class="p">;</span>
 <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">strncmp</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s">"POST "</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">HTTP_METHOD_POST</span><span class="p">;</span>
@@ -191,7 +259,7 @@ might not even get to the point where the fast path will make sense, because the
 strings it is comparing against are very close to the alignment of the word
 size for this computer!</p>
 <p>So, to recap, what the string switch does is the following:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">static</span> <span class="kr">inline</span> <span class="kt">uint32_t</span> <span class="nf">string_to_uint32</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">static</span> <span class="kr">inline</span> <span class="kt">uint32_t</span> <span class="nf">string_to_uint32</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
     <span class="kt">uint32_t</span> <span class="n">v</span><span class="p">;</span>
 
     <span class="n">memcpy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">v</span><span class="p">));</span>
@@ -226,7 +294,7 @@ size for this computer!</p>
 </div>
 <p>The good thing about the switch statement in C is that it is maybe the
 highest level statement in the language: the compiler can get really
-creative in how its code is generate.  It’s not uncommon for it to generate
+creative in how its code is generated.  It’s not uncommon for it to generate
 jump tables or even binary searches.  So this implementation would actually
 be faster than the various calls to <span class="docutils literal"><span class="pre">strncmp()</span></span> because:</p>
 <ol class="arabic simple">
@@ -244,11 +312,69 @@ integers.</li>
 most likely not going through the PLT.</li>
 <li>The compiler can reorder the comparisons as it see fit, often producing
 very tight code.</li>
-<li>These kinds of micro-optimizations don’t necessarily have to be
-completely unreadable and full of magical constants.</li>
 </ol>
+<p>These kinds of micro-optimizations don’t necessarily have to be completely
+unreadable and full of magical constants.</p>
 ]]></description>
              <pubDate>Thu, 01 Feb 2018 00:00:00 -0800</pubDate>
+        </item>
+    
+        <item>
+            <link>http://tia.mat.br/blog/html/2017/05/08/coreboot_luks.html</link>
+            <guid>http://tia.mat.br/blog/html/2017/05/08/coreboot_luks.html</guid>
+            <title><![CDATA[Coreboot & LUKS]]></title>
+            <description><![CDATA[<h1>Coreboot &amp; LUKS</h1>
+<p>My laptop is a 6-year old <a class="reference external" href="http://www.thinkwiki.org/wiki/Category:X220">ThinkPad X220</a>.  Although it’s almost
+falling apart from years of constant abuse, I don’t see myself replacing it
+anytime soon: it’s easy to repair, has a great keyboard, and is a very
+dependable machine.</p>
+<p>And it’s supported by <a class="reference external" href="https://en.wikipedia.org/wiki/Coreboot">Coreboot</a>.
+Substituting the proprietary firmware with it is very trivial: I followed
+the instructions on <a class="reference external" href="https://tylercipriani.com/blog/2016/11/13/coreboot-on-the-thinkpad-x220-with-a-raspberry-pi/">this blog post</a>
+and they worked out of the box.  (I also went the extra mile and flashed the
+firmware after passing it through <a class="reference external" href="https://github.com/corna/me_cleaner">me_cleaner</a>.)</p>
+<div class="figure align-center" id="id1">
+<img alt="flashing X220 bios" src="https://i.imgur.com/97rTiZH.jpg"/>
+<p class="caption"><span class="caption-text">Flashing the serial flash using a Raspberry Pi 3. Yes, I need to clean
+up this computer.</span></p>
+</div>
+<p>The major difference from my previous setup is that my SSD had
+<a class="reference external" href="https://en.wikipedia.org/wiki/Hardware-based_full_disk_encryption">hardware-based full disk encryption</a>.  I
+ended up disabling this for two reasons: first, this isn’t very secure (the
+key will remain in the disk RAM for as long as power is supplied); second, I
+was not sure if Coreboot supported this.  So I disabled encryption prior to
+flashing the new firmware.</p>
+<p>But keeping a hard drive unencrypted on a laptop isn’t good practice.  I
+decided to use <a class="reference external" href="https://en.wikipedia.org/wiki/Linux_Unified_Key_Setup">LUKS</a>
+instead.</p>
+<p>However, instead of using <a class="reference external" href="https://en.wikipedia.org/wiki/SeaBIOS">SeaBIOS</a>
+as the payload and have a standard bootloader, I opted to go through a
+slightly different route: have a custom-built Linux inside the ROM, open the
+<span class="docutils literal"><span class="pre">/boot</span></span> partition with LUKS, and
+<a class="reference external" href="http://man7.org/linux/man-pages/man2/kexec_load.2.html">kexec</a> the current
+vmlinuz/initrd.</p>
+<p>Compared to the usual setup of using SeaBIOS as a payload, this setup
+reduces boot time by cutting the middlemen.  With the ability to boot from
+external devices removed, it’s also arguably more secure.  The in-ROM Linux
+has only the bare minimum: no network subsystem, only necessary filesystems,
+bare minimum drivers are built-in, USB is limited to HID devices, etc; the
+compressed kernel has ~1.7MiB with room to shrink.  The in-ROM initrd is
+also quite minimal, containing just one file.</p>
+<p>The only file is a <a class="reference external" href="https://gist.github.com/lpereira/845fe060ba68a5db95827cbc5496bb6d">hacked version</a> of
+cryptsetup that acts as a primitive init, creating <span class="docutils literal"><span class="pre">/proc</span></span>, <span class="docutils literal"><span class="pre">/dev</span></span> (and mounting
+these two), and <span class="docutils literal"><span class="pre">/boot</span></span>, decrypting <span class="docutils literal"><span class="pre">/boot</span></span>, and performing kexec.  It’s
+statically linked with <a class="reference external" href="https://www.musl-libc.org/">musl libc</a>.</p>
+<p>Flashing this requires opening the laptop, and I’m planning to do this next
+weekend when replacing the USB ports.  However, the setup works very well
+under <a class="reference external" href="http://www.qemu.org/">QEMU</a>.</p>
+<p>This blog post isn’t meant as a tutorial – feel free to contact me if you
+have questions or ideas on how to improve this.  If you end up using
+something similar to this idea, I’d love to know as well.</p>
+]]></description>
+            <category><![CDATA[ linux ]]></category>
+            <category><![CDATA[ x220 ]]></category>
+            <category><![CDATA[ hack ]]></category>
+             <pubDate>Mon, 08 May 2017 00:00:00 -0700</pubDate>
         </item>
     
         <item>
@@ -298,7 +424,7 @@ library user can efficiently test if a value has been deserialized or not).
 Since it was easy to do, the library refuses to decode a key that has been
 deserialized before.</p>
 <p>So, a typical use is the following:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="cm">/* First, define a struct to hold the values. */</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="cm">/* First, define a struct to hold the values. */</span>
 <span class="k">struct</span> <span class="n">values</span> <span class="p">{</span>
     <span class="kt">char</span> <span class="o">*</span><span class="n">some_string</span><span class="p">;</span>
     <span class="kt">int</span> <span class="n">some_int</span><span class="p">;</span>
@@ -488,7 +614,7 @@ trick</a> to perform in these
 scenarios is to employ the fact that, on x86, when a call instruction is
 made, the return address (i.e. the address of the byte right after the
 call instruction) is pushed to the stack:</p>
-<div class="highlight-nasm"><div class="highlight"><pre><span/>    <span class="c1">; …</span>
+<div class="highlight-nasm notranslate"><div class="highlight"><pre><span/>    <span class="c1">; …</span>
     <span class="nf">jmp</span> <span class="nv">push_bpf_addr</span>
 <span class="nl">apply_filter:</span>
     <span class="nf">pop</span> <span class="nb">rdx</span>     <span class="c1">; rdx points to the BPF program</span>
@@ -546,7 +672,7 @@ source, and this was a good opportunity to learn a few things.</p>
 breakpoint on <span class="docutils literal"><span class="pre">main()</span></span> won’t actually work. But this is easily solvable:
 just use <a class="reference external" href="https://linux.die.net/man/1/readelf">readelf(1)</a> to find
 where the new entry point is, and set a breakpoint to that:</p>
-<div class="highlight-shell-session"><div class="highlight"><pre><span/><span class="gp">$</span> gcc -o hello hello.c
+<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span/><span class="gp">$</span> gcc -o hello hello.c
 <span class="gp">$</span> readelf -h hello <span class="p">|</span> grep Entry
 <span class="go">  Entry point address: 0x400490</span>
 <span class="gp">$</span> ./infect hello
@@ -575,7 +701,7 @@ make much sense there.  It’s just a way to test what’s going to happen when
 the filter is in place, without the need to modify the program to test this
 assumption.  (<a class="reference external" href="https://www.bsdcan.org/2016/schedule/attachments/357_20160610-bsdcan-helloworld.pdf">Lots of things</a>
 happens when executing a simple program such as this.)</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp"/>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp"/>
 <span class="cp">#include</span> <span class="cpf">&lt;sys/socket.h&gt;</span><span class="cp"/>
 <span class="cp">#include</span> <span class="cpf">&lt;netinet/in.h&gt;</span><span class="cp"/>
 
@@ -593,7 +719,7 @@ happens when executing a simple program such as this.)</p>
 </div>
 <p>Executing the program before infecting it gives the following output, as
 expected:</p>
-<div class="highlight-default"><div class="highlight"><pre><span/>$ ./hello
+<div class="highlight-default notranslate"><div class="highlight"><pre><span/>$ ./hello
 no socket created
 $ ./hello 1
 created socket, fd = 3
@@ -601,7 +727,7 @@ created socket, fd = 3
 </div>
 <p>Indeed, if the program is executed under strace, it all goes exactly
 like it’s supposed to be:</p>
-<div class="highlight-default"><div class="highlight"><pre><span/>$ strace ./hello
+<div class="highlight-default notranslate"><div class="highlight"><pre><span/>$ strace ./hello
 execve("./hello", ["./hello"], [/* 58 vars */]) = 0
 …
 write(1, "no socket created\n", 18no socket created
@@ -611,7 +737,7 @@ exit_group(0)                           = ?
 </pre></div>
 </div>
 <p>And, with a command-line argument, so the socket is created:</p>
-<div class="highlight-default"><div class="highlight"><pre><span/>…
+<div class="highlight-default notranslate"><div class="highlight"><pre><span/>…
 socket(AF_INET, SOCK_STREAM, IPPROTO_TCP) = 3
 …
 write(1, "created socket, fd = 3\n", 23created socket, fd = 3
@@ -622,7 +748,7 @@ exit_group(0)                           = ?
 </div>
 <p>However, the magic happens after the “infected” binary is executed.
 First, without creating a socket:</p>
-<div class="highlight-default"><div class="highlight"><pre><span/>…
+<div class="highlight-default notranslate"><div class="highlight"><pre><span/>…
 prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)  = 0
 prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, {len=30, filter=0x400824}) = 0
 …
@@ -636,7 +762,7 @@ exit_group(0)                           = ?
 previously-mentioned commit. And then the program executes as usual.
 Now, if an argument is passed, the program will attempt to create a
 socket:</p>
-<div class="highlight-default"><div class="highlight"><pre><span/>…
+<div class="highlight-default notranslate"><div class="highlight"><pre><span/>…
 prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)  = 0
 prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, {len=30, filter=0x400824}) = 0
 socket(AF_INET, SOCK_STREAM, IPPROTO_TCP) = 41
@@ -709,7 +835,7 @@ instance, only allowing certain family of sockets to be created).</p>
 this seems doable by using an algorithm such as this, which will reduce
 the number of comparisons as the number of acceptable system calls
 increases:</p>
-<div class="highlight-default"><div class="highlight"><pre><span/>        if syscall_number &lt; 32:
+<div class="highlight-default notranslate"><div class="highlight"><pre><span/>        if syscall_number &lt; 32:
                 if bitmask_0 &amp; 1&lt;&lt;syscall_number: goto accept
         if syscall_number &lt; 64:
                 syscall_number -= 32
@@ -768,7 +894,7 @@ repository</a>.</p>
             <description><![CDATA[<h1>Initializing a heap-allocated structure in C</h1>
 <p>A pretty common mistake that happens when programming things in C is to
 allocate less memory than necessary to hold a structure:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">foobar</span> <span class="o">*</span><span class="n">foobar</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">foobaz</span><span class="p">));</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">foobar</span> <span class="o">*</span><span class="n">foobar</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">foobaz</span><span class="p">));</span>
 </pre></div>
 </div>
 <p>Note that <span class="docutils literal"><span class="pre">struct</span> <span class="pre">foobaz</span></span> is passed instead of <span class="docutils literal"><span class="pre">struct</span> <span class="pre">foobar</span></span>. We might get
@@ -780,7 +906,7 @@ two examples that should be in any C programmer’s toolbelt.</p>
 <p>Even then, people often resort to a a nicer idiom: <span class="docutils literal"><span class="pre">sizeof(*foobar)</span></span>,
 which not only avoids these problems, but also is somewhat future-proof,
 should the type of <span class="docutils literal"><span class="pre">foobar</span></span> change:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">foobar</span> <span class="o">*</span><span class="n">foobar</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="o">*</span><span class="n">foobar</span><span class="p">));</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">foobar</span> <span class="o">*</span><span class="n">foobar</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="o">*</span><span class="n">foobar</span><span class="p">));</span>
 </pre></div>
 </div>
 <p>However, structures often have members that, if someone forgets to
@@ -788,7 +914,7 @@ initialize, will inflict some undefined behavior pains on the user.  The
 things in the toolbelt might help here, as well as the <span class="docutils literal"><span class="pre">calloc()</span></span>
 function, that, in addition to allocating memory, also zero-out the memory
 block:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">foobar</span> <span class="o">*</span><span class="n">foobar</span> <span class="o">=</span> <span class="n">calloc</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="o">*</span><span class="n">foobar</span><span class="p">));</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">foobar</span> <span class="o">*</span><span class="n">foobar</span> <span class="o">=</span> <span class="n">calloc</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="o">*</span><span class="n">foobar</span><span class="p">));</span>
 </pre></div>
 </div>
 <p>Not always one would want to zero out the whole memory chunk just to fill
@@ -796,19 +922,19 @@ out important fields afterwards, though.</p>
 <p>Here’s a trick that’s being used in a yet-to-be-released project I’ve been
 working on and off for the past few months. It starts by defining the
 generic-chunk-of-memory equivalent of <span class="docutils literal"><span class="pre">strdup()</span></span>, <span class="docutils literal"><span class="pre">memdup()</span></span>:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="kt">void</span> <span class="o">*</span><span class="nf">memdup</span><span class="p">(</span><span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">src</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">sz</span><span class="p">)</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="kt">void</span> <span class="o">*</span><span class="nf">memdup</span><span class="p">(</span><span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">src</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">sz</span><span class="p">)</span> <span class="p">{</span>
         <span class="kt">void</span> <span class="o">*</span><span class="n">mem</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="n">sz</span><span class="p">);</span>
         <span class="k">return</span> <span class="n">mem</span> <span class="o">?</span> <span class="n">memcpy</span><span class="p">(</span><span class="n">mem</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">sz</span><span class="p">)</span> <span class="o">:</span> <span class="nb">NULL</span><span class="p">;</span>
 <span class="p">}</span>
 </pre></div>
 </div>
 <p>Then a macro is defined:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="cp">#define ALLOC_INIT(type, ...)   \</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="cp">#define ALLOC_INIT(type, ...)   \</span>
 <span class="cp">        (type *)memdup((type[]){ __VA_ARGS__ }, sizeof(type))</span>
 </pre></div>
 </div>
 <p>Then it is used like so:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">foobar</span> <span class="o">*</span><span class="n">foobar</span> <span class="o">=</span> <span class="n">ALLOC_INIT</span><span class="p">(</span><span class="k">struct</span> <span class="n">foobar</span><span class="p">,</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">foobar</span> <span class="o">*</span><span class="n">foobar</span> <span class="o">=</span> <span class="n">ALLOC_INIT</span><span class="p">(</span><span class="k">struct</span> <span class="n">foobar</span><span class="p">,</span> <span class="p">{</span>
         <span class="p">.</span><span class="n">field</span> <span class="o">=</span> <span class="n">value</span><span class="p">,</span>
         <span class="p">.</span><span class="n">other_field</span> <span class="o">=</span> <span class="n">other_value</span><span class="p">,</span>
         <span class="p">.</span><span class="n">yet_another_field</span> <span class="o">=</span> <span class="n">yet_another_value</span>
@@ -829,7 +955,7 @@ that’s often byte-by-byte equivalent to allocating directly with
 <p>If GCC is being used, the <span class="docutils literal"><span class="pre">__auto_type</span></span> <a class="reference external" href="https://gcc.gnu.org/onlinedocs/gcc/Typeof.html">extension</a> can be used, to avoid
 having to type <span class="docutils literal"><span class="pre">struct</span> <span class="pre">foobar</span></span> twice. This has been suggested by <a class="reference external" href="https://plus.google.com/117917253135468806554/posts/DcBUyuicdLW">Thiago
 Macieira</a>. I’d use this sparingly, though.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">__auto_type</span> <span class="n">foobar</span> <span class="o">=</span> <span class="n">ALLOC_INIT</span><span class="p">(</span><span class="k">struct</span> <span class="n">foobar</span><span class="p">,</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">__auto_type</span> <span class="n">foobar</span> <span class="o">=</span> <span class="n">ALLOC_INIT</span><span class="p">(</span><span class="k">struct</span> <span class="n">foobar</span><span class="p">,</span> <span class="p">{</span>
         <span class="p">.</span><span class="n">field</span> <span class="o">=</span> <span class="n">value</span><span class="p">,</span>
         <span class="p">.</span><span class="n">other_field</span> <span class="o">=</span> <span class="n">other_value</span><span class="p">,</span>
         <span class="p">.</span><span class="n">yet_another_field</span> <span class="o">=</span> <span class="n">yet_another_value</span>
@@ -919,7 +1045,7 @@ being sent — and explaining details and reasoning behind the implementation.</
 <a class="reference external" href="http://lwn.net/Articles/508865/">Fastopen</a> and <a class="reference external" href="http://linux.die.net/man/7/tcp#TCP_QUICKACK">Quickack</a> are enabled, in addition to socket lingering.  The
 socket is left in its default, blocking mode. The <a class="reference external" href="http://www.linuxjournal.com/files/linuxjournal.com/linuxjournal/articles/023/2333/2333s2.html">listen() backlog</a> is the
 maximum allowed by the system.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">static</span> <span class="kt">int</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">static</span> <span class="kt">int</span>
 <span class="nf">_get_backlog_size</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
 <span class="p">{</span>
 <span class="cp">#ifdef SOMAXCONN</span>
@@ -947,7 +1073,7 @@ accepting all the sockets and scheduling clients) blocks on a call to
 Linux-only and, among other things, lets one specify flags in sockets
 without requiring an additional round trip to the kernel; the only flag that
 interests Lwan is <span class="docutils literal"><span class="pre">SOCK_NONBLOCK</span></span>.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="kt">void</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="kt">void</span>
 <span class="nf">lwan_main_loop</span><span class="p">(</span><span class="n">lwan_t</span> <span class="o">*</span><span class="n">l</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="k">if</span> <span class="p">(</span><span class="n">setjmp</span><span class="p">(</span><span class="n">cleanup_jmp_buf</span><span class="p">))</span>
@@ -984,7 +1110,7 @@ there until it is explicitly closed or a timeout occurs.</p>
 explicit locks.  The index to this array is the connection file descriptor,
 which makes lookup very quick. This exploits the notion that file
 descriptors are always allocated from the lowest possible number.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">lwan_connection_t_</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">lwan_connection_t_</span> <span class="p">{</span>
     <span class="cm">/* This structure is exactly 32-bytes on x86-64. If it is</span>
 <span class="cm">     * changed, make sure the scheduler (lwan.c) is updated as</span>
 <span class="cm">     * well. */</span>
@@ -1000,14 +1126,14 @@ descriptors are always allocated from the lowest possible number.</p>
 lock called <a class="reference external" href="https://en.wikipedia.org/wiki/False_sharing">false sharing</a>, which is solved with a scheduler that is
 aware of that problem and groups two connection structures per cache
 line.  It’s simpler than it sounds:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="kt">int</span> <span class="kr">thread</span> <span class="o">=</span> <span class="p">((</span><span class="n">fd</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">%</span> <span class="n">n_threads</span><span class="p">;</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="kt">int</span> <span class="kr">thread</span> <span class="o">=</span> <span class="p">((</span><span class="n">fd</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">%</span> <span class="n">n_threads</span><span class="p">;</span>
 </pre></div>
 </div>
 <p>A <a class="reference external" href="https://en.wikipedia.org/wiki/Round-robin_scheduling">round robin scheduler</a> is used on other architectures.</p>
 <p>An interesting curiosity about the connection structure is that it doesn’t
 store the file descriptor: pointer arithmetic is performed to obtain it, as
 the the base address for the connection array is known.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">ALWAYS_INLINE</span> <span class="kt">int</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">ALWAYS_INLINE</span> <span class="kt">int</span>
 <span class="nf">lwan_connection_get_fd</span><span class="p">(</span><span class="n">lwan_connection_t</span> <span class="o">*</span><span class="n">conn</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="k">return</span> <span class="p">(</span><span class="kt">int</span><span class="p">)(</span><span class="kt">ptrdiff_t</span><span class="p">)(</span><span class="n">conn</span> <span class="o">-</span> <span class="n">conn</span><span class="o">-&gt;</span><span class="kr">thread</span><span class="o">-&gt;</span><span class="n">lwan</span><span class="o">-&gt;</span><span class="n">conns</span><span class="p">);</span>
@@ -1039,7 +1165,7 @@ lightweight threads and as resource management facilities.</p>
 that’s less convoluted than the dreaded <a class="reference external" href="https://developer.gnome.org/gio/stable/">callback idiom</a> prevalent in C. They
 also require a lot less stack space than a thread and their creation is
 pretty efficient: essentially just a call to <span class="docutils literal"><span class="pre">malloc()</span></span>.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">coro_t</span> <span class="o">*</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">coro_t</span> <span class="o">*</span>
 <span class="nf">coro_new</span><span class="p">(</span><span class="n">coro_switcher_t</span> <span class="o">*</span><span class="n">switcher</span><span class="p">,</span>
          <span class="n">coro_function_t</span> <span class="n">function</span><span class="p">,</span>
          <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">)</span>
@@ -1080,7 +1206,7 @@ these wrap, they return no error:</p>
 few times before giving up;</li>
 <li>When giving up, or on unrecoverable errors, coroutines are aborted.</li>
 </ul>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="kt">int</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="kt">int</span>
 <span class="nf">lwan_openat</span><span class="p">(</span><span class="n">lwan_request_t</span> <span class="o">*</span><span class="n">request</span><span class="p">,</span>
             <span class="kt">int</span> <span class="n">dirfd</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">pathname</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">)</span>
 <span class="p">{</span>
@@ -1153,7 +1279,7 @@ upon.</p>
 allocations from the heap.  The buffer is modified in place by slicing and
 storing pointers to stuff the server might be interested in.  Parsing of
 HTTP request headers is delayed until needed (and they might not be needed).</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">lwan_request_parse_t_</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">lwan_request_parse_t_</span> <span class="p">{</span>
     <span class="n">lwan_value_t</span> <span class="n">buffer</span><span class="p">;</span>            <span class="cm">/* The whole buffer */</span>
     <span class="n">lwan_value_t</span> <span class="n">query_string</span><span class="p">;</span>      <span class="cm">/* Stuff after URLs ? */</span>
     <span class="n">lwan_value_t</span> <span class="n">if_modified_since</span><span class="p">;</span> <span class="cm">/* If-Modified-Since: */</span>
@@ -1193,7 +1319,7 @@ handle it.</p>
 structure that has only eight pointers per node, so that on x86-64, each
 node fills one cache line exactly. This is achieved by hashing each
 character used to build up a node by taking the 3 least significant bits.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">lwan_trie_node_t_</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">lwan_trie_node_t_</span> <span class="p">{</span>
     <span class="n">lwan_trie_node_t</span> <span class="o">*</span><span class="n">next</span><span class="p">[</span><span class="mi">8</span><span class="p">];</span>
     <span class="n">lwan_trie_leaf_t</span> <span class="o">*</span><span class="n">leaf</span><span class="p">;</span>
     <span class="kt">int</span> <span class="n">ref_count</span><span class="p">;</span>
@@ -1220,7 +1346,7 @@ the request parsing stage) should be actually parsed. This include headers
 such as Range, Accept-Encoding, If-Modified-Since, and authorization stuff.
 Handlers that do not require parsing these headers will not trigger
 potentially expensive string crunching.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
     <span class="n">HANDLER_PARSE_QUERY_STRING</span> <span class="o">=</span> <span class="mi">1</span><span class="o">&lt;&lt;</span><span class="mi">0</span><span class="p">,</span>
     <span class="n">HANDLER_PARSE_IF_MODIFIED_SINCE</span> <span class="o">=</span> <span class="mi">1</span><span class="o">&lt;&lt;</span><span class="mi">1</span><span class="p">,</span>
     <span class="n">HANDLER_PARSE_RANGE</span> <span class="o">=</span> <span class="mi">1</span><span class="o">&lt;&lt;</span><span class="mi">2</span><span class="p">,</span>
@@ -1239,7 +1365,7 @@ such as the “Hello world handler” example shown below.</p>
 <p>Modules, on the other hand, provide much more fine-grained control of how
 the request will be handled; an example is the static file serving feature,
 also discussed further down.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">static</span> <span class="k">const</span> <span class="n">lwan_module_t</span> <span class="n">serve_files</span> <span class="o">=</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">static</span> <span class="k">const</span> <span class="n">lwan_module_t</span> <span class="n">serve_files</span> <span class="o">=</span> <span class="p">{</span>
     <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">"serve_files"</span><span class="p">,</span>
     <span class="p">.</span><span class="n">init</span> <span class="o">=</span> <span class="n">serve_files_init</span><span class="p">,</span>
     <span class="p">.</span><span class="n">init_from_hash</span> <span class="o">=</span> <span class="n">serve_files_init_from_hash</span><span class="p">,</span>
@@ -1257,7 +1383,7 @@ also discussed further down.</p>
 <p>The simplest handler possible is a “Hello, World!“. This tests the raw
 read-parse-write capacity of Lwan, without requiring more system calls than
 absolutely necessary.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">lwan_http_status_t</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">lwan_http_status_t</span>
 <span class="nf">hello_world</span><span class="p">(</span><span class="n">lwan_request_t</span> <span class="o">*</span><span class="n">request</span> <span class="n">__attribute__</span><span class="p">((</span><span class="n">unused</span><span class="p">)),</span>
             <span class="n">lwan_response_t</span> <span class="o">*</span><span class="n">response</span><span class="p">,</span>
             <span class="kt">void</span> <span class="o">*</span><span class="n">data</span> <span class="n">__attribute__</span><span class="p">((</span><span class="n">unused</span><span class="p">)))</span>
@@ -1287,7 +1413,7 @@ the response MIME Type, fill the string buffer, and call
 sent alongside the first chunk, the string buffer will be cleared, and the
 coroutine will yield. To send the next chunk, just fill the string buffer
 again and send another chunk, until your handler is complete.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">lwan_http_status_t</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">lwan_http_status_t</span>
 <span class="nf">test_chunked_encoding</span><span class="p">(</span><span class="n">lwan_request_t</span> <span class="o">*</span><span class="n">request</span><span class="p">,</span>
             <span class="n">lwan_response_t</span> <span class="o">*</span><span class="n">response</span><span class="p">,</span>
             <span class="kt">void</span> <span class="o">*</span><span class="n">data</span> <span class="n">__attribute__</span><span class="p">((</span><span class="n">unused</span><span class="p">)))</span>
@@ -1311,7 +1437,7 @@ again and send another chunk, until your handler is complete.</p>
 </div>
 <p>The same general idea is used by <a class="reference external" href="https://en.wikipedia.org/wiki/Server-sent_events">Server-sent events</a>; however, one uses
 <span class="docutils literal"><span class="pre">lwan_response_send_event()</span></span>, and passes the event name as well.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">lwan_http_status_t</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">lwan_http_status_t</span>
 <span class="nf">test_server_sent_event</span><span class="p">(</span><span class="n">lwan_request_t</span> <span class="o">*</span><span class="n">request</span><span class="p">,</span>
             <span class="n">lwan_response_t</span> <span class="o">*</span><span class="n">response</span><span class="p">,</span>
             <span class="kt">void</span> <span class="o">*</span><span class="n">data</span> <span class="n">__attribute__</span><span class="p">((</span><span class="n">unused</span><span class="p">)))</span>
@@ -1342,7 +1468,7 @@ few pointers in the “normal” handler and return. With the exception of
 producing error responses automatically — streaming handlers function
 exactly the same as a “normal” handler that does not send the response
 headers automatically.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">static</span> <span class="n">lwan_http_status_t</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">static</span> <span class="n">lwan_http_status_t</span>
 <span class="nf">serve_files_handle_cb</span><span class="p">(</span><span class="n">lwan_request_t</span> <span class="o">*</span><span class="n">request</span><span class="p">,</span>
                       <span class="n">lwan_response_t</span> <span class="o">*</span><span class="n">response</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">)</span>
 <span class="p">{</span>
@@ -1380,7 +1506,7 @@ discussed in detail further down.</p>
 the way to serve it.  Files larger than 16KiB are served with <span class="docutils literal"><span class="pre">sendfile()</span></span>
 to allow zero (or fewer) copy transfers, and smaller files are mapped in
 memory using <span class="docutils literal"><span class="pre">mmap()</span></span>.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">static</span> <span class="k">const</span> <span class="n">cache_funcs_t</span> <span class="o">*</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">static</span> <span class="k">const</span> <span class="n">cache_funcs_t</span> <span class="o">*</span>
 <span class="nf">_get_funcs</span><span class="p">(</span><span class="n">serve_files_priv_t</span> <span class="o">*</span><span class="n">priv</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span>
            <span class="kt">char</span> <span class="o">*</span><span class="n">full_path</span><span class="p">,</span> <span class="k">struct</span> <span class="n">stat</span> <span class="o">*</span><span class="n">st</span><span class="p">)</span>
 <span class="p">{</span>
@@ -1444,7 +1570,7 @@ larger than the original data. Especially if the response header is
 considered. Because of this, small files are only compressed if it’s worth
 the trouble. The 16KiB threshold has been chosen empirically: larger values
 did not yield substantial performance gains compared to using <span class="docutils literal"><span class="pre">sendfile()</span></span>.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">static</span> <span class="kt">void</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">static</span> <span class="kt">void</span>
 <span class="nf">_compress_cached_entry</span><span class="p">(</span><span class="n">mmap_cache_data_t</span> <span class="o">*</span><span class="n">md</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="k">static</span> <span class="k">const</span> <span class="kt">size_t</span> <span class="n">deflated_header_size</span> <span class="o">=</span>
@@ -1518,7 +1644,7 @@ best practices</a>.</p>
 parser to break down its text representation into a series of actions that
 can be performed by the engine very efficiently. Actions include things like
 “append string”, “append variable”, “start iteration”, and so on.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
     <span class="n">TPL_ACTION_APPEND</span><span class="p">,</span>
     <span class="n">TPL_ACTION_APPEND_CHAR</span><span class="p">,</span>
     <span class="n">TPL_ACTION_VARIABLE</span><span class="p">,</span>
@@ -1540,7 +1666,7 @@ much more efficient value lookup mechanism can be used instead.</p>
 <p>To use the templating mechanism, one should have a structure for each
 template. Structures are cheap and provide some welcome compile-time type
 checking that wouldn’t be possible otherwise.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">typedef</span> <span class="k">struct</span> <span class="n">hello_t</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">typedef</span> <span class="k">struct</span> <span class="n">hello_t</span> <span class="p">{</span>
   <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">;</span>
   <span class="kt">int</span> <span class="n">age</span><span class="p">;</span>
 <span class="p">};</span>
@@ -1552,7 +1678,7 @@ string representation of a variable name, the offset in bytes of that
 variable within the structure, and pointers to functions to test the
 emptiness of that kind of variable and to append the variable to the string
 buffer; macros help alleviate boilerplate headaches.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">lwan_var_descriptor_t</span> <span class="n">hello_descriptor</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">lwan_var_descriptor_t</span> <span class="n">hello_descriptor</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
   <span class="n">TPL_VAR_STR</span><span class="p">(</span><span class="n">hello_t</span><span class="p">,</span> <span class="n">name</span><span class="p">),</span>
   <span class="n">TPL_VAR_INT</span><span class="p">(</span><span class="n">hello_t</span><span class="p">,</span> <span class="n">age</span><span class="p">),</span>
   <span class="n">TPL_VAR_SENTINEL</span>
@@ -1566,7 +1692,7 @@ buffer; macros help alleviate boilerplate headaches.</p>
 of database layer, caching layer, or be declared on the spot: compound
 literals with designated initializers make this use case pretty
 straightforward.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">strbuf_t</span> <span class="o">*</span><span class="n">rendered</span> <span class="o">=</span> <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="p">(</span><span class="n">hello_t</span><span class="p">[])</span> <span class="p">{{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">strbuf_t</span> <span class="o">*</span><span class="n">rendered</span> <span class="o">=</span> <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="p">(</span><span class="n">hello_t</span><span class="p">[])</span> <span class="p">{{</span>
   <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">"World"</span><span class="p">,</span>
   <span class="p">.</span><span class="n">age</span> <span class="o">=</span> <span class="mi">42</span>
 <span class="p">}});</span>
@@ -1579,7 +1705,7 @@ straightforward.</p>
 <p>Appending a variable is then just the matter of calling the
 appropriate callback function (conveniently in the descriptor), passing the
 base address of that structure plus the byte offset within it.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">static</span> <span class="kt">void</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">static</span> <span class="kt">void</span>
 <span class="nf">append_var_to_strbuf</span><span class="p">(</span><span class="n">lwan_tpl_chunk_t</span> <span class="o">*</span><span class="n">chunk</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">variables</span><span class="p">,</span>
                      <span class="n">strbuf_t</span> <span class="o">*</span><span class="n">buf</span><span class="p">)</span>
 <span class="p">{</span>
@@ -1622,7 +1748,7 @@ the cache to obtain a value for a given key. If it’s not there, the entry is
 created and returned. The lifetime of a cache entry is controlled
 automatically, and a low priority thread kicks in every now and then to
 prune old entries.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">cache_t</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">cache_t</span> <span class="p">{</span>
     <span class="k">struct</span> <span class="p">{</span>
         <span class="k">struct</span> <span class="n">hash</span> <span class="o">*</span><span class="n">table</span><span class="p">;</span>
         <span class="n">pthread_rwlock_t</span> <span class="n">lock</span><span class="p">;</span>
@@ -1662,7 +1788,7 @@ cache for a predetermined amount of time.</p>
 something is holding on a reference: these items are marked as floating when
 this happens, and the last one to give up the reference will also destroy
 the entry.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">cache_entry_t</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">cache_entry_t</span> <span class="p">{</span>
   <span class="k">struct</span> <span class="n">list_node</span> <span class="n">entries</span><span class="p">;</span>
   <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">;</span>
   <span class="kt">unsigned</span> <span class="n">refs</span><span class="p">;</span>
@@ -1719,7 +1845,7 @@ queue.</p>
 every timeout. Whenever the last connection is removed from a queue, the
 epoch restarts. Keeping the epoch a small number will help shave a few bytes
 from each connection in the future.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">death_queue_t</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">death_queue_t</span> <span class="p">{</span>
     <span class="n">lwan_connection_t</span> <span class="o">*</span><span class="n">conns</span><span class="p">;</span>
     <span class="n">lwan_connection_t</span> <span class="n">head</span><span class="p">;</span>
     <span class="kt">unsigned</span> <span class="n">time</span><span class="p">;</span>
@@ -1741,7 +1867,7 @@ the queue should be efficient, as it is done very frequently to move the
 entry to the end. The list is also circular, in order to avoid branching to
 handle empty queue cases. Maintaining the queue inline with the connection
 structures help reducing cache pressure.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">static</span> <span class="kr">inline</span> <span class="kt">int</span> <span class="nf">_death_queue_node_to_idx</span><span class="p">(</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">static</span> <span class="kr">inline</span> <span class="kt">int</span> <span class="nf">_death_queue_node_to_idx</span><span class="p">(</span>
             <span class="k">struct</span> <span class="n">death_queue_t</span> <span class="o">*</span><span class="n">dq</span><span class="p">,</span> <span class="n">lwan_connection_t</span> <span class="o">*</span><span class="n">conn</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="k">return</span> <span class="p">(</span><span class="n">conn</span> <span class="o">==</span> <span class="o">&amp;</span><span class="n">dq</span><span class="o">-&gt;</span><span class="n">head</span><span class="p">)</span> <span class="o">?</span>
@@ -1806,7 +1932,7 @@ numbers.  Although this works, it is quite boring, performance-wise.</p>
 <p>The second approach was using the naïve algorithm, which basically divides
 the number by <span class="docutils literal"><span class="pre">10</span></span> in succession, writing backwards the result of modulus by
 <span class="docutils literal"><span class="pre">10</span></span> to a string, and then reversing the string when the number reaches <span class="docutils literal"><span class="pre">0</span></span>.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="c1">// Code based on https://code.google.com/p/stringencoders/</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="c1">// Code based on https://code.google.com/p/stringencoders/</span>
 <span class="kt">size_t</span> <span class="nf">naive_uint32_to_str</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">value</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">str</span><span class="p">)</span> <span class="p">{</span>
     <span class="kt">char</span> <span class="o">*</span><span class="n">wstr</span> <span class="o">=</span> <span class="n">str</span><span class="p">;</span>
     <span class="c1">// Conversion. Number is reversed.</span>
@@ -1826,7 +1952,7 @@ me.  Why not just write the string backwards already?</p>
 trick of multiplying the size of an integer in bytes by <span class="docutils literal"><span class="pre">3</span></span> to obtain an
 approximation of the number of digits for <span class="docutils literal"><span class="pre">MAX_INT</span></span>, including the zero
 terminator, regardless of what <span class="docutils literal"><span class="pre">sizeof(int)</span></span> is.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="cp">#define INT_TO_STR_BUFFER_SIZE (3 * sizeof(int))</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="cp">#define INT_TO_STR_BUFFER_SIZE (3 * sizeof(int))</span>
 
 <span class="kt">char</span> <span class="o">*</span><span class="nf">lwan_uint32_to_str</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">value</span><span class="p">,</span>
             <span class="kt">char</span> <span class="n">buffer</span><span class="p">[</span><span class="k">static</span> <span class="n">INT_TO_STR_BUFFER_SIZE</span><span class="p">],</span>
@@ -1858,7 +1984,7 @@ each digit, and they use a lookup table as well.</p>
 there’s a table for all pair of digits, from <cite>00</cite> to <cite>99</cite>.  This cuts the
 amount of divisions by half, yielding a significantly faster algorithm:
 around 31% faster than the above snippet:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="kt">size_t</span> <span class="nf">facebook_uint32_to_str</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">value</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">dst</span><span class="p">)</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="kt">size_t</span> <span class="nf">facebook_uint32_to_str</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">value</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">dst</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="k">static</span> <span class="k">const</span> <span class="kt">char</span> <span class="n">digits</span><span class="p">[</span><span class="mi">201</span><span class="p">]</span> <span class="o">=</span>
         <span class="s">"0001020304050607080910111213141516171819"</span>
@@ -2069,7 +2195,7 @@ is all contained within a single function.</p>
 structure – calling <span class="docutils literal"><span class="pre">coro_yield()</span></span> will of course maintain the stack
 alive, so local variables can be used outside this function as long as a
 reference to them can be obtained.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="kt">int</span> <span class="nf">dir_list_generator</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">)</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="kt">int</span> <span class="nf">dir_list_generator</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="kt">DIR</span> <span class="o">*</span><span class="n">dir</span><span class="p">;</span>
     <span class="k">struct</span> <span class="n">dirent</span> <span class="o">*</span><span class="n">ent</span><span class="p">;</span>
@@ -2113,7 +2239,7 @@ pointer to be used as a callback later on.  Examples include <span class="docuti
 and <span class="docutils literal"><span class="pre">signal()</span></span>.  However, these functions can’t receive an arbitrary
 pointer (which could hold some important program state) in addition to the
 function pointer, so you’re left with pesky global variables:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="cm">/* You have: */</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="cm">/* You have: */</span>
 <span class="n">atexit</span><span class="p">(</span><span class="n">foo</span><span class="p">);</span> <span class="cm">/* foo() will have to fetch program state from globals */</span>
 
 <span class="cm">/* Instead of: */</span>
@@ -2131,7 +2257,7 @@ nonsense.</p>
 first.  I’ll begin with the template function.  The idea is to have a
 function whose code can be patched up later – however that code turns out
 to be generated by the compiler:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="cp">#define PARAMETER_CONSTANT 0xFEEDBEEF</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="cp">#define PARAMETER_CONSTANT 0xFEEDBEEF</span>
 <span class="cp">#define FUNCTION_CONSTANT 0xABAD1DEA</span>
 
 <span class="k">static</span> <span class="kt">void</span>
@@ -2145,7 +2271,7 @@ to be generated by the compiler:</p>
 <span class="docutils literal"><span class="pre">FUNCTION_CONSTANT</span></span> with a pointer pointing to <span class="docutils literal"><span class="pre">PARAMETER_CONSTANT</span></span>”. Of
 course, if you call this code as is, the program will most likely crash.
 The idea is that this generates this code (IA32 assembly):</p>
-<div class="highlight-objdump"><div class="highlight"><pre><span/><span class="mh">0f00deba</span> <span class="p">&lt;</span><span class="nf">partial_template_function</span><span class="p">&gt;:</span>
+<div class="highlight-objdump notranslate"><div class="highlight"><pre><span/><span class="mh">0f00deba</span> <span class="p">&lt;</span><span class="nf">partial_template_function</span><span class="p">&gt;:</span>
 <span class="x">   0:    55                       push   %ebp</span>
 <span class="x">   1:    89 e5                    mov    %esp,%ebp</span>
 <span class="x">   3:    83 ec 18                 sub    $0x18,%esp</span>
@@ -2160,7 +2286,7 @@ The idea is that this generates this code (IA32 assembly):</p>
 see the magic constants defined in the C code above.  By writing a trivial
 function to patch these magic values to something useful (such as a real
 function or some real pointer argument):</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">static</span> <span class="kt">bool</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">static</span> <span class="kt">bool</span>
 <span class="nf">patch_pointer</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">code_addr</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">code_len</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">look_for</span><span class="p">,</span> <span class="kt">void</span>
 <span class="o">*</span><span class="n">patch_with</span><span class="p">)</span>
 <span class="p">{</span>
@@ -2193,7 +2319,7 @@ function or some real pointer argument):</p>
 <p>And using it to patch the pointers in a page allocated with <span class="docutils literal"><span class="pre">mmap()</span></span>
 (comments and error recovery have been ommitted for brevity; full source
 code is linked below):</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">Partial</span> <span class="o">*</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">Partial</span> <span class="o">*</span>
 <span class="nf">partial_new</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">func</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">),</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="k">struct</span> <span class="n">Partial</span> <span class="o">*</span><span class="n">t</span><span class="p">;</span>
@@ -2222,7 +2348,7 @@ code is linked below):</p>
 </div>
 <p>The end result will be a function that can be called without arguments –
 which will magically call another function with a given parameter:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">static</span> <span class="kt">void</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">static</span> <span class="kt">void</span>
 <span class="nf">test</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="n">printf</span><span class="p">(</span><span class="s">"Test called with data=%p</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">data</span><span class="p">);</span>
@@ -2240,7 +2366,7 @@ which will magically call another function with a given parameter:</p>
 </pre></div>
 </div>
 <p>Which, when executed, will print:</p>
-<div class="highlight-console"><div class="highlight"><pre><span/><span class="gp">[leandro@navi /tmp]$</span> ./a.out
+<div class="highlight-console notranslate"><div class="highlight"><pre><span/><span class="gp">[leandro@navi /tmp]$</span> ./a.out
 <span class="go">Test called with data=0x12341337</span>
 </pre></div>
 </div>
@@ -2264,11 +2390,11 @@ necessarily mean we can’t do that in C if we know where to look.</p>
 <p>I’ve implemented a subset of <a class="reference external" href="http://mustache.github.com/">Mustache</a> templates in C that leverages some
 tricks that makes template rendering both convenient and efficient. For
 instance, if you have a template such as this:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">Hello</span><span class="p">,</span> <span class="p">{{</span><span class="n">name</span><span class="p">}}</span><span class="o">!</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">Hello</span><span class="p">,</span> <span class="p">{{</span><span class="n">name</span><span class="p">}}</span><span class="o">!</span>
 </pre></div>
 </div>
 <p>It can easily be rendered with the following code:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">hello_t</span> <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">hello_t</span> <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
   <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">"World"</span>
 <span class="p">};</span>
 <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">data</span><span class="p">);</span>
@@ -2283,7 +2409,7 @@ table. While reasonably efficient (even considering the overhead to create
 and destroy the table every time the template had to be rendered), they’re
 not first class citizens in C, and the usage would be pretty clumsy, to say
 the least:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">hash_table</span> <span class="o">*</span><span class="n">ht</span> <span class="o">=</span> <span class="n">hash_table_new</span><span class="p">();</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">hash_table</span> <span class="o">*</span><span class="n">ht</span> <span class="o">=</span> <span class="n">hash_table_new</span><span class="p">();</span>
 <span class="n">hash_table_add</span><span class="p">(</span><span class="n">ht</span><span class="p">,</span> <span class="s">"name"</span><span class="p">,</span> <span class="s">"World"</span><span class="p">);</span>
 
 <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="n">ht</span><span class="p">);</span>
@@ -2298,7 +2424,7 @@ values whenever necessary to render the template.</p>
 which is supported by GCC even in C89 mode. This trick allows the use of
 <a class="reference external" href="http://www.run.montefiore.ulg.ac.be/~martin/resources/kung-f00.html">anonymous arrays</a>, among other things, and provides enough syntactic sugar
 to conveniently group the template variables:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="p">(</span><span class="n">hello_t</span><span class="p">[])</span> <span class="p">{{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="p">(</span><span class="n">hello_t</span><span class="p">[])</span> <span class="p">{{</span>
   <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">"World"</span>
 <span class="p">}});</span>
 </pre></div>
@@ -2308,7 +2434,7 @@ this would not help much. Enter the second trick: the <span class="docutils lite
 which computes the offset of a field in a given structure. By storing this
 offset alongside data type information, the value lookup is not only possible
 but can also work with types different than strings:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">typedef</span> <span class="k">struct</span> <span class="n">hello_t</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">typedef</span> <span class="k">struct</span> <span class="n">hello_t</span> <span class="p">{</span>
   <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">;</span>
   <span class="kt">int</span> <span class="n">age</span><span class="p">;</span>
 <span class="p">};</span>
@@ -2481,7 +2607,7 @@ implement coroutines or more powerful concepts, like <a class="reference externa
 they’re quite tricky to use, so it’s often a good idea to offer a thin
 wrapper on top of them. The API used in lwan is the following (implementation
 details omitted for brevity):</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">coro_t</span> <span class="o">*</span><span class="nf">coro_new</span><span class="p">(</span><span class="n">coro_function_t</span> <span class="n">function</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">coro_t</span> <span class="o">*</span><span class="nf">coro_new</span><span class="p">(</span><span class="n">coro_function_t</span> <span class="n">function</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
 <span class="kt">void</span> <span class="nf">coro_free</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">);</span>
 <span class="kt">int</span> <span class="nf">coro_resume</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">);</span>
 <span class="kt">void</span> <span class="nf">coro_yield</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="kt">int</span> <span class="n">value</span><span class="p">);</span>
@@ -2492,7 +2618,7 @@ details omitted for brevity):</p>
 <h2>Coroutine allocation</h2>
 <p>A coroutine is pretty much a simple data structure; the real implementation
 has more fields, but they’re implementation details:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">coro_t_</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">coro_t_</span> <span class="p">{</span>
     <span class="n">coro_function_t</span> <span class="n">function</span><span class="p">;</span>
     <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">;</span>
 
@@ -2510,7 +2636,7 @@ actually <em>saves</em> the current context into the variable pointed to by its 
 parameter.)</p>
 <p>After that, one just need to set up the context so that it points to the
 newly-allocated stack:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">coro</span><span class="o">-&gt;</span><span class="n">context</span><span class="p">.</span><span class="n">uc_stack</span><span class="p">.</span><span class="n">ss_sp</span> <span class="o">=</span> <span class="n">coro</span><span class="o">-&gt;</span><span class="n">stack</span><span class="p">;</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">coro</span><span class="o">-&gt;</span><span class="n">context</span><span class="p">.</span><span class="n">uc_stack</span><span class="p">.</span><span class="n">ss_sp</span> <span class="o">=</span> <span class="n">coro</span><span class="o">-&gt;</span><span class="n">stack</span><span class="p">;</span>
 <span class="n">coro</span><span class="o">-&gt;</span><span class="n">context</span><span class="p">.</span><span class="n">uc_stack</span><span class="p">.</span><span class="n">ss_size</span> <span class="o">=</span> <span class="n">stack_size</span><span class="p">;</span>
 <span class="n">coro</span><span class="o">-&gt;</span><span class="n">context</span><span class="p">.</span><span class="n">uc_stack</span><span class="p">.</span><span class="n">ss_flags</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
 <span class="n">coro</span><span class="o">-&gt;</span><span class="n">context</span><span class="p">.</span><span class="n">uc_link</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
@@ -2522,7 +2648,7 @@ wonder why this thing is quite unpopular.) This function takes a variable
 number of parameters, each one being a 32-bit integer value. I don’t know why
 a <span class="docutils literal"><span class="pre">void</span> <span class="pre">*</span></span> wasn’t used instead – so, on 64-bit, I use an union to break a
 pointer into two 32-bit components:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">union</span> <span class="n">ptr_splitter</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">union</span> <span class="n">ptr_splitter</span> <span class="p">{</span>
     <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">;</span>
     <span class="kt">uint32_t</span> <span class="n">part</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
 <span class="p">};</span>
@@ -2554,12 +2680,12 @@ lwan to determine if a coroutine should be resumed.</p>
 <div class="section" id="using-the-coroutines">
 <h2>Using the coroutines</h2>
 <p>From the user perspective, it’s just like calling some blocking function:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">lwan_sendfile</span><span class="p">(</span><span class="n">request</span><span class="o">-&gt;</span><span class="n">socket</span><span class="p">,</span> <span class="n">file_fd</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">total_bytes</span><span class="p">);</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">lwan_sendfile</span><span class="p">(</span><span class="n">request</span><span class="o">-&gt;</span><span class="n">socket</span><span class="p">,</span> <span class="n">file_fd</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">total_bytes</span><span class="p">);</span>
 </pre></div>
 </div>
 <p>Behind the scenes, <span class="docutils literal"><span class="pre">lwan_sendfile</span></span> is actually doing this (error handling
 omitted for brevity):</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">while</span> <span class="p">(</span><span class="n">sent_bytes</span> <span class="o">&lt;</span> <span class="n">total_bytes</span><span class="p">)</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">while</span> <span class="p">(</span><span class="n">sent_bytes</span> <span class="o">&lt;</span> <span class="n">total_bytes</span><span class="p">)</span> <span class="p">{</span>
     <span class="n">read_bytes</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">file_fd</span><span class="p">,</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">buffer_size</span><span class="p">);</span>
     <span class="n">sent_bytes</span> <span class="o">+=</span> <span class="n">read_bytes</span><span class="p">;</span>
     <span class="n">write</span><span class="p">(</span><span class="n">socket_fd</span><span class="p">,</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">read_bytes</span><span class="p">);</span>
@@ -2646,7 +2772,7 @@ EasyUI parts from this traditional approach and offers a new way to create
 applications using EFL.</p>
 <p>Before talking about code, let me show a video (best viewed in HD) of some
 sample EasyUI applications being executed:</p>
-<iframe src="http://www.youtube.com/embed/NsRoj3s2Tok" style="border: 0; height: 345px; width: 560px">
+<iframe src="https://www.youtube.com/embed/NsRoj3s2Tok" style="border: 0; height: 345px; width: 560px">
 </iframe></div>
 <div class="section" id="brief-overview-of-an-easyui-app">
 <h2>Brief overview of an EasyUI app</h2>
@@ -2659,7 +2785,7 @@ are apps for mobile devices with stacked lists and the eventual popup
 that appears on top of the content.</dd>
 </dl>
 <p>The code below shows a typical controller-view; explanation will follow.</p>
-<div class="highlight-javascript"><div class="highlight"><pre><span/><span class="nx">MainController</span> <span class="o">=</span> <span class="nx">EUI</span><span class="p">.</span><span class="nx">ListController</span><span class="p">({</span>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span/><span class="nx">MainController</span> <span class="o">=</span> <span class="nx">EUI</span><span class="p">.</span><span class="nx">ListController</span><span class="p">({</span>
     <span class="nx">title</span><span class="o">:</span> <span class="s1">'My Favorite Fruits'</span><span class="p">,</span>
     <span class="nx">model</span><span class="o">:</span> <span class="k">new</span> <span class="nx">ArrayModel</span><span class="p">([</span><span class="s1">'Pear'</span><span class="p">,</span> <span class="s1">'Banana'</span><span class="p">,</span> <span class="s1">'Uvaia'</span><span class="p">]),</span>
     <span class="nx">itemAtIndex</span><span class="o">:</span> <span class="kd">function</span><span class="p">(</span><span class="nx">index</span><span class="p">)</span> <span class="p">{</span>
@@ -2688,7 +2814,7 @@ application developer focuses only on defining behavior.</li>
 needs them. For instance, one could change the title based on how many
 fruits were in the model, by writing a <span class="docutils literal"><span class="pre">title</span></span> function like so:</li>
 </ul>
-<div class="highlight-javascript"><div class="highlight"><pre><span/><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span/><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
     <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">model</span><span class="p">.</span><span class="nx">length</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
             <span class="k">return</span> <span class="s2">"My Favorite Fruit"</span><span class="p">;</span>
     <span class="k">return</span> <span class="s2">"My Favourite Fruits"</span><span class="p">;</span>
@@ -2732,7 +2858,7 @@ calls required to serve one file. As a result, static file serving was quite
 slow compared to “hello world” requests. Bored one day, I’ve decided to speed
 this as much as I could.</p>
 <p>Before optimizing, serving a file would look like this:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="o">&lt;</span><span class="p">...</span> <span class="n">epoll_wait</span> <span class="n">resumed</span><span class="o">&gt;</span> <span class="p">{{</span><span class="n">EPOLLIN</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">8</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="o">&lt;</span><span class="p">...</span> <span class="n">epoll_wait</span> <span class="n">resumed</span><span class="o">&gt;</span> <span class="p">{{</span><span class="n">EPOLLIN</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">8</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span>
 <span class="mi">4294967295</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span>
 <span class="n">rt_sigprocmask</span><span class="p">(</span><span class="n">SIG_BLOCK</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="p">[],</span> <span class="mi">8</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span>
 <span class="n">read</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s">"GET / HTTP/1.0</span><span class="se">\r\n</span><span class="s">"</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">16</span>
@@ -2801,7 +2927,7 @@ this as much as I could.</p>
 <p>Yes. That many system calls – I was not kidding when I said that file serving
 was added as an afterthought. After some experiments, I’ve managed to turn
 that mess into this:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="o">&lt;</span><span class="p">...</span> <span class="n">epoll_wait</span> <span class="n">resumed</span><span class="o">&gt;</span> <span class="p">{{</span><span class="n">EPOLLIN</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">9</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="o">&lt;</span><span class="p">...</span> <span class="n">epoll_wait</span> <span class="n">resumed</span><span class="o">&gt;</span> <span class="p">{{</span><span class="n">EPOLLIN</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">9</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span>
 <span class="mi">4294967295</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span>
 <span class="n">read</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="s">"GET / HTTP/1.0</span><span class="se">\r\n</span><span class="s">"</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">16</span>
 <span class="n">newfstatat</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="s">"index.html"</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFREG</span><span class="o">|</span><span class="mo">0664</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">13200</span><span class="p">,</span>
@@ -2860,7 +2986,7 @@ what I did, by implementing <span class="docutils literal"><span class="pre">cor
 called sequentially by <span class="docutils literal"><span class="pre">coro_free()</span></span>.</p>
 <p>This can be used for various purposes, including garbage collection and other
 miscellaneous cleanup code:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="kt">void</span><span class="o">*</span> <span class="nf">coro_malloc</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">sz</span><span class="p">)</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="kt">void</span><span class="o">*</span> <span class="nf">coro_malloc</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">sz</span><span class="p">)</span> <span class="p">{</span>
     <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="n">sz</span><span class="p">);</span>
     <span class="k">if</span> <span class="p">(</span><span class="n">ptr</span><span class="p">)</span>
             <span class="n">coro_defer</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="n">free</span><span class="p">,</span> <span class="n">ptr</span><span class="p">);</span>
@@ -2940,7 +3066,7 @@ these constants. My solution was to just use a macro in conjuntion with an
 <span class="docutils literal"><span class="pre">enum</span></span>, to create the constant integral types expected by the compiler.</p>
 <p>The code below, copied directly from <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>, illustrates an usage of this
 <span class="docutils literal"><span class="pre">STRING_SWITCH</span></span> statement:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="cp">#define STRING_SWITCH_L(s) switch (*((int32_t *)(s)) | 0x20202020)</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="cp">#define STRING_SWITCH_L(s) switch (*((int32_t *)(s)) | 0x20202020)</span>
 <span class="cp">#define MULTICHAR_CONSTANT(a,b,c,d) ((int32_t)((a) | (b) &lt;&lt; 8 | (c)</span>
 <span class="o">&lt;&lt;</span> <span class="mi">16</span> <span class="o">|</span> <span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="mi">24</span><span class="p">))</span>
 

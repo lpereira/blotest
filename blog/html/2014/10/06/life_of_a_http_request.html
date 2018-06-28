@@ -31,7 +31,7 @@
         <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Integer to string conversion" href="../../06/23/integer_to_string_conversion.html" /><link rel="prev" title="Hybrid C/Pascal Strings" href="../../11/02/hybrid_c_pascal_strings.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     '1.6.0',
+        VERSION:     '1.7.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         SOURCELINK_SUFFIX: '.txt',
@@ -84,7 +84,7 @@ being sent — and explaining details and reasoning behind the implementation.</
 <a class="reference external" href="http://lwn.net/Articles/508865/">Fastopen</a> and <a class="reference external" href="http://linux.die.net/man/7/tcp#TCP_QUICKACK">Quickack</a> are enabled, in addition to socket lingering.  The
 socket is left in its default, blocking mode. The <a class="reference external" href="http://www.linuxjournal.com/files/linuxjournal.com/linuxjournal/articles/023/2333/2333s2.html">listen() backlog</a> is the
 maximum allowed by the system.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="k">static</span> <span class="kt">int</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">static</span> <span class="kt">int</span>
 <span class="nf">_get_backlog_size</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
 <span class="p">{</span>
 <span class="cp">#ifdef SOMAXCONN</span>
@@ -112,7 +112,7 @@ accepting all the sockets and scheduling clients) blocks on a call to
 Linux-only and, among other things, lets one specify flags in sockets
 without requiring an additional round trip to the kernel; the only flag that
 interests Lwan is <span class="docutils literal"><span class="pre">SOCK_NONBLOCK</span></span>.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="kt">void</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span>
 <span class="nf">lwan_main_loop</span><span class="p">(</span><span class="n">lwan_t</span> <span class="o">*</span><span class="n">l</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="k">if</span> <span class="p">(</span><span class="n">setjmp</span><span class="p">(</span><span class="n">cleanup_jmp_buf</span><span class="p">))</span>
@@ -149,7 +149,7 @@ there until it is explicitly closed or a timeout occurs.</p>
 explicit locks.  The index to this array is the connection file descriptor,
 which makes lookup very quick. This exploits the notion that file
 descriptors are always allocated from the lowest possible number.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="k">struct</span> <span class="n">lwan_connection_t_</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span> <span class="n">lwan_connection_t_</span> <span class="p">{</span>
     <span class="cm">/* This structure is exactly 32-bytes on x86-64. If it is</span>
 <span class="cm">     * changed, make sure the scheduler (lwan.c) is updated as</span>
 <span class="cm">     * well. */</span>
@@ -165,14 +165,14 @@ descriptors are always allocated from the lowest possible number.</p>
 lock called <a class="reference external" href="https://en.wikipedia.org/wiki/False_sharing">false sharing</a>, which is solved with a scheduler that is
 aware of that problem and groups two connection structures per cache
 line.  It’s simpler than it sounds:</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="kt">int</span> <span class="kr">thread</span> <span class="o">=</span> <span class="p">((</span><span class="n">fd</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">%</span> <span class="n">n_threads</span><span class="p">;</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">int</span> <span class="kr">thread</span> <span class="o">=</span> <span class="p">((</span><span class="n">fd</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">%</span> <span class="n">n_threads</span><span class="p">;</span>
 </pre></div>
 </div>
 <p>A <a class="reference external" href="https://en.wikipedia.org/wiki/Round-robin_scheduling">round robin scheduler</a> is used on other architectures.</p>
 <p>An interesting curiosity about the connection structure is that it doesn’t
 store the file descriptor: pointer arithmetic is performed to obtain it, as
 the the base address for the connection array is known.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="n">ALWAYS_INLINE</span> <span class="kt">int</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">ALWAYS_INLINE</span> <span class="kt">int</span>
 <span class="nf">lwan_connection_get_fd</span><span class="p">(</span><span class="n">lwan_connection_t</span> <span class="o">*</span><span class="n">conn</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="k">return</span> <span class="p">(</span><span class="kt">int</span><span class="p">)(</span><span class="kt">ptrdiff_t</span><span class="p">)(</span><span class="n">conn</span> <span class="o">-</span> <span class="n">conn</span><span class="o">-&gt;</span><span class="kr">thread</span><span class="o">-&gt;</span><span class="n">lwan</span><span class="o">-&gt;</span><span class="n">conns</span><span class="p">);</span>
@@ -204,7 +204,7 @@ lightweight threads and as resource management facilities.</p>
 that’s less convoluted than the dreaded <a class="reference external" href="https://developer.gnome.org/gio/stable/">callback idiom</a> prevalent in C. They
 also require a lot less stack space than a thread and their creation is
 pretty efficient: essentially just a call to <span class="docutils literal"><span class="pre">malloc()</span></span>.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="n">coro_t</span> <span class="o">*</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">coro_t</span> <span class="o">*</span>
 <span class="nf">coro_new</span><span class="p">(</span><span class="n">coro_switcher_t</span> <span class="o">*</span><span class="n">switcher</span><span class="p">,</span>
          <span class="n">coro_function_t</span> <span class="n">function</span><span class="p">,</span>
          <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">)</span>
@@ -245,7 +245,7 @@ these wrap, they return no error:</p>
 few times before giving up;</li>
 <li>When giving up, or on unrecoverable errors, coroutines are aborted.</li>
 </ul>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="kt">int</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">int</span>
 <span class="nf">lwan_openat</span><span class="p">(</span><span class="n">lwan_request_t</span> <span class="o">*</span><span class="n">request</span><span class="p">,</span>
             <span class="kt">int</span> <span class="n">dirfd</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">pathname</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">)</span>
 <span class="p">{</span>
@@ -318,7 +318,7 @@ upon.</p>
 allocations from the heap.  The buffer is modified in place by slicing and
 storing pointers to stuff the server might be interested in.  Parsing of
 HTTP request headers is delayed until needed (and they might not be needed).</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="k">struct</span> <span class="n">lwan_request_parse_t_</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span> <span class="n">lwan_request_parse_t_</span> <span class="p">{</span>
     <span class="n">lwan_value_t</span> <span class="n">buffer</span><span class="p">;</span>            <span class="cm">/* The whole buffer */</span>
     <span class="n">lwan_value_t</span> <span class="n">query_string</span><span class="p">;</span>      <span class="cm">/* Stuff after URLs ? */</span>
     <span class="n">lwan_value_t</span> <span class="n">if_modified_since</span><span class="p">;</span> <span class="cm">/* If-Modified-Since: */</span>
@@ -358,7 +358,7 @@ handle it.</p>
 structure that has only eight pointers per node, so that on x86-64, each
 node fills one cache line exactly. This is achieved by hashing each
 character used to build up a node by taking the 3 least significant bits.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="k">struct</span> <span class="n">lwan_trie_node_t_</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span> <span class="n">lwan_trie_node_t_</span> <span class="p">{</span>
     <span class="n">lwan_trie_node_t</span> <span class="o">*</span><span class="n">next</span><span class="p">[</span><span class="mi">8</span><span class="p">];</span>
     <span class="n">lwan_trie_leaf_t</span> <span class="o">*</span><span class="n">leaf</span><span class="p">;</span>
     <span class="kt">int</span> <span class="n">ref_count</span><span class="p">;</span>
@@ -385,7 +385,7 @@ the request parsing stage) should be actually parsed. This include headers
 such as Range, Accept-Encoding, If-Modified-Since, and authorization stuff.
 Handlers that do not require parsing these headers will not trigger
 potentially expensive string crunching.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
     <span class="n">HANDLER_PARSE_QUERY_STRING</span> <span class="o">=</span> <span class="mi">1</span><span class="o">&lt;&lt;</span><span class="mi">0</span><span class="p">,</span>
     <span class="n">HANDLER_PARSE_IF_MODIFIED_SINCE</span> <span class="o">=</span> <span class="mi">1</span><span class="o">&lt;&lt;</span><span class="mi">1</span><span class="p">,</span>
     <span class="n">HANDLER_PARSE_RANGE</span> <span class="o">=</span> <span class="mi">1</span><span class="o">&lt;&lt;</span><span class="mi">2</span><span class="p">,</span>
@@ -404,7 +404,7 @@ such as the “Hello world handler” example shown below.</p>
 <p>Modules, on the other hand, provide much more fine-grained control of how
 the request will be handled; an example is the static file serving feature,
 also discussed further down.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="k">static</span> <span class="k">const</span> <span class="n">lwan_module_t</span> <span class="n">serve_files</span> <span class="o">=</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">static</span> <span class="k">const</span> <span class="n">lwan_module_t</span> <span class="n">serve_files</span> <span class="o">=</span> <span class="p">{</span>
     <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;serve_files&quot;</span><span class="p">,</span>
     <span class="p">.</span><span class="n">init</span> <span class="o">=</span> <span class="n">serve_files_init</span><span class="p">,</span>
     <span class="p">.</span><span class="n">init_from_hash</span> <span class="o">=</span> <span class="n">serve_files_init_from_hash</span><span class="p">,</span>
@@ -422,7 +422,7 @@ also discussed further down.</p>
 <p>The simplest handler possible is a “Hello, World!“. This tests the raw
 read-parse-write capacity of Lwan, without requiring more system calls than
 absolutely necessary.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="n">lwan_http_status_t</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">lwan_http_status_t</span>
 <span class="nf">hello_world</span><span class="p">(</span><span class="n">lwan_request_t</span> <span class="o">*</span><span class="n">request</span> <span class="n">__attribute__</span><span class="p">((</span><span class="n">unused</span><span class="p">)),</span>
             <span class="n">lwan_response_t</span> <span class="o">*</span><span class="n">response</span><span class="p">,</span>
             <span class="kt">void</span> <span class="o">*</span><span class="n">data</span> <span class="n">__attribute__</span><span class="p">((</span><span class="n">unused</span><span class="p">)))</span>
@@ -452,7 +452,7 @@ the response MIME Type, fill the string buffer, and call
 sent alongside the first chunk, the string buffer will be cleared, and the
 coroutine will yield. To send the next chunk, just fill the string buffer
 again and send another chunk, until your handler is complete.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="n">lwan_http_status_t</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">lwan_http_status_t</span>
 <span class="nf">test_chunked_encoding</span><span class="p">(</span><span class="n">lwan_request_t</span> <span class="o">*</span><span class="n">request</span><span class="p">,</span>
             <span class="n">lwan_response_t</span> <span class="o">*</span><span class="n">response</span><span class="p">,</span>
             <span class="kt">void</span> <span class="o">*</span><span class="n">data</span> <span class="n">__attribute__</span><span class="p">((</span><span class="n">unused</span><span class="p">)))</span>
@@ -476,7 +476,7 @@ again and send another chunk, until your handler is complete.</p>
 </div>
 <p>The same general idea is used by <a class="reference external" href="https://en.wikipedia.org/wiki/Server-sent_events">Server-sent events</a>; however, one uses
 <span class="docutils literal"><span class="pre">lwan_response_send_event()</span></span>, and passes the event name as well.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="n">lwan_http_status_t</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">lwan_http_status_t</span>
 <span class="nf">test_server_sent_event</span><span class="p">(</span><span class="n">lwan_request_t</span> <span class="o">*</span><span class="n">request</span><span class="p">,</span>
             <span class="n">lwan_response_t</span> <span class="o">*</span><span class="n">response</span><span class="p">,</span>
             <span class="kt">void</span> <span class="o">*</span><span class="n">data</span> <span class="n">__attribute__</span><span class="p">((</span><span class="n">unused</span><span class="p">)))</span>
@@ -507,7 +507,7 @@ few pointers in the “normal” handler and return. With the exception of
 producing error responses automatically — streaming handlers function
 exactly the same as a “normal” handler that does not send the response
 headers automatically.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="k">static</span> <span class="n">lwan_http_status_t</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">static</span> <span class="n">lwan_http_status_t</span>
 <span class="nf">serve_files_handle_cb</span><span class="p">(</span><span class="n">lwan_request_t</span> <span class="o">*</span><span class="n">request</span><span class="p">,</span>
                       <span class="n">lwan_response_t</span> <span class="o">*</span><span class="n">response</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">)</span>
 <span class="p">{</span>
@@ -545,7 +545,7 @@ discussed in detail further down.</p>
 the way to serve it.  Files larger than 16KiB are served with <span class="docutils literal"><span class="pre">sendfile()</span></span>
 to allow zero (or fewer) copy transfers, and smaller files are mapped in
 memory using <span class="docutils literal"><span class="pre">mmap()</span></span>.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="k">static</span> <span class="k">const</span> <span class="n">cache_funcs_t</span> <span class="o">*</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">static</span> <span class="k">const</span> <span class="n">cache_funcs_t</span> <span class="o">*</span>
 <span class="nf">_get_funcs</span><span class="p">(</span><span class="n">serve_files_priv_t</span> <span class="o">*</span><span class="n">priv</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span>
            <span class="kt">char</span> <span class="o">*</span><span class="n">full_path</span><span class="p">,</span> <span class="k">struct</span> <span class="n">stat</span> <span class="o">*</span><span class="n">st</span><span class="p">)</span>
 <span class="p">{</span>
@@ -609,7 +609,7 @@ larger than the original data. Especially if the response header is
 considered. Because of this, small files are only compressed if it’s worth
 the trouble. The 16KiB threshold has been chosen empirically: larger values
 did not yield substantial performance gains compared to using <span class="docutils literal"><span class="pre">sendfile()</span></span>.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="k">static</span> <span class="kt">void</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">static</span> <span class="kt">void</span>
 <span class="nf">_compress_cached_entry</span><span class="p">(</span><span class="n">mmap_cache_data_t</span> <span class="o">*</span><span class="n">md</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="k">static</span> <span class="k">const</span> <span class="kt">size_t</span> <span class="n">deflated_header_size</span> <span class="o">=</span>
@@ -683,7 +683,7 @@ best practices</a>.</p>
 parser to break down its text representation into a series of actions that
 can be performed by the engine very efficiently. Actions include things like
 “append string”, “append variable”, “start iteration”, and so on.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
     <span class="n">TPL_ACTION_APPEND</span><span class="p">,</span>
     <span class="n">TPL_ACTION_APPEND_CHAR</span><span class="p">,</span>
     <span class="n">TPL_ACTION_VARIABLE</span><span class="p">,</span>
@@ -705,7 +705,7 @@ much more efficient value lookup mechanism can be used instead.</p>
 <p>To use the templating mechanism, one should have a structure for each
 template. Structures are cheap and provide some welcome compile-time type
 checking that wouldn’t be possible otherwise.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="k">typedef</span> <span class="k">struct</span> <span class="n">hello_t</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span> <span class="k">struct</span> <span class="n">hello_t</span> <span class="p">{</span>
   <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">;</span>
   <span class="kt">int</span> <span class="n">age</span><span class="p">;</span>
 <span class="p">};</span>
@@ -717,7 +717,7 @@ string representation of a variable name, the offset in bytes of that
 variable within the structure, and pointers to functions to test the
 emptiness of that kind of variable and to append the variable to the string
 buffer; macros help alleviate boilerplate headaches.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="n">lwan_var_descriptor_t</span> <span class="n">hello_descriptor</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">lwan_var_descriptor_t</span> <span class="n">hello_descriptor</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
   <span class="n">TPL_VAR_STR</span><span class="p">(</span><span class="n">hello_t</span><span class="p">,</span> <span class="n">name</span><span class="p">),</span>
   <span class="n">TPL_VAR_INT</span><span class="p">(</span><span class="n">hello_t</span><span class="p">,</span> <span class="n">age</span><span class="p">),</span>
   <span class="n">TPL_VAR_SENTINEL</span>
@@ -731,7 +731,7 @@ buffer; macros help alleviate boilerplate headaches.</p>
 of database layer, caching layer, or be declared on the spot: compound
 literals with designated initializers make this use case pretty
 straightforward.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="n">strbuf_t</span> <span class="o">*</span><span class="n">rendered</span> <span class="o">=</span> <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="p">(</span><span class="n">hello_t</span><span class="p">[])</span> <span class="p">{{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">strbuf_t</span> <span class="o">*</span><span class="n">rendered</span> <span class="o">=</span> <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="p">(</span><span class="n">hello_t</span><span class="p">[])</span> <span class="p">{{</span>
   <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;World&quot;</span><span class="p">,</span>
   <span class="p">.</span><span class="n">age</span> <span class="o">=</span> <span class="mi">42</span>
 <span class="p">}});</span>
@@ -744,7 +744,7 @@ straightforward.</p>
 <p>Appending a variable is then just the matter of calling the
 appropriate callback function (conveniently in the descriptor), passing the
 base address of that structure plus the byte offset within it.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="k">static</span> <span class="kt">void</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">static</span> <span class="kt">void</span>
 <span class="nf">append_var_to_strbuf</span><span class="p">(</span><span class="n">lwan_tpl_chunk_t</span> <span class="o">*</span><span class="n">chunk</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">variables</span><span class="p">,</span>
                      <span class="n">strbuf_t</span> <span class="o">*</span><span class="n">buf</span><span class="p">)</span>
 <span class="p">{</span>
@@ -787,7 +787,7 @@ the cache to obtain a value for a given key. If it’s not there, the entry is
 created and returned. The lifetime of a cache entry is controlled
 automatically, and a low priority thread kicks in every now and then to
 prune old entries.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="k">struct</span> <span class="n">cache_t</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span> <span class="n">cache_t</span> <span class="p">{</span>
     <span class="k">struct</span> <span class="p">{</span>
         <span class="k">struct</span> <span class="n">hash</span> <span class="o">*</span><span class="n">table</span><span class="p">;</span>
         <span class="n">pthread_rwlock_t</span> <span class="n">lock</span><span class="p">;</span>
@@ -827,7 +827,7 @@ cache for a predetermined amount of time.</p>
 something is holding on a reference: these items are marked as floating when
 this happens, and the last one to give up the reference will also destroy
 the entry.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="k">struct</span> <span class="n">cache_entry_t</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span> <span class="n">cache_entry_t</span> <span class="p">{</span>
   <span class="k">struct</span> <span class="n">list_node</span> <span class="n">entries</span><span class="p">;</span>
   <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">;</span>
   <span class="kt">unsigned</span> <span class="n">refs</span><span class="p">;</span>
@@ -884,7 +884,7 @@ queue.</p>
 every timeout. Whenever the last connection is removed from a queue, the
 epoch restarts. Keeping the epoch a small number will help shave a few bytes
 from each connection in the future.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="k">struct</span> <span class="n">death_queue_t</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span> <span class="n">death_queue_t</span> <span class="p">{</span>
     <span class="n">lwan_connection_t</span> <span class="o">*</span><span class="n">conns</span><span class="p">;</span>
     <span class="n">lwan_connection_t</span> <span class="n">head</span><span class="p">;</span>
     <span class="kt">unsigned</span> <span class="n">time</span><span class="p">;</span>
@@ -906,7 +906,7 @@ the queue should be efficient, as it is done very frequently to move the
 entry to the end. The list is also circular, in order to avoid branching to
 handle empty queue cases. Maintaining the queue inline with the connection
 structures help reducing cache pressure.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="k">static</span> <span class="kr">inline</span> <span class="kt">int</span> <span class="nf">_death_queue_node_to_idx</span><span class="p">(</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">static</span> <span class="kr">inline</span> <span class="kt">int</span> <span class="nf">_death_queue_node_to_idx</span><span class="p">(</span>
             <span class="k">struct</span> <span class="n">death_queue_t</span> <span class="o">*</span><span class="n">dq</span><span class="p">,</span> <span class="n">lwan_connection_t</span> <span class="o">*</span><span class="n">conn</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="k">return</span> <span class="p">(</span><span class="n">conn</span> <span class="o">==</span> <span class="o">&amp;</span><span class="n">dq</span><span class="o">-&gt;</span><span class="n">head</span><span class="p">)</span> <span class="o">?</span>
@@ -977,7 +977,11 @@ request.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2018/06/28/include_next_and_portability.html">include_next and portability</a>
+        </li><li>
             <a href="../../../2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
+        </li><li>
+            <a href="../../../2017/05/08/coreboot_luks.html">Coreboot & LUKS</a>
         </li><li>
             <a href="../../../2017/03/01/parsing_json.html">Parsing JSON</a>
         </li><li>
@@ -992,10 +996,6 @@ request.</p>
             <a href="../../06/23/integer_to_string_conversion.html">Integer to string conversion</a>
         </li><li>
             <a href="../../../2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage by 94%</a>
-        </li><li>
-            <a href="../../../2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a>
-        </li><li>
-            <a href="../../../2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a>
         </li></ul>
 </div>
 </section><section><div class="widget">

@@ -31,7 +31,7 @@
         <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Initializing a heap-allocated structure in C" href="../../../2015/05/01/initializing_a_heap_allocated_structure_in_c.html" /><link rel="prev" title="Parsing JSON" href="../../../2017/03/01/parsing_json.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     '1.6.0',
+        VERSION:     '1.7.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         SOURCELINK_SUFFIX: '.txt',
@@ -188,7 +188,7 @@ trick</a> to perform in these
 scenarios is to employ the fact that, on x86, when a call instruction is
 made, the return address (i.e. the address of the byte right after the
 call instruction) is pushed to the stack:</p>
-<div class="highlight-nasm"><div class="highlight"><pre><span></span>    <span class="c1">; …</span>
+<div class="highlight-nasm notranslate"><div class="highlight"><pre><span></span>    <span class="c1">; …</span>
     <span class="nf">jmp</span> <span class="nv">push_bpf_addr</span>
 <span class="nl">apply_filter:</span>
     <span class="nf">pop</span> <span class="nb">rdx</span>     <span class="c1">; rdx points to the BPF program</span>
@@ -246,7 +246,7 @@ source, and this was a good opportunity to learn a few things.</p>
 breakpoint on <span class="docutils literal"><span class="pre">main()</span></span> won’t actually work. But this is easily solvable:
 just use <a class="reference external" href="https://linux.die.net/man/1/readelf">readelf(1)</a> to find
 where the new entry point is, and set a breakpoint to that:</p>
-<div class="highlight-shell-session"><div class="highlight"><pre><span></span><span class="gp">$</span> gcc -o hello hello.c
+<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> gcc -o hello hello.c
 <span class="gp">$</span> readelf -h hello <span class="p">|</span> grep Entry
 <span class="go">  Entry point address: 0x400490</span>
 <span class="gp">$</span> ./infect hello
@@ -275,7 +275,7 @@ make much sense there.  It’s just a way to test what’s going to happen when
 the filter is in place, without the need to modify the program to test this
 assumption.  (<a class="reference external" href="https://www.bsdcan.org/2016/schedule/attachments/357_20160610-bsdcan-helloworld.pdf">Lots of things</a>
 happens when executing a simple program such as this.)</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp"></span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp"></span>
 <span class="cp">#include</span> <span class="cpf">&lt;sys/socket.h&gt;</span><span class="cp"></span>
 <span class="cp">#include</span> <span class="cpf">&lt;netinet/in.h&gt;</span><span class="cp"></span>
 
@@ -293,7 +293,7 @@ happens when executing a simple program such as this.)</p>
 </div>
 <p>Executing the program before infecting it gives the following output, as
 expected:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span>$ ./hello
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ./hello
 no socket created
 $ ./hello 1
 created socket, fd = 3
@@ -301,7 +301,7 @@ created socket, fd = 3
 </div>
 <p>Indeed, if the program is executed under strace, it all goes exactly
 like it’s supposed to be:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span>$ strace ./hello
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ strace ./hello
 execve(&quot;./hello&quot;, [&quot;./hello&quot;], [/* 58 vars */]) = 0
 …
 write(1, &quot;no socket created\n&quot;, 18no socket created
@@ -311,7 +311,7 @@ exit_group(0)                           = ?
 </pre></div>
 </div>
 <p>And, with a command-line argument, so the socket is created:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span>…
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>…
 socket(AF_INET, SOCK_STREAM, IPPROTO_TCP) = 3
 …
 write(1, &quot;created socket, fd = 3\n&quot;, 23created socket, fd = 3
@@ -322,7 +322,7 @@ exit_group(0)                           = ?
 </div>
 <p>However, the magic happens after the “infected” binary is executed.
 First, without creating a socket:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span>…
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>…
 prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)  = 0
 prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, {len=30, filter=0x400824}) = 0
 …
@@ -336,7 +336,7 @@ exit_group(0)                           = ?
 previously-mentioned commit. And then the program executes as usual.
 Now, if an argument is passed, the program will attempt to create a
 socket:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span>…
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>…
 prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)  = 0
 prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, {len=30, filter=0x400824}) = 0
 socket(AF_INET, SOCK_STREAM, IPPROTO_TCP) = 41
@@ -409,7 +409,7 @@ instance, only allowing certain family of sockets to be created).</p>
 this seems doable by using an algorithm such as this, which will reduce
 the number of comparisons as the number of acceptable system calls
 increases:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span>        if syscall_number &lt; 32:
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>        if syscall_number &lt; 32:
                 if bitmask_0 &amp; 1&lt;&lt;syscall_number: goto accept
         if syscall_number &lt; 64:
                 syscall_number -= 32
@@ -481,7 +481,11 @@ repository</a>.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2018/06/28/include_next_and_portability.html">include_next and portability</a>
+        </li><li>
             <a href="../../../2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
+        </li><li>
+            <a href="../../../2017/05/08/coreboot_luks.html">Coreboot & LUKS</a>
         </li><li>
             <a href="../../../2017/03/01/parsing_json.html">Parsing JSON</a>
         </li><li>
@@ -496,10 +500,6 @@ repository</a>.</p>
             <a href="../../../2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
         </li><li>
             <a href="../../../2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage by 94%</a>
-        </li><li>
-            <a href="../../../2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a>
-        </li><li>
-            <a href="../../../2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a>
         </li></ul>
 </div>
 </section><section><div class="widget">

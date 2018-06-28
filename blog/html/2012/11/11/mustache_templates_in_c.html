@@ -31,7 +31,7 @@
         <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Programming on an Arduino without a PC" href="../../10/27/programming_on_an_arduino_without_a_pc.html" /><link rel="prev" title="Partially Applied Functions in C" href="../../../2013/07/20/partial_functions_in_c.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     '1.6.0',
+        VERSION:     '1.7.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         SOURCELINK_SUFFIX: '.txt',
@@ -69,11 +69,11 @@ necessarily mean we can’t do that in C if we know where to look.</p>
 <p>I’ve implemented a subset of <a class="reference external" href="http://mustache.github.com/">Mustache</a> templates in C that leverages some
 tricks that makes template rendering both convenient and efficient. For
 instance, if you have a template such as this:</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="n">Hello</span><span class="p">,</span> <span class="p">{{</span><span class="n">name</span><span class="p">}}</span><span class="o">!</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">Hello</span><span class="p">,</span> <span class="p">{{</span><span class="n">name</span><span class="p">}}</span><span class="o">!</span>
 </pre></div>
 </div>
 <p>It can easily be rendered with the following code:</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="n">hello_t</span> <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">hello_t</span> <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
   <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;World&quot;</span>
 <span class="p">};</span>
 <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">data</span><span class="p">);</span>
@@ -88,7 +88,7 @@ table. While reasonably efficient (even considering the overhead to create
 and destroy the table every time the template had to be rendered), they’re
 not first class citizens in C, and the usage would be pretty clumsy, to say
 the least:</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="n">hash_table</span> <span class="o">*</span><span class="n">ht</span> <span class="o">=</span> <span class="n">hash_table_new</span><span class="p">();</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">hash_table</span> <span class="o">*</span><span class="n">ht</span> <span class="o">=</span> <span class="n">hash_table_new</span><span class="p">();</span>
 <span class="n">hash_table_add</span><span class="p">(</span><span class="n">ht</span><span class="p">,</span> <span class="s">&quot;name&quot;</span><span class="p">,</span> <span class="s">&quot;World&quot;</span><span class="p">);</span>
 
 <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="n">ht</span><span class="p">);</span>
@@ -103,7 +103,7 @@ values whenever necessary to render the template.</p>
 which is supported by GCC even in C89 mode. This trick allows the use of
 <a class="reference external" href="http://www.run.montefiore.ulg.ac.be/~martin/resources/kung-f00.html">anonymous arrays</a>, among other things, and provides enough syntactic sugar
 to conveniently group the template variables:</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="p">(</span><span class="n">hello_t</span><span class="p">[])</span> <span class="p">{{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="p">(</span><span class="n">hello_t</span><span class="p">[])</span> <span class="p">{{</span>
   <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;World&quot;</span>
 <span class="p">}});</span>
 </pre></div>
@@ -113,7 +113,7 @@ this would not help much. Enter the second trick: the <span class="docutils lite
 which computes the offset of a field in a given structure. By storing this
 offset alongside data type information, the value lookup is not only possible
 but can also work with types different than strings:</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="k">typedef</span> <span class="k">struct</span> <span class="n">hello_t</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span> <span class="k">struct</span> <span class="n">hello_t</span> <span class="p">{</span>
   <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">;</span>
   <span class="kt">int</span> <span class="n">age</span><span class="p">;</span>
 <span class="p">};</span>
@@ -192,7 +192,11 @@ would it? :)</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2018/06/28/include_next_and_portability.html">include_next and portability</a>
+        </li><li>
             <a href="../../../2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
+        </li><li>
+            <a href="../../../2017/05/08/coreboot_luks.html">Coreboot & LUKS</a>
         </li><li>
             <a href="../../../2017/03/01/parsing_json.html">Parsing JSON</a>
         </li><li>
@@ -207,10 +211,6 @@ would it? :)</p>
             <a href="../../../2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
         </li><li>
             <a href="../../../2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage by 94%</a>
-        </li><li>
-            <a href="../../../2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a>
-        </li><li>
-            <a href="../../../2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a>
         </li></ul>
 </div>
 </section><section><div class="widget">

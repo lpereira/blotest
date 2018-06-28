@@ -31,7 +31,7 @@
         <link rel="search" title="Search" href="search.html" /><link rel="next" title="Older" href="page4.html" /><link rel="prev" title="Newer" href="page2.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '1.6.0',
+        VERSION:     '1.7.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         SOURCELINK_SUFFIX: '.txt',
@@ -58,6 +58,255 @@
                 </li>
               </ul>
           </nav><div class="main-container" role="main"><div class="main wrapper body clearfix"><article><div class="timestamp postmeta">
+            <span>September 26, 2013</span>
+        </div>
+        <div class="section">
+            <h1><a href="2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a></h1>
+<p>When I wrote about lwan’s templating engine on a <a class="reference external" href="http://tia.mat.br/blog/html/2012/11/11/mustache_templates_in_c.html">blog post</a> last year, I
+purposedly ommitted the fact that it didn’t support sequences. Took me
+almost a year, but I’ve finally implemented it this week. (Lwan is usually a
+low priority weekend project. Maybe that should do as an excuse for my
+laziness.)</p>
+<p>It took me three tries to get this right. <a class="reference external" href="https://en.wikipedia.org/wiki/Rube_Goldberg_machine">Rube Goldberg machine</a> kind of
+right, but there’s always some elegance in ingenuity.</p>
+<p>The first try would require one to create the list beforehand, and then pass
+it to the template engine to render.  Not only cumbersome, but would require
+the creation of (potentially) large amounts of temporary objects.</p>
+<p>The latter reason lead me to think of a way to implement iterators in C.
+This is usually done using callbacks; and although performant, it gets
+pretty verbose and tedious as there is usually the need to create structures
+to keep state, and different callbacks to initialize, destroy, and advance
+the iterator.</p>
+<p>Lots of <a class="reference external" href="https://01.org/blogs/imad/2013/welcome-profusion">things happened since then</a>, and this feature sort of creeped
+under the low priority rug for the most part of a year.</p>
+<p>While writing a completely different program in Python, however, it struck
+me: I could use the <a class="reference external" href="http://tia.mat.br/blog/html/2012/09/29/asynchronous_i_o_in_c_with_coroutines.html">coroutine stuff</a> I was already using in lwan and
+implement <a class="reference external" href="https://wiki.python.org/moin/Generators">generator functions</a>.  A few minutes later and I had a working
+prototype, which can probably be better explained with the help of a
+diagram:</p>
+<img alt="diagram" class="align-center" src="https://i.imgur.com/VsAfnsC.png"/>
+<p>In short, the engine will create a coroutine whenever it finds a
+<span class="docutils literal"><span class="pre">{{#sequence}}</span></span> template tag.  This coroutine will start, and will execute
+as usual until it yields.</p>
+<p>Yielding <span class="docutils literal"><span class="pre">false</span></span>, the engine assumes the iteration ended, and proceeds to
+find the next matching <span class="docutils literal"><span class="pre">{{/sequence}}</span></span> tag to continue from there.</p>
+<p>On a <span class="docutils literal"><span class="pre">true</span></span> yield, however, the engine will recurse to apply everything is
+between the iteration tags, repeating the process when the iteration-end tag
+is found and the coroutine yields <span class="docutils literal"><span class="pre">true</span></span> again.</p>
+<p>The coroutine is supposed to clean up after itself before returning a
+<span class="docutils literal"><span class="pre">false</span></span> value.</p>
+<div class="figure align-center" id="id1">
+<img alt="rubegoldbergmachine" src="https://i.imgur.com/7P2yadJ.jpg"/>
+<p class="caption"><span class="caption-text">Professor Butts would be proud. Maybe. <a class="reference external" href="https://en.wikipedia.org/wiki/File:Rubenvent.jpg">Source</a>.</span></p>
+</div>
+<p>A sample generator function is shown below. It iterates over a directory
+with <span class="docutils literal"><span class="pre">readdir()</span></span>, returning <span class="docutils literal"><span class="pre">1</span></span> on new item availability and <span class="docutils literal"><span class="pre">0</span></span> when there
+isn’t anything else to do. Notice that initialization, iteration, and cleanup
+is all contained within a single function.</p>
+<p>Also, notice that there’s no need to copy any values to and from the
+structure – calling <span class="docutils literal"><span class="pre">coro_yield()</span></span> will of course maintain the stack
+alive, so local variables can be used outside this function as long as a
+reference to them can be obtained.</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="kt">int</span> <span class="nf">dir_list_generator</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">DIR</span> <span class="o">*</span><span class="n">dir</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">dirent</span> <span class="o">*</span><span class="n">ent</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">file_list</span> <span class="o">*</span><span class="n">fl</span> <span class="o">=</span> <span class="n">coro_get_data</span><span class="p">(</span><span class="n">coro</span><span class="p">);</span>
+
+    <span class="n">dir</span> <span class="o">=</span> <span class="n">opendir</span><span class="p">(</span><span class="n">fl</span><span class="o">-&gt;</span><span class="n">path</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">dir</span><span class="p">)</span>
+      <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="k">while</span> <span class="p">((</span><span class="n">ent</span> <span class="o">=</span> <span class="n">readdir</span><span class="p">(</span><span class="n">dir</span><span class="p">)))</span> <span class="p">{</span>
+      <span class="n">fl</span><span class="o">-&gt;</span><span class="n">list</span><span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">ent</span><span class="o">-&gt;</span><span class="n">d_name</span><span class="p">;</span>
+      <span class="n">coro_yield</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>   <span class="cm">/* !0 means "iter not done yet" */</span>
+    <span class="p">}</span>
+
+    <span class="n">closedir</span><span class="p">(</span><span class="n">dir</span><span class="p">);</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The details of how the variable descriptors are set up are explained in the
+<a class="reference external" href="https://github.com/lpereira/lwan/commit/a4188d73a00cec4c99d50473803c44bfb2218d13">commit message</a> that introduced this change.  (The commit itself is quite
+buggy, but whatever I could find has been fixed in <a class="reference external" href="https://github.com/lpereira/lwan">HEAD</a> already.)</p>
+<p>In an ideal world, one would use something akin to Golang’s <a class="reference external" href="http://golang.org/doc/effective_go.html#channels">Channels</a>, but
+if I were to implement them in lwan it would take perhaps another year.
+Plus, they wouldn’t be as efficient as setting some pointers.  But they
+might be useful in the future, so I’m not completely discarding the idea.
+Although I’ve never written a single line of Go code, I’m reading a lot
+about it recently and it is sort of positively impacting the way I think
+about programming.  But I digress.</p>
+
+        </div>
+        <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="tags/c.html">C</a>, <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a></span>
+        </div>
+        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
+            <span>July 20, 2013</span>
+        </div>
+        <div class="section">
+            <h1><a href="2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a></h1>
+<p>There are some functions in the standard C library that takes a function
+pointer to be used as a callback later on.  Examples include <span class="docutils literal"><span class="pre">atexit()</span></span>
+and <span class="docutils literal"><span class="pre">signal()</span></span>.  However, these functions can’t receive an arbitrary
+pointer (which could hold some important program state) in addition to the
+function pointer, so you’re left with pesky global variables:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="cm">/* You have: */</span>
+<span class="n">atexit</span><span class="p">(</span><span class="n">foo</span><span class="p">);</span> <span class="cm">/* foo() will have to fetch program state from globals */</span>
+
+<span class="cm">/* Instead of: */</span>
+<span class="k">static</span> <span class="k">struct</span> <span class="n">program_state</span> <span class="n">state</span><span class="p">;</span>
+<span class="n">atexit</span><span class="p">(</span><span class="n">foo</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">state</span><span class="p">);</span> <span class="cm">/* foo() now have a pointer to program state */</span>
+</pre></div>
+</div>
+<p>Turns out that there’s a workaround, but it involves some black magic.</p>
+<p>I believe the overall mechanism to be quite interesting, however I do not
+recommend its usage.  Not only because the implementation wastes a whole
+<a class="reference external" href="https://en.wikipedia.org/wiki/Page_(computer_memory)">memory page</a> for a callback, but also because I don’t want to encourage
+people to perpetuate this kind of take-pointer-to-function-without-argument
+nonsense.</p>
+<p>I’ll try to explain how this contraption works by showing the smaller parts
+first.  I’ll begin with the template function.  The idea is to have a
+function whose code can be patched up later – however that code turns out
+to be generated by the compiler:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="cp">#define PARAMETER_CONSTANT 0xFEEDBEEF</span>
+<span class="cp">#define FUNCTION_CONSTANT 0xABAD1DEA</span>
+
+<span class="k">static</span> <span class="kt">void</span>
+<span class="nf">partial_template_function</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="p">((</span><span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="p">))</span><span class="n">FUNCTION_CONSTANT</span><span class="p">)((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">PARAMETER_CONSTANT</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The funky-looking cast basically says “call a function pointer at
+<span class="docutils literal"><span class="pre">FUNCTION_CONSTANT</span></span> with a pointer pointing to <span class="docutils literal"><span class="pre">PARAMETER_CONSTANT</span></span>”. Of
+course, if you call this code as is, the program will most likely crash.
+The idea is that this generates this code (IA32 assembly):</p>
+<div class="highlight-objdump notranslate"><div class="highlight"><pre><span/><span class="mh">0f00deba</span> <span class="p">&lt;</span><span class="nf">partial_template_function</span><span class="p">&gt;:</span>
+<span class="x">   0:    55                       push   %ebp</span>
+<span class="x">   1:    89 e5                    mov    %esp,%ebp</span>
+<span class="x">   3:    83 ec 18                 sub    $0x18,%esp</span>
+<span class="x">   6:    c7 04 24 ef be ed fe     movl   $0xfeedbeef,(%esp)</span>
+<span class="x">   d:    b8 ea 1d ad ab           mov    $0xabad1dea,%eax</span>
+<span class="x">  12:    ff d0                    call   *%eax</span>
+<span class="x">  14:    c9                       leave</span>
+<span class="x">  15:    c3                       ret</span>
+</pre></div>
+</div>
+<p>Even if you don’t know assembly, if you squint a little bit, you can clearly
+see the magic constants defined in the C code above.  By writing a trivial
+function to patch these magic values to something useful (such as a real
+function or some real pointer argument):</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">static</span> <span class="kt">bool</span>
+<span class="nf">patch_pointer</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">code_addr</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">code_len</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">look_for</span><span class="p">,</span> <span class="kt">void</span>
+<span class="o">*</span><span class="n">patch_with</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">*</span><span class="n">code</span> <span class="o">=</span> <span class="n">code_addr</span><span class="p">;</span>
+    <span class="kt">intptr_t</span> <span class="n">look</span> <span class="o">=</span> <span class="p">(</span><span class="kt">intptr_t</span><span class="p">)</span><span class="n">look_for</span><span class="p">;</span>
+
+    <span class="k">do</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">*</span><span class="p">((</span><span class="kt">intptr_t</span> <span class="o">*</span><span class="p">)</span><span class="n">code</span><span class="p">)</span> <span class="o">==</span> <span class="n">look</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">union</span> <span class="p">{</span>
+              <span class="kt">unsigned</span> <span class="kt">char</span> <span class="n">octet</span><span class="p">[</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)];</span>
+              <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">;</span>
+            <span class="p">}</span> <span class="n">patch</span><span class="p">;</span>
+
+            <span class="n">patch</span><span class="p">.</span><span class="n">ptr</span> <span class="o">=</span> <span class="n">patch_with</span><span class="p">;</span>
+            <span class="n">code</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">patch</span><span class="p">.</span><span class="n">octet</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+            <span class="n">code</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">patch</span><span class="p">.</span><span class="n">octet</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+            <span class="n">code</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">patch</span><span class="p">.</span><span class="n">octet</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+            <span class="n">code</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">patch</span><span class="p">.</span><span class="n">octet</span><span class="p">[</span><span class="mi">3</span><span class="p">];</span>
+
+            <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="n">code</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">while</span> <span class="p">(</span><span class="n">code_len</span><span class="o">--</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>And using it to patch the pointers in a page allocated with <span class="docutils literal"><span class="pre">mmap()</span></span>
+(comments and error recovery have been ommitted for brevity; full source
+code is linked below):</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">Partial</span> <span class="o">*</span>
+<span class="nf">partial_new</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">func</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">),</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">Partial</span> <span class="o">*</span><span class="n">t</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">func</span><span class="p">)</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+
+    <span class="n">t</span> <span class="o">=</span> <span class="n">calloc</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="o">*</span><span class="n">t</span><span class="p">));</span>
+    <span class="cm">/* partial_template_function must be declared just before partial_new</span>
+<span class="cm">     * so that caller_len is calculated correctly */</span>
+    <span class="n">t</span><span class="o">-&gt;</span><span class="n">caller_len</span> <span class="o">=</span> <span class="p">(</span><span class="kt">size_t</span><span class="p">)((</span><span class="kt">intptr_t</span><span class="p">)</span><span class="n">partial_new</span> <span class="o">-</span>
+          <span class="p">(</span><span class="kt">intptr_t</span><span class="p">)</span><span class="n">partial_template_function</span><span class="p">);</span>
+
+    <span class="n">t</span><span class="o">-&gt;</span><span class="n">caller</span> <span class="o">=</span> <span class="n">mmap</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">t</span><span class="o">-&gt;</span><span class="n">caller_len</span><span class="p">,</span> <span class="n">PROT_WRITE</span> <span class="o">|</span> <span class="n">PROT_READ</span><span class="p">,</span>
+          <span class="n">MAP_PRIVATE</span> <span class="o">|</span> <span class="n">MAP_ANONYMOUS</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+
+    <span class="n">memcpy</span><span class="p">(</span><span class="n">t</span><span class="o">-&gt;</span><span class="n">caller</span><span class="p">,</span> <span class="n">partial_template_function</span><span class="p">,</span> <span class="n">t</span><span class="o">-&gt;</span><span class="n">caller_len</span><span class="p">);</span>
+
+    <span class="n">patch_pointer</span><span class="p">(</span><span class="n">t</span><span class="o">-&gt;</span><span class="n">caller</span><span class="p">,</span> <span class="n">t</span><span class="o">-&gt;</span><span class="n">caller_len</span><span class="p">,</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">FUNCTION_CONSTANT</span><span class="p">,</span> <span class="n">func</span><span class="p">);</span>
+    <span class="n">patch_pointer</span><span class="p">(</span><span class="n">t</span><span class="o">-&gt;</span><span class="n">caller</span><span class="p">,</span> <span class="n">t</span><span class="o">-&gt;</span><span class="n">caller_len</span><span class="p">,</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">PARAMETER_CONSTANT</span><span class="p">,</span> <span class="n">data</span><span class="p">);</span>
+
+    <span class="n">mprotect</span><span class="p">(</span><span class="n">t</span><span class="o">-&gt;</span><span class="n">caller</span><span class="p">,</span> <span class="n">t</span><span class="o">-&gt;</span><span class="n">caller_len</span><span class="p">,</span> <span class="n">PROT_EXEC</span> <span class="o">|</span> <span class="n">PROT_READ</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="n">t</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The end result will be a function that can be called without arguments –
+which will magically call another function with a given parameter:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">static</span> <span class="kt">void</span>
+<span class="nf">test</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"Test called with data=%p</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">data</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">Partial</span> <span class="o">*</span><span class="n">p</span><span class="p">;</span>
+
+    <span class="n">p</span> <span class="o">=</span> <span class="n">partial_new</span><span class="p">(</span><span class="n">test</span><span class="p">,</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="mh">0x12341337</span><span class="p">);</span>
+    <span class="n">atexit</span><span class="p">(</span><span class="n">partial_to_function</span><span class="p">(</span><span class="n">p</span><span class="p">));</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Which, when executed, will print:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span/><span class="gp">[leandro@navi /tmp]$</span> ./a.out
+<span class="go">Test called with data=0x12341337</span>
+</pre></div>
+</div>
+<p>So there you have it, <a class="reference external" href="https://en.wikipedia.org/wiki/Partial_application">partially applied functions</a> in C. Useful? Hardly.
+Interesting?  I think so.  Fun?  Yup.</p>
+<p>If you’d like to try, the full source code, with comments and error recovery
+is available in this <a class="reference external" href="https://gist.github.com/lpereira/5062388">gist</a>.</p>
+
+        </div>
+        <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="tags/c.html">c</a>, <a href="tags/trick.html">trick</a>, <a href="tags/programming.html">programming</a></span>
+        </div>
+        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
             <span>November 11, 2012</span>
         </div>
         <div class="section">
@@ -69,11 +318,11 @@ necessarily mean we can’t do that in C if we know where to look.</p>
 <p>I’ve implemented a subset of <a class="reference external" href="http://mustache.github.com/">Mustache</a> templates in C that leverages some
 tricks that makes template rendering both convenient and efficient. For
 instance, if you have a template such as this:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">Hello</span><span class="p">,</span> <span class="p">{{</span><span class="n">name</span><span class="p">}}</span><span class="o">!</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">Hello</span><span class="p">,</span> <span class="p">{{</span><span class="n">name</span><span class="p">}}</span><span class="o">!</span>
 </pre></div>
 </div>
 <p>It can easily be rendered with the following code:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">hello_t</span> <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">hello_t</span> <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
   <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">"World"</span>
 <span class="p">};</span>
 <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">data</span><span class="p">);</span>
@@ -88,7 +337,7 @@ table. While reasonably efficient (even considering the overhead to create
 and destroy the table every time the template had to be rendered), they’re
 not first class citizens in C, and the usage would be pretty clumsy, to say
 the least:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">hash_table</span> <span class="o">*</span><span class="n">ht</span> <span class="o">=</span> <span class="n">hash_table_new</span><span class="p">();</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">hash_table</span> <span class="o">*</span><span class="n">ht</span> <span class="o">=</span> <span class="n">hash_table_new</span><span class="p">();</span>
 <span class="n">hash_table_add</span><span class="p">(</span><span class="n">ht</span><span class="p">,</span> <span class="s">"name"</span><span class="p">,</span> <span class="s">"World"</span><span class="p">);</span>
 
 <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="n">ht</span><span class="p">);</span>
@@ -103,7 +352,7 @@ values whenever necessary to render the template.</p>
 which is supported by GCC even in C89 mode. This trick allows the use of
 <a class="reference external" href="http://www.run.montefiore.ulg.ac.be/~martin/resources/kung-f00.html">anonymous arrays</a>, among other things, and provides enough syntactic sugar
 to conveniently group the template variables:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="p">(</span><span class="n">hello_t</span><span class="p">[])</span> <span class="p">{{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="p">(</span><span class="n">hello_t</span><span class="p">[])</span> <span class="p">{{</span>
   <span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">"World"</span>
 <span class="p">}});</span>
 </pre></div>
@@ -113,7 +362,7 @@ this would not help much. Enter the second trick: the <span class="docutils lite
 which computes the offset of a field in a given structure. By storing this
 offset alongside data type information, the value lookup is not only possible
 but can also work with types different than strings:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">typedef</span> <span class="k">struct</span> <span class="n">hello_t</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">typedef</span> <span class="k">struct</span> <span class="n">hello_t</span> <span class="p">{</span>
   <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">;</span>
   <span class="kt">int</span> <span class="n">age</span><span class="p">;</span>
 <span class="p">};</span>
@@ -275,297 +524,6 @@ in the cache when asked.</p>
                 Tags:
                 <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/c.html">C</a>, <a href="tags/linux.html">linux</a></span>
         </div>
-        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
-            <span>September 29, 2012</span>
-        </div>
-        <div class="section">
-            <h1><a href="2012/09/29/asynchronous_i_o_in_c_with_coroutines.html">Asynchronous I/O in C with Coroutines</a></h1>
-<p>Writing asynchronous I/O code in C is kind of tedious, and often leads to a
-callback hell. But it doesn’t have to be this way; if you have a main loop,
-it’s quite simple to use <a class="reference external" href="https://en.wikipedia.org/wiki/Coroutine">coroutines</a> and write code in a soothing, old
-school, synchronous way.</p>
-<img alt="yodawg" class="align-center" src="https://i.imgur.com/dHCqj.jpg"/>
-<p>Under POSIX, it’s also quite easy to implement coroutines, via the use of the
-stuff contained in the <a class="reference external" href="https://en.wikipedia.org/wiki/Setcontext">ucontext.h</a> header. Unfortunately deprecated in
-favor of threads, the functions and structures found in this header are one
-of the unpopular gems in the POSIX C library.</p>
-<div class="section" id="coroutines-in-lwan-my-toy-web-server">
-<h2>Coroutines in lwan, my toy web server</h2>
-<p>In <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>, there are <span class="docutils literal"><span class="pre">n</span> <span class="pre">+</span> <span class="pre">1</span></span> worker threads, where <span class="docutils literal"><span class="pre">n</span></span> is the number of
-logical CPUs. One thread is the <em>acceptor</em> thread, which accepts connections,
-and gives control to the other <span class="docutils literal"><span class="pre">n</span></span> threads, which in turn do all the work
-of receiving a request, parsing, and delivering the response.</p>
-<p>Each of these worker threads can multiplex thousands of connections by
-polling on events: so, for each worker thread, only one request can be
-handled at a time. And, if one blocking operation (say, write to a socket)
-would block, all other requests would wait for a response.</p>
-<p>By <em>yielding</em> the coroutine at the right moments, lwan blocks only on calls
-to <a class="reference external" href="http://linux.die.net/man/4/epoll">epoll(4)</a>. Whenever the socket can be written again, that coroutine is
-resumed. The request handler function does not know what happened.</p>
-</div>
-<div class="section" id="implementing-coroutines-using-ucontext">
-<h2>Implementing coroutines using ucontext</h2>
-<p>As said earlier, POSIX offers some infrastructure that can be used to
-implement coroutines or more powerful concepts, like <a class="reference external" href="https://en.wikipedia.org/wiki/Call-with-current-continuation">call/cc</a>. However,
-they’re quite tricky to use, so it’s often a good idea to offer a thin
-wrapper on top of them. The API used in lwan is the following (implementation
-details omitted for brevity):</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">coro_t</span> <span class="o">*</span><span class="nf">coro_new</span><span class="p">(</span><span class="n">coro_function_t</span> <span class="n">function</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-<span class="kt">void</span> <span class="nf">coro_free</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">);</span>
-<span class="kt">int</span> <span class="nf">coro_resume</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">);</span>
-<span class="kt">void</span> <span class="nf">coro_yield</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="kt">int</span> <span class="n">value</span><span class="p">);</span>
-</pre></div>
-</div>
-</div>
-<div class="section" id="coroutine-allocation">
-<h2>Coroutine allocation</h2>
-<p>A coroutine is pretty much a simple data structure; the real implementation
-has more fields, but they’re implementation details:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">coro_t_</span> <span class="p">{</span>
-    <span class="n">coro_function_t</span> <span class="n">function</span><span class="p">;</span>
-    <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">;</span>
-
-    <span class="n">ucontext_t</span> <span class="n">context</span><span class="p">;</span>
-    <span class="kt">int</span> <span class="n">yield_value</span><span class="p">;</span>
-
-    <span class="kt">char</span> <span class="n">stack</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
-<span class="p">};</span>
-</pre></div>
-</div>
-<p>To allocate one, just allocate space for <span class="docutils literal"><span class="pre">sizeof(coro_t_)</span> <span class="pre">+</span> <span class="pre">stack_size</span></span>,
-initialize the variables, and call <span class="docutils literal"><span class="pre">getcontext(&amp;coro-&gt;context)</span></span>. (These
-context-swapping functions are weirdly-named in my opinion: <span class="docutils literal"><span class="pre">getcontext</span></span>
-actually <em>saves</em> the current context into the variable pointed to by its sole
-parameter.)</p>
-<p>After that, one just need to set up the context so that it points to the
-newly-allocated stack:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">coro</span><span class="o">-&gt;</span><span class="n">context</span><span class="p">.</span><span class="n">uc_stack</span><span class="p">.</span><span class="n">ss_sp</span> <span class="o">=</span> <span class="n">coro</span><span class="o">-&gt;</span><span class="n">stack</span><span class="p">;</span>
-<span class="n">coro</span><span class="o">-&gt;</span><span class="n">context</span><span class="p">.</span><span class="n">uc_stack</span><span class="p">.</span><span class="n">ss_size</span> <span class="o">=</span> <span class="n">stack_size</span><span class="p">;</span>
-<span class="n">coro</span><span class="o">-&gt;</span><span class="n">context</span><span class="p">.</span><span class="n">uc_stack</span><span class="p">.</span><span class="n">ss_flags</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-<span class="n">coro</span><span class="o">-&gt;</span><span class="n">context</span><span class="p">.</span><span class="n">uc_link</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-</pre></div>
-</div>
-<p>And then call <span class="docutils literal"><span class="pre">makecontext()</span></span> so that the coroutine entry point can be
-called when resuming the coroutine. (Another weirdly-named function. No
-wonder why this thing is quite unpopular.) This function takes a variable
-number of parameters, each one being a 32-bit integer value. I don’t know why
-a <span class="docutils literal"><span class="pre">void</span> <span class="pre">*</span></span> wasn’t used instead – so, on 64-bit, I use an union to break a
-pointer into two 32-bit components:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">union</span> <span class="n">ptr_splitter</span> <span class="p">{</span>
-    <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">;</span>
-    <span class="kt">uint32_t</span> <span class="n">part</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
-<span class="p">};</span>
-</pre></div>
-</div>
-<p>That’s it to allocate a coroutine.</p>
-</div>
-<div class="section" id="freeing-a-coroutine">
-<h2>Freeing a coroutine</h2>
-<p>Just free the coroutine’s <span class="docutils literal"><span class="pre">coro_t</span></span> structure. Lwan’s implementation does
-run the deferred statements at this moment.</p>
-</div>
-<div class="section" id="resuming-a-coroutine">
-<h2>Resuming a coroutine</h2>
-<p>Resuming a coroutine pretty simple: one has to save the current context, swap
-the current context with the coroutine context, and when the coroutine
-yields, return the contexts where they were.</p>
-</div>
-<div class="section" id="yielding-from-a-coroutine">
-<h2>Yielding from a coroutine</h2>
-<p>To yield from a coroutine, just save <span class="docutils literal"><span class="pre">value</span></span> into <span class="docutils literal"><span class="pre">coro_t</span></span>’s
-<span class="docutils literal"><span class="pre">yield_value</span></span> field, and make a call to <span class="docutils literal"><span class="pre">swapcontext()</span></span>, swapping the
-current coroutine stack with the context that was active when the coroutine
-was resumed (which happens to be the routine that resumes a coroutine – which
-now cleans up and return to whoever called it, most probably the main loop).
-<span class="docutils literal"><span class="pre">value</span></span> is now available to whoever called <span class="docutils literal"><span class="pre">coro_resume()</span></span> and is used in
-lwan to determine if a coroutine should be resumed.</p>
-</div>
-<div class="section" id="using-the-coroutines">
-<h2>Using the coroutines</h2>
-<p>From the user perspective, it’s just like calling some blocking function:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">lwan_sendfile</span><span class="p">(</span><span class="n">request</span><span class="o">-&gt;</span><span class="n">socket</span><span class="p">,</span> <span class="n">file_fd</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">total_bytes</span><span class="p">);</span>
-</pre></div>
-</div>
-<p>Behind the scenes, <span class="docutils literal"><span class="pre">lwan_sendfile</span></span> is actually doing this (error handling
-omitted for brevity):</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">while</span> <span class="p">(</span><span class="n">sent_bytes</span> <span class="o">&lt;</span> <span class="n">total_bytes</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">read_bytes</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">file_fd</span><span class="p">,</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">buffer_size</span><span class="p">);</span>
-    <span class="n">sent_bytes</span> <span class="o">+=</span> <span class="n">read_bytes</span><span class="p">;</span>
-    <span class="n">write</span><span class="p">(</span><span class="n">socket_fd</span><span class="p">,</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">read_bytes</span><span class="p">);</span>
-
-    <span class="n">coro_yield</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-<p>(Of course, if available, <a class="reference external" href="http://linux.die.net/man/2/sendfile">sendfile(2)</a> is used instead in a similar
-fashion, but this better illustrates the point.)</p>
-<p>Whenever the coroutine yields, it goes back to the main loop, which is now
-free to resume another coroutine. Ideally, one could yield to be resumed on a
-certain condition (instead of assuming that the condition is just “the socket
-is ready to be written to”), but this isn’t possible in the current
-implementation.</p>
-<p>For implementation simplicity, the same timer code that is used for keep-
-alive connections is used for coroutines, so that they don’t linger
-indefinitely.</p>
-</div>
-<div class="section" id="implementation-details">
-<h2>Implementation details</h2>
-<ul class="simple">
-<li>On 64-bit, hand-tuned assembly versions of <span class="docutils literal"><span class="pre">ucontext</span></span> routines are
-used. These routines avoid saving and restoring the signal mask (avoiding
-two roundtrips to the kernel), and does not save the floating point
-registers.</li>
-<li>Also, on 64-bit, resuming a coroutine is orders of magnitude faster,
-since not everything is copied when switching contexts.</li>
-<li>Swapping stacks makes tools like <a class="reference external" href="http://valgrind.org/">Valgrind</a> get pretty crazy. Lwan’s
-implementation uses Valgrind-provided macros that marks the newly-
-allocated blocks (from the heap) as stacks.</li>
-<li>The real implementation has a <span class="docutils literal"><span class="pre">coro_switcher_t</span></span> data structure.
-This structure is used to both avoid race conditions when swapping
-coroutines in different threads, but also to maintain coroutine state
-from different threads.</li>
-</ul>
-<p>There are other details that were ommitted from this post. Lwan’s source code
-is small enough it can digested easily, and if you’re not sleeping already,
-check it out.</p>
-</div>
-<div class="section" id="closing-notes">
-<h2>Closing notes</h2>
-<p>Although not as performant as the traditional way of using callbacks
-(resuming and yielding from coroutines are a little bit more expensive than
-calling a function), coroutines brings a lot of simplicity when writing
-asynchronous code.</p>
-<p>The example shown here might not be expressive, but imagine an application
-fetching data from a key-value store from another machine: there might be
-dozens of calls to the database to build a web page, which would be pretty
-difficult to handle if there were dozen callbacks. With a synchronous style,
-that would be a lot easier to write and maintain.</p>
-<p>One could argue that the same thing could be done in threads. But creating
-more threads than there are processors will often hurt performance (for
-various reasons) in noticeable ways. Also, coroutines are cheaper on the
-memory requirements: in Lwan, they sport 16KiB of stack space and it takes a
-little bit more than a <span class="docutils literal"><span class="pre">malloc()</span></span> to set them up.</p>
-<p>I believe we should stop using callbacks for asynchronous I/O and use things
-like this. Even if <span class="docutils literal"><span class="pre">ucontext.h</span></span> is deprecated from POSIX, the functions a
-fairly trivial to write (even in assembly language) – actually, encouraged,
-given that <span class="docutils literal"><span class="pre">swapcontext()</span></span> and <span class="docutils literal"><span class="pre">getcontext()</span></span> makes often unnecessary
-system calls.</p>
-</div>
-
-        </div>
-        <div class="postmeta">
-        <div class="author">
-            <span>Posted by Leandro Pereira</span>
-        </div>
-        
-        <div class="tags">
-            <span>
-                Tags:
-                <a href="tags/trick.html">trick</a>, <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/c.html">C</a></span>
-        </div>
-        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
-            <span>September 21, 2012</span>
-        </div>
-        <div class="section">
-            <h1><a href="2012/09/21/presenting_easyui.html">Presenting EasyUI</a></h1>
-<div class="section" id="introduction">
-<h2>Introduction</h2>
-<p>I’ve been working at <a class="reference external" href="http://profusion.mobi">ProFUSION</a> on a project called EasyUI for the past few
-months. This library is based on Google’s <a class="reference external" href="http://code.google.com/p/v8">V8</a> JavaScript engine and the
-<a class="reference external" href="http://enlightenment.org">Enlightenment Foundation Libraries</a> and aims to diminish the hurdle in
-writing native applications for the forthcoming <a class="reference external" href="http://tizen.org">Tizen</a> platform.</p>
-<p>EFL itself – specially its UI toolkit, Elementary – follows a pretty
-traditional approach to creating applications: the library user must know how
-to join all bits and pieces, which often leads to common code that is written
-and rewritten in each new application.</p>
-<p>By observing common patterns and providing an uniform <a class="reference external" href="https://en.wikipedia.org/wiki/Model%E2%80%93view%E2%80%93controller">MVC</a> interface,
-EasyUI parts from this traditional approach and offers a new way to create
-applications using EFL.</p>
-<p>Before talking about code, let me show a video (best viewed in HD) of some
-sample EasyUI applications being executed:</p>
-<iframe src="http://www.youtube.com/embed/NsRoj3s2Tok" style="border: 0; height: 345px; width: 560px">
-</iframe></div>
-<div class="section" id="brief-overview-of-an-easyui-app">
-<h2>Brief overview of an EasyUI app</h2>
-<dl class="docutils">
-<dt>An app begins with a simple call to <span class="docutils literal"><span class="pre">EUI.app()</span></span>, passing at least one parameter:</dt>
-<dd>the main view-controller. The other parameter is an optional object that
-contains application settings, such as the theme or window titles. EasyUI
-applications are contained inside one window only, since the main focus
-are apps for mobile devices with stacked lists and the eventual popup
-that appears on top of the content.</dd>
-</dl>
-<p>The code below shows a typical controller-view; explanation will follow.</p>
-<div class="highlight-javascript"><div class="highlight"><pre><span/><span class="nx">MainController</span> <span class="o">=</span> <span class="nx">EUI</span><span class="p">.</span><span class="nx">ListController</span><span class="p">({</span>
-    <span class="nx">title</span><span class="o">:</span> <span class="s1">'My Favorite Fruits'</span><span class="p">,</span>
-    <span class="nx">model</span><span class="o">:</span> <span class="k">new</span> <span class="nx">ArrayModel</span><span class="p">([</span><span class="s1">'Pear'</span><span class="p">,</span> <span class="s1">'Banana'</span><span class="p">,</span> <span class="s1">'Uvaia'</span><span class="p">]),</span>
-    <span class="nx">itemAtIndex</span><span class="o">:</span> <span class="kd">function</span><span class="p">(</span><span class="nx">index</span><span class="p">)</span> <span class="p">{</span>
-            <span class="k">return</span> <span class="p">{</span>
-                    <span class="nx">text</span><span class="o">:</span> <span class="k">this</span><span class="p">.</span><span class="nx">model</span><span class="p">.</span><span class="nx">itemAtIndex</span><span class="p">(</span><span class="nx">index</span><span class="p">)</span>
-            <span class="p">};</span>
-    <span class="p">},</span>
-    <span class="nx">selectedItemAtIndex</span><span class="o">:</span> <span class="kd">function</span><span class="p">(</span><span class="nx">index</span><span class="p">)</span> <span class="p">{</span>
-            <span class="kd">var</span> <span class="nx">fruit</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">model</span><span class="p">.</span><span class="nx">itemAtIndex</span><span class="p">(</span><span class="nx">index</span><span class="p">);</span>
-            <span class="k">this</span><span class="p">.</span><span class="nx">pushController</span><span class="p">(</span><span class="k">new</span> <span class="nx">FruitController</span><span class="p">(</span><span class="nx">fruit</span><span class="p">));</span>
-    <span class="p">},</span>
-    <span class="nx">navigationBarItems</span><span class="o">:</span> <span class="p">{</span> <span class="nx">right</span><span class="o">:</span> <span class="s1">'Add'</span> <span class="p">},</span>
-    <span class="nx">selectedNavigationBarItem</span><span class="o">:</span> <span class="kd">function</span><span class="p">(</span><span class="nx">item</span><span class="p">)</span> <span class="p">{</span>
-            <span class="k">if</span> <span class="p">(</span><span class="nx">item</span> <span class="o">===</span> <span class="s1">'Add'</span><span class="p">)</span>
-                    <span class="k">this</span><span class="p">.</span><span class="nx">pushController</span><span class="p">(</span><span class="k">new</span> <span class="nx">AddFruitController</span><span class="p">);</span>
-    <span class="p">}</span>
-<span class="p">});</span>
-</pre></div>
-</div>
-<p>Lots of things happens with the declaration of <span class="docutils literal"><span class="pre">MainController</span></span>. Of note:</p>
-<ul class="simple">
-<li>As opposed to the traditional way of laying out components on screen
-with EFL, controllers implements the basic user interface and the
-application developer focuses only on defining behavior.</li>
-<li>Attributes can be functions, which will be called whenever EasyUI
-needs them. For instance, one could change the title based on how many
-fruits were in the model, by writing a <span class="docutils literal"><span class="pre">title</span></span> function like so:</li>
-</ul>
-<div class="highlight-javascript"><div class="highlight"><pre><span/><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
-    <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">model</span><span class="p">.</span><span class="nx">length</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
-            <span class="k">return</span> <span class="s2">"My Favorite Fruit"</span><span class="p">;</span>
-    <span class="k">return</span> <span class="s2">"My Favourite Fruits"</span><span class="p">;</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-<ul class="simple">
-<li><span class="docutils literal"><span class="pre">MainController</span></span> is derived from <span class="docutils literal"><span class="pre">ListController</span></span>. This means
-that it follows a <em>collection</em> contract, and must implement methods like
-<span class="docutils literal"><span class="pre">itemAtIndex</span></span> and <span class="docutils literal"><span class="pre">selectedItemAtIndex</span></span>, as well as providing a
-<span class="docutils literal"><span class="pre">model</span></span> attribute.</li>
-<li>One could simply swap <span class="docutils literal"><span class="pre">ListController</span></span> for <span class="docutils literal"><span class="pre">GridController</span></span> if a
-grid layout were to be more appropriate for this particular application.</li>
-<li>In addition to the basic <em>contract</em>, controllers might sign for more;
-for instance by declaring <span class="docutils literal"><span class="pre">navigationBarItems</span></span>, one is required to
-implement <span class="docutils literal"><span class="pre">selectedNavigationBarItem</span></span>.</li>
-</ul>
-<p>Behind the scenes, the framework will initialize the EFL, create the window
-and required widgets, listen to callbacks – and call the application code in
-appropriate moments.</p>
-<p>The next post in this series will show the anatomy of a <a class="reference external" href="http://reddit.com/">Reddit</a> client.</p>
-</div>
-<div class="section" id="show-me-the-code">
-<h2>Show me the code</h2>
-<p>We’re just working on some licensing issues right now. This should be
-released as an open source project. As soon as this is cleared up, EasyUI
-should hit Enlightenment’s SVN repository.</p>
-</div>
-
-        </div>
-        <div class="postmeta">
-        <div class="author">
-            <span>Posted by Leandro Pereira</span>
-        </div>
-        
-        <div class="tags">
-            <span>
-                Tags:
-                <a href="tags/profusion.html">profusion</a>, <a href="tags/efl.html">efl</a>, <a href="tags/javascript.html">javascript</a>, <a href="tags/programming.html">programming</a>, <a href="tags/tizen.html">tizen</a></span>
-        </div>
         </div><div class="archive_link">
         <a href="archive.html"> &mdash; Blog Archive &mdash; </a>
     </div><ul class="related clearfix">
@@ -580,7 +538,11 @@ should hit Enlightenment’s SVN repository.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="2018/06/28/include_next_and_portability.html">include_next and portability</a>
+        </li><li>
             <a href="2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
+        </li><li>
+            <a href="2017/05/08/coreboot_luks.html">Coreboot & LUKS</a>
         </li><li>
             <a href="2017/03/01/parsing_json.html">Parsing JSON</a>
         </li><li>
@@ -595,10 +557,6 @@ should hit Enlightenment’s SVN repository.</p>
             <a href="2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
         </li><li>
             <a href="2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage by 94%</a>
-        </li><li>
-            <a href="2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a>
-        </li><li>
-            <a href="2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a>
         </li></ul>
 </div>
 </section><section><div class="widget">

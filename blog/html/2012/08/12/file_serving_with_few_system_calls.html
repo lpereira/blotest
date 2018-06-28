@@ -31,7 +31,7 @@
         <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Deferred statements in C" href="../11/deferred_statements_in_c.html" /><link rel="prev" title="Presenting EasyUI" href="../../09/21/presenting_easyui.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     '1.6.0',
+        VERSION:     '1.7.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         SOURCELINK_SUFFIX: '.txt',
@@ -68,7 +68,7 @@ calls required to serve one file. As a result, static file serving was quite
 slow compared to “hello world” requests. Bored one day, I’ve decided to speed
 this as much as I could.</p>
 <p>Before optimizing, serving a file would look like this:</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="p">...</span> <span class="n">epoll_wait</span> <span class="n">resumed</span><span class="o">&gt;</span> <span class="p">{{</span><span class="n">EPOLLIN</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">8</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="p">...</span> <span class="n">epoll_wait</span> <span class="n">resumed</span><span class="o">&gt;</span> <span class="p">{{</span><span class="n">EPOLLIN</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">8</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span>
 <span class="mi">4294967295</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span>
 <span class="n">rt_sigprocmask</span><span class="p">(</span><span class="n">SIG_BLOCK</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="p">[],</span> <span class="mi">8</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span>
 <span class="n">read</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s">&quot;GET / HTTP/1.0</span><span class="se">\r\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">16</span>
@@ -137,7 +137,7 @@ this as much as I could.</p>
 <p>Yes. That many system calls – I was not kidding when I said that file serving
 was added as an afterthought. After some experiments, I’ve managed to turn
 that mess into this:</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="p">...</span> <span class="n">epoll_wait</span> <span class="n">resumed</span><span class="o">&gt;</span> <span class="p">{{</span><span class="n">EPOLLIN</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">9</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="p">...</span> <span class="n">epoll_wait</span> <span class="n">resumed</span><span class="o">&gt;</span> <span class="p">{{</span><span class="n">EPOLLIN</span><span class="p">,</span> <span class="p">{</span><span class="n">u32</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">u64</span><span class="o">=</span><span class="mi">9</span><span class="p">}}},</span> <span class="mi">16383</span><span class="p">,</span>
 <span class="mi">4294967295</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span>
 <span class="n">read</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="s">&quot;GET / HTTP/1.0</span><span class="se">\r\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span> <span class="o">=</span> <span class="mi">16</span>
 <span class="n">newfstatat</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="s">&quot;index.html&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">st_mode</span><span class="o">=</span><span class="n">S_IFREG</span><span class="o">|</span><span class="mo">0664</span><span class="p">,</span> <span class="n">st_size</span><span class="o">=</span><span class="mi">13200</span><span class="p">,</span>
@@ -201,7 +201,11 @@ keep-alive – the performance drop even comparing the I/O involved is about
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2018/06/28/include_next_and_portability.html">include_next and portability</a>
+        </li><li>
             <a href="../../../2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
+        </li><li>
+            <a href="../../../2017/05/08/coreboot_luks.html">Coreboot & LUKS</a>
         </li><li>
             <a href="../../../2017/03/01/parsing_json.html">Parsing JSON</a>
         </li><li>
@@ -216,10 +220,6 @@ keep-alive – the performance drop even comparing the I/O involved is about
             <a href="../../../2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
         </li><li>
             <a href="../../../2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage by 94%</a>
-        </li><li>
-            <a href="../../../2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a>
-        </li><li>
-            <a href="../../../2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a>
         </li></ul>
 </div>
 </section><section><div class="widget">

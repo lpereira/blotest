@@ -31,7 +31,7 @@
         <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Reducing Lwan memory usage by 94%" href="../../../2013/12/08/reducing_lwan_memory_usage.html" /><link rel="prev" title="Life of a HTTP request, as seen by my toy web server" href="../../10/06/life_of_a_http_request.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     '1.6.0',
+        VERSION:     '1.7.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         SOURCELINK_SUFFIX: '.txt',
@@ -71,7 +71,7 @@ numbers.  Although this works, it is quite boring, performance-wise.</p>
 <p>The second approach was using the naïve algorithm, which basically divides
 the number by <span class="docutils literal"><span class="pre">10</span></span> in succession, writing backwards the result of modulus by
 <span class="docutils literal"><span class="pre">10</span></span> to a string, and then reversing the string when the number reaches <span class="docutils literal"><span class="pre">0</span></span>.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="c1">// Code based on https://code.google.com/p/stringencoders/</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="c1">// Code based on https://code.google.com/p/stringencoders/</span>
 <span class="kt">size_t</span> <span class="nf">naive_uint32_to_str</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">value</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">str</span><span class="p">)</span> <span class="p">{</span>
     <span class="kt">char</span> <span class="o">*</span><span class="n">wstr</span> <span class="o">=</span> <span class="n">str</span><span class="p">;</span>
     <span class="c1">// Conversion. Number is reversed.</span>
@@ -91,7 +91,7 @@ me.  Why not just write the string backwards already?</p>
 trick of multiplying the size of an integer in bytes by <span class="docutils literal"><span class="pre">3</span></span> to obtain an
 approximation of the number of digits for <span class="docutils literal"><span class="pre">MAX_INT</span></span>, including the zero
 terminator, regardless of what <span class="docutils literal"><span class="pre">sizeof(int)</span></span> is.</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="cp">#define INT_TO_STR_BUFFER_SIZE (3 * sizeof(int))</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#define INT_TO_STR_BUFFER_SIZE (3 * sizeof(int))</span>
 
 <span class="kt">char</span> <span class="o">*</span><span class="nf">lwan_uint32_to_str</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">value</span><span class="p">,</span>
             <span class="kt">char</span> <span class="n">buffer</span><span class="p">[</span><span class="k">static</span> <span class="n">INT_TO_STR_BUFFER_SIZE</span><span class="p">],</span>
@@ -123,7 +123,7 @@ each digit, and they use a lookup table as well.</p>
 there’s a table for all pair of digits, from <cite>00</cite> to <cite>99</cite>.  This cuts the
 amount of divisions by half, yielding a significantly faster algorithm:
 around 31% faster than the above snippet:</p>
-<div class="highlight-c"><div class="highlight"><pre><span></span><span class="kt">size_t</span> <span class="nf">facebook_uint32_to_str</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">value</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">dst</span><span class="p">)</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">size_t</span> <span class="nf">facebook_uint32_to_str</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">value</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">dst</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="k">static</span> <span class="k">const</span> <span class="kt">char</span> <span class="n">digits</span><span class="p">[</span><span class="mi">201</span><span class="p">]</span> <span class="o">=</span>
         <span class="s">&quot;0001020304050607080910111213141516171819&quot;</span>
@@ -206,7 +206,11 @@ had this idea first.  My go-to source of this kind of thing is usually
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2018/06/28/include_next_and_portability.html">include_next and portability</a>
+        </li><li>
             <a href="../../../2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
+        </li><li>
+            <a href="../../../2017/05/08/coreboot_luks.html">Coreboot & LUKS</a>
         </li><li>
             <a href="../../../2017/03/01/parsing_json.html">Parsing JSON</a>
         </li><li>
@@ -221,10 +225,6 @@ had this idea first.  My go-to source of this kind of thing is usually
             <a href="#">Integer to string conversion</a>
         </li><li>
             <a href="../../../2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage by 94%</a>
-        </li><li>
-            <a href="../../../2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a>
-        </li><li>
-            <a href="../../../2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a>
         </li></ul>
 </div>
 </section><section><div class="widget">

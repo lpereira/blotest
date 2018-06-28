@@ -31,7 +31,7 @@
         <link rel="search" title="Search" href="search.html" /><link rel="next" title="Older" href="page2.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '1.6.0',
+        VERSION:     '1.7.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         SOURCELINK_SUFFIX: '.txt',
@@ -58,19 +58,92 @@
                 </li>
               </ul>
           </nav><div class="main-container" role="main"><div class="main wrapper body clearfix"><article><div class="timestamp postmeta">
+            <span>June 28, 2018</span>
+        </div>
+        <div class="section">
+            <h1><a href="2018/06/28/include_next_and_portability.html">include_next and portability</a></h1>
+<p>One of the decisions I took early on while writing Lwan was to only support
+Linux, and think about portability later; this decision was influenced by the
+way the <a class="reference external" href="https://www.openbsd.org/papers/portability.pdf">OpenBSD project approaches portability</a>.</p>
+<p>In retrospect, this was a good decision: this avoided many of the pitfalls
+associated in <a class="reference external" href="http://wiki.c2.com/?PrematureAbstraction">writing abstractions too early in the game</a>.  It also made the code cleaner:
+the abundance of C preprocessor usage, common in some portable code, hinders
+legibility and maintainability.  Of course, this decision made it
+challenging to port it to other operating systems.</p>
+<p>I was content with this decision – until people began asking for BSD and Mac
+ports.  With the exception of some system calls (e.g.  epoll, or the Linux
+<a class="reference external" href="http://man7.org/linux/man-pages/man2/sendfile.2.html">sendfile</a> variant), porting shouldn’t be surprising.  Ideally, having the code
+largely <span class="docutils literal"><span class="pre">#ifdef</span></span> free would be ideal, so I had to find a way to make this happen.</p>
+<p>While reading the GCC manual, I found out about an extension – that also
+happens to be <a class="reference external" href="https://clang.llvm.org/docs/LanguageExtensions.html">implemented by Clang</a> – that fit perfectly
+this scenario: <a class="reference external" href="https://gcc.gnu.org/onlinedocs/cpp/Wrapper-Headers.html">wrapper headers</a>.  It’s a C
+preprocessor extension that includes the next file in the include lookup
+path.  With this extension, it’s possible to write our own substitute header
+files, named after standard header files:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="cp">#include</span><span class="cpf">_next &lt;stdlib.h&gt; /* Include stdlib.h from system includes */</span><span class="cp"/>
+
+<span class="cp">#ifndef MISSING_STDLIB_H_</span>
+<span class="cp">#define MISSING_STDLIB_H_</span>
+
+<span class="cp">#if !defined(HAVE_MKOSTEMP)</span>
+<span class="kt">int</span> <span class="nf">mkostemp</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">tmpl</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">);</span>
+<span class="cp">#endif</span>
+
+<span class="cp">#if !defined(HAVE_REALLOCARRAY)</span>
+<span class="kt">void</span> <span class="o">*</span><span class="nf">reallocarray</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">optr</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nmemb</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">size</span><span class="p">);</span>
+<span class="cp">#endif</span>
+
+<span class="cp">#endif </span><span class="cm">/* MISSING_STDLIB_H_ */</span><span class="cp"/>
+</pre></div>
+</div>
+<p>Have it in a directory named, say, “missing”, and modify the header lookup path
+so it is looked up first by the compiler.  This is easily accomplished in CMake
+by specifying an include directory with the <span class="docutils literal"><span class="pre">BEFORE</span></span> option:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">include_directories</span><span class="p">(</span><span class="n">BEFORE</span> <span class="n">src</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">missing</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>(This just ensures that <span class="docutils literal"><span class="pre">src/lib/missing</span></span> will be passed before any other <span class="docutils literal"><span class="pre">-I</span></span>
+argument to the compiler, regardless of the order any other
+<span class="docutils literal"><span class="pre">include_directories()</span></span> macro is invoked.  Your build system might differ, this
+is copied straight from Lwan’s.)</p>
+<p>Then it’s just the matter of implementing these functions in terms of other
+functions available in the system, and code using it will be none the wise: a
+<span class="docutils literal"><span class="pre">#include</span> <span class="pre">&lt;stdlib.h&gt;</span></span> line will include our wrapper header, which in turn will
+include the system’s <span class="docutils literal"><span class="pre">stdlib.h</span></span> header; it then might define, in this example,
+additional prototypes, based on what the build system could determine during the
+configuration phase.</p>
+<p>This way, most <span class="docutils literal"><span class="pre">#ifdefs</span></span> are hidden away in a single file, making it a lot easier
+to maintain and read the code.  No application-specific abstraction layer with
+quirky semantics; just the familiar quirkiness from POSIX.</p>
+<p>One of the things I’m particular proud of is the miniature <a class="reference external" href="http://man7.org/linux/man-pages/man7/epoll.7.html">epoll(7)</a> implementation on top
+of <a class="reference external" href="https://www.freebsd.org/cgi/man.cgi?query=kqueue&amp;sektion=2">kqueue</a>
+(available in BSD systems).  I considered moving Lwan to use an abstraction
+library (such as <a class="reference external" href="http://libevent.org/">libevent</a> or <a class="reference external" href="https://libuv.org/">libuv</a>) just for this, but was able to keep using its
+event-handling loop as is.  Not only I understand 100% of it, it was a
+worthwhile learning experience.  With ~120 lines of C code, this epoll
+implementation is easier to wrap my head around than the thousands of lines
+of code from those libraries.</p>
+
+        </div>
+        <div class="postmeta">
+        
+        
+        
+        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
             <span>February 01, 2018</span>
         </div>
         <div class="section">
             <h1><a href="2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a></h1>
 <p>Talking about uncommon programming tricks the other day, the subject of
-switching on strings in C came to be.  If you follow this blog, you know
-it’s something actually possible to do with a little bit of ingenuity; in
-fact, it’s one of the things that I use in Lwan to parse the HTTP requests.
-I didn’t spend too much time in that blog post to explain why it is faster,
-so I’m rectifying this now.</p>
+switching on strings in C appeared on the table.</p>
+<p>If you follow this blog, you know it’s something <a class="reference external" href="/posts/2012/08/09/string_switch_in_c.html">actually possible to do
+with a little bit of ingenuity</a>; in fact, it’s one of the
+things that I use in Lwan to parse the HTTP requests.  I didn’t spend too
+much time in that blog post to explain why it is faster, so I’m rectifying
+this now.</p>
 <p>In order to understand why it’s so fast, let me step aside for a moment and
 show a function every C programmer should be able to write: <span class="docutils literal"><span class="pre">strlen()</span></span>.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="kt">size_t</span> <span class="nf">strlen</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="kt">size_t</span> <span class="nf">strlen</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
     <span class="kt">size_t</span> <span class="n">len</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
 
     <span class="k">while</span> <span class="p">(</span><span class="o">*</span><span class="n">s</span> <span class="o">!=</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="p">{</span>
@@ -86,22 +159,21 @@ show a function every C programmer should be able to write: <span class="docutil
 function.  And, maybe the one that generates the slowest code.  There are
 many reasons here, so let’s explore some of them.</p>
 <p>One of them is that CPUs are able to fetch more than a single byte at a time
-from the memory (or even the cache).  And it takes roughly the same time for
-it to fetch 8 bits than it takes to fetch 32 bits.  People that write C
-libraries know about this fact, so that the version that your operating
-system provides is most likely going to exploit this.  Let’s rewrite the
-<span class="docutils literal"><span class="pre">strlen()</span></span> function, then:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="kt">size_t</span> <span class="nf">strlen</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
+from memory (or cache).  And it takes roughly the same time for it to fetch
+8 bits than it takes to fetch 32 bits.  People that write C libraries know
+about this fact, so that the version that your operating system provides is
+most likely going to exploit this.  Let’s rewrite the <span class="docutils literal"><span class="pre">strlen()</span></span> function,
+then:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="kt">size_t</span> <span class="nf">strlen</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
     <span class="kt">size_t</span> <span class="n">len</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
 
     <span class="k">while</span> <span class="p">(</span><span class="nb">true</span><span class="p">)</span> <span class="p">{</span>
         <span class="kt">uint32_t</span> <span class="n">v</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="o">*</span><span class="p">)</span><span class="n">s</span><span class="p">;</span>
 
-        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">3</span><span class="p">;</span>
-        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">8</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">2</span><span class="p">;</span>
-        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
-        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">24</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">8</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">2</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">24</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">3</span><span class="p">;</span>
 
         <span class="n">len</span> <span class="o">+=</span> <span class="mi">4</span><span class="p">;</span>
         <span class="n">s</span> <span class="o">+=</span> <span class="mi">4</span><span class="p">;</span>
@@ -126,7 +198,7 @@ it wasn’t worth the trouble and will just generate an exception.  The major
 problem, however, is that this is precisely the undefined behavior I was talking
 about.  So, let’s fix this function, by modifying it slightly so that the fast
 path operates on aligned pointers:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">static</span> <span class="kr">inline</span> <span class="kt">bool</span> <span class="nf">is_ptr_aligned</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">)</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">static</span> <span class="kr">inline</span> <span class="kt">bool</span> <span class="nf">is_ptr_aligned</span><span class="p">(</span><span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">)</span> <span class="p">{</span>
     <span class="kt">uintptr_t</span> <span class="n">p</span> <span class="o">=</span> <span class="p">(</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">ptr</span><span class="p">;</span>
 
     <span class="cm">/* Assuming a 32-bit machine with 4-byte alignment for</span>
@@ -153,11 +225,10 @@ path operates on aligned pointers:</p>
     <span class="k">while</span> <span class="p">(</span><span class="nb">true</span><span class="p">)</span> <span class="p">{</span>
         <span class="kt">uint32_t</span> <span class="n">v</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="o">*</span><span class="p">)</span><span class="n">s</span><span class="p">;</span>
 
-        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">3</span><span class="p">;</span>
-        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">8</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">2</span><span class="p">;</span>
-        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
-        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">24</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">8</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">2</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">24</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">3</span><span class="p">;</span>
 
         <span class="n">len</span> <span class="o">+=</span> <span class="mi">4</span><span class="p">;</span>
         <span class="n">s</span> <span class="o">+=</span> <span class="mi">4</span><span class="p">;</span>
@@ -170,7 +241,7 @@ is found in a word.  The excellent (and one of my favorite websites) “<a class
 Twiddling Hacks</a>” web
 page has a method to find out if a word contains a NUL byte; it doesn’t tell
 which byte is the NUL byte, but we don’t need to know that in the fast path:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="kt">size_t</span> <span class="nf">strlen</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="kt">size_t</span> <span class="nf">strlen</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
     <span class="kt">size_t</span> <span class="n">len</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
     <span class="kt">uint32_t</span> <span class="n">v</span><span class="p">;</span>
 
@@ -196,12 +267,11 @@ which byte is the NUL byte, but we don’t need to know that in the fast path:</
         <span class="n">s</span> <span class="o">+=</span> <span class="mi">4</span><span class="p">;</span>
     <span class="p">}</span>
 
-    <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">3</span><span class="p">;</span>
-    <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">8</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">2</span><span class="p">;</span>
-    <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">((</span><span class="n">v</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">8</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(((</span><span class="n">v</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span> <span class="o">==</span> <span class="sc">'\0'</span><span class="p">)</span> <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">2</span><span class="p">;</span>
 
-    <span class="k">return</span> <span class="n">len</span><span class="p">;</span>
+    <span class="k">return</span> <span class="n">len</span> <span class="o">+</span> <span class="mi">3</span><span class="p">;</span>
 <span class="p">}</span>
 </pre></div>
 </div>
@@ -221,7 +291,7 @@ in the C standard library.  And functions that perform substring comparison,
 such as <span class="docutils literal"><span class="pre">strncmp()</span></span>, are no exception.</p>
 <p>When faced with the necessity to check for a bunch of strings, the idiomatic
 C way of doing so would be the following:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">strncmp</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s">"GET "</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">strncmp</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s">"GET "</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">HTTP_METHOD_GET</span><span class="p">;</span>
 <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">strncmp</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s">"POST "</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">HTTP_METHOD_POST</span><span class="p">;</span>
@@ -241,7 +311,7 @@ might not even get to the point where the fast path will make sense, because the
 strings it is comparing against are very close to the alignment of the word
 size for this computer!</p>
 <p>So, to recap, what the string switch does is the following:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">static</span> <span class="kr">inline</span> <span class="kt">uint32_t</span> <span class="nf">string_to_uint32</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">static</span> <span class="kr">inline</span> <span class="kt">uint32_t</span> <span class="nf">string_to_uint32</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
     <span class="kt">uint32_t</span> <span class="n">v</span><span class="p">;</span>
 
     <span class="n">memcpy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">v</span><span class="p">));</span>
@@ -276,7 +346,7 @@ size for this computer!</p>
 </div>
 <p>The good thing about the switch statement in C is that it is maybe the
 highest level statement in the language: the compiler can get really
-creative in how its code is generate.  It’s not uncommon for it to generate
+creative in how its code is generated.  It’s not uncommon for it to generate
 jump tables or even binary searches.  So this implementation would actually
 be faster than the various calls to <span class="docutils literal"><span class="pre">strncmp()</span></span> because:</p>
 <ol class="arabic simple">
@@ -294,9 +364,9 @@ integers.</li>
 most likely not going through the PLT.</li>
 <li>The compiler can reorder the comparisons as it see fit, often producing
 very tight code.</li>
-<li>These kinds of micro-optimizations don’t necessarily have to be
-completely unreadable and full of magical constants.</li>
 </ol>
+<p>These kinds of micro-optimizations don’t necessarily have to be completely
+unreadable and full of magical constants.</p>
 
         </div>
         <div class="postmeta">
@@ -309,6 +379,69 @@ completely unreadable and full of magical constants.</li>
                 Tags:
                 <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/trick.html">trick</a>, <a href="tags/c.html">C</a></span>
         </div>
+        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
+            <span>May 08, 2017</span>
+        </div>
+        <div class="section">
+            <h1><a href="2017/05/08/coreboot_luks.html">Coreboot &amp; LUKS</a></h1>
+<p>My laptop is a 6-year old <a class="reference external" href="http://www.thinkwiki.org/wiki/Category:X220">ThinkPad X220</a>.  Although it’s almost
+falling apart from years of constant abuse, I don’t see myself replacing it
+anytime soon: it’s easy to repair, has a great keyboard, and is a very
+dependable machine.</p>
+<p>And it’s supported by <a class="reference external" href="https://en.wikipedia.org/wiki/Coreboot">Coreboot</a>.
+Substituting the proprietary firmware with it is very trivial: I followed
+the instructions on <a class="reference external" href="https://tylercipriani.com/blog/2016/11/13/coreboot-on-the-thinkpad-x220-with-a-raspberry-pi/">this blog post</a>
+and they worked out of the box.  (I also went the extra mile and flashed the
+firmware after passing it through <a class="reference external" href="https://github.com/corna/me_cleaner">me_cleaner</a>.)</p>
+<div class="figure align-center" id="id1">
+<img alt="flashing X220 bios" src="https://i.imgur.com/97rTiZH.jpg"/>
+<p class="caption"><span class="caption-text">Flashing the serial flash using a Raspberry Pi 3. Yes, I need to clean
+up this computer.</span></p>
+</div>
+<p>The major difference from my previous setup is that my SSD had
+<a class="reference external" href="https://en.wikipedia.org/wiki/Hardware-based_full_disk_encryption">hardware-based full disk encryption</a>.  I
+ended up disabling this for two reasons: first, this isn’t very secure (the
+key will remain in the disk RAM for as long as power is supplied); second, I
+was not sure if Coreboot supported this.  So I disabled encryption prior to
+flashing the new firmware.</p>
+<p>But keeping a hard drive unencrypted on a laptop isn’t good practice.  I
+decided to use <a class="reference external" href="https://en.wikipedia.org/wiki/Linux_Unified_Key_Setup">LUKS</a>
+instead.</p>
+<p>However, instead of using <a class="reference external" href="https://en.wikipedia.org/wiki/SeaBIOS">SeaBIOS</a>
+as the payload and have a standard bootloader, I opted to go through a
+slightly different route: have a custom-built Linux inside the ROM, open the
+<span class="docutils literal"><span class="pre">/boot</span></span> partition with LUKS, and
+<a class="reference external" href="http://man7.org/linux/man-pages/man2/kexec_load.2.html">kexec</a> the current
+vmlinuz/initrd.</p>
+<p>Compared to the usual setup of using SeaBIOS as a payload, this setup
+reduces boot time by cutting the middlemen.  With the ability to boot from
+external devices removed, it’s also arguably more secure.  The in-ROM Linux
+has only the bare minimum: no network subsystem, only necessary filesystems,
+bare minimum drivers are built-in, USB is limited to HID devices, etc; the
+compressed kernel has ~1.7MiB with room to shrink.  The in-ROM initrd is
+also quite minimal, containing just one file.</p>
+<p>The only file is a <a class="reference external" href="https://gist.github.com/lpereira/845fe060ba68a5db95827cbc5496bb6d">hacked version</a> of
+cryptsetup that acts as a primitive init, creating <span class="docutils literal"><span class="pre">/proc</span></span>, <span class="docutils literal"><span class="pre">/dev</span></span> (and mounting
+these two), and <span class="docutils literal"><span class="pre">/boot</span></span>, decrypting <span class="docutils literal"><span class="pre">/boot</span></span>, and performing kexec.  It’s
+statically linked with <a class="reference external" href="https://www.musl-libc.org/">musl libc</a>.</p>
+<p>Flashing this requires opening the laptop, and I’m planning to do this next
+weekend when replacing the USB ports.  However, the setup works very well
+under <a class="reference external" href="http://www.qemu.org/">QEMU</a>.</p>
+<p>This blog post isn’t meant as a tutorial – feel free to contact me if you
+have questions or ideas on how to improve this.  If you end up using
+something similar to this idea, I’d love to know as well.</p>
+
+        </div>
+        <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        <div class="categories">
+            <span>
+                Filed under:
+                <a href="categories/linux.html">linux</a>, <a href="categories/x220.html">x220</a>, <a href="categories/hack.html">hack</a></span>
+        </div>
+        
         </div><div class="separator post_separator"></div><div class="timestamp postmeta">
             <span>March 01, 2017</span>
         </div>
@@ -356,7 +489,7 @@ library user can efficiently test if a value has been deserialized or not).
 Since it was easy to do, the library refuses to decode a key that has been
 deserialized before.</p>
 <p>So, a typical use is the following:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="cm">/* First, define a struct to hold the values. */</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="cm">/* First, define a struct to hold the values. */</span>
 <span class="k">struct</span> <span class="n">values</span> <span class="p">{</span>
     <span class="kt">char</span> <span class="o">*</span><span class="n">some_string</span><span class="p">;</span>
     <span class="kt">int</span> <span class="n">some_int</span><span class="p">;</span>
@@ -554,7 +687,7 @@ trick</a> to perform in these
 scenarios is to employ the fact that, on x86, when a call instruction is
 made, the return address (i.e. the address of the byte right after the
 call instruction) is pushed to the stack:</p>
-<div class="highlight-nasm"><div class="highlight"><pre><span/>    <span class="c1">; …</span>
+<div class="highlight-nasm notranslate"><div class="highlight"><pre><span/>    <span class="c1">; …</span>
     <span class="nf">jmp</span> <span class="nv">push_bpf_addr</span>
 <span class="nl">apply_filter:</span>
     <span class="nf">pop</span> <span class="nb">rdx</span>     <span class="c1">; rdx points to the BPF program</span>
@@ -612,7 +745,7 @@ source, and this was a good opportunity to learn a few things.</p>
 breakpoint on <span class="docutils literal"><span class="pre">main()</span></span> won’t actually work. But this is easily solvable:
 just use <a class="reference external" href="https://linux.die.net/man/1/readelf">readelf(1)</a> to find
 where the new entry point is, and set a breakpoint to that:</p>
-<div class="highlight-shell-session"><div class="highlight"><pre><span/><span class="gp">$</span> gcc -o hello hello.c
+<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span/><span class="gp">$</span> gcc -o hello hello.c
 <span class="gp">$</span> readelf -h hello <span class="p">|</span> grep Entry
 <span class="go">  Entry point address: 0x400490</span>
 <span class="gp">$</span> ./infect hello
@@ -641,7 +774,7 @@ make much sense there.  It’s just a way to test what’s going to happen when
 the filter is in place, without the need to modify the program to test this
 assumption.  (<a class="reference external" href="https://www.bsdcan.org/2016/schedule/attachments/357_20160610-bsdcan-helloworld.pdf">Lots of things</a>
 happens when executing a simple program such as this.)</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp"/>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp"/>
 <span class="cp">#include</span> <span class="cpf">&lt;sys/socket.h&gt;</span><span class="cp"/>
 <span class="cp">#include</span> <span class="cpf">&lt;netinet/in.h&gt;</span><span class="cp"/>
 
@@ -659,7 +792,7 @@ happens when executing a simple program such as this.)</p>
 </div>
 <p>Executing the program before infecting it gives the following output, as
 expected:</p>
-<div class="highlight-default"><div class="highlight"><pre><span/>$ ./hello
+<div class="highlight-default notranslate"><div class="highlight"><pre><span/>$ ./hello
 no socket created
 $ ./hello 1
 created socket, fd = 3
@@ -667,7 +800,7 @@ created socket, fd = 3
 </div>
 <p>Indeed, if the program is executed under strace, it all goes exactly
 like it’s supposed to be:</p>
-<div class="highlight-default"><div class="highlight"><pre><span/>$ strace ./hello
+<div class="highlight-default notranslate"><div class="highlight"><pre><span/>$ strace ./hello
 execve("./hello", ["./hello"], [/* 58 vars */]) = 0
 …
 write(1, "no socket created\n", 18no socket created
@@ -677,7 +810,7 @@ exit_group(0)                           = ?
 </pre></div>
 </div>
 <p>And, with a command-line argument, so the socket is created:</p>
-<div class="highlight-default"><div class="highlight"><pre><span/>…
+<div class="highlight-default notranslate"><div class="highlight"><pre><span/>…
 socket(AF_INET, SOCK_STREAM, IPPROTO_TCP) = 3
 …
 write(1, "created socket, fd = 3\n", 23created socket, fd = 3
@@ -688,7 +821,7 @@ exit_group(0)                           = ?
 </div>
 <p>However, the magic happens after the “infected” binary is executed.
 First, without creating a socket:</p>
-<div class="highlight-default"><div class="highlight"><pre><span/>…
+<div class="highlight-default notranslate"><div class="highlight"><pre><span/>…
 prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)  = 0
 prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, {len=30, filter=0x400824}) = 0
 …
@@ -702,7 +835,7 @@ exit_group(0)                           = ?
 previously-mentioned commit. And then the program executes as usual.
 Now, if an argument is passed, the program will attempt to create a
 socket:</p>
-<div class="highlight-default"><div class="highlight"><pre><span/>…
+<div class="highlight-default notranslate"><div class="highlight"><pre><span/>…
 prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)  = 0
 prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, {len=30, filter=0x400824}) = 0
 socket(AF_INET, SOCK_STREAM, IPPROTO_TCP) = 41
@@ -775,7 +908,7 @@ instance, only allowing certain family of sockets to be created).</p>
 this seems doable by using an algorithm such as this, which will reduce
 the number of comparisons as the number of acceptable system calls
 increases:</p>
-<div class="highlight-default"><div class="highlight"><pre><span/>        if syscall_number &lt; 32:
+<div class="highlight-default notranslate"><div class="highlight"><pre><span/>        if syscall_number &lt; 32:
                 if bitmask_0 &amp; 1&lt;&lt;syscall_number: goto accept
         if syscall_number &lt; 64:
                 syscall_number -= 32
@@ -835,153 +968,6 @@ repository</a>.</p>
                 Tags:
                 <a href="tags/container.html">container</a>, <a href="tags/assembly.html">assembly</a>, <a href="tags/linux.html">linux</a>, <a href="tags/bpf.html">bpf</a></span>
         </div>
-        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
-            <span>May 01, 2015</span>
-        </div>
-        <div class="section">
-            <h1><a href="2015/05/01/initializing_a_heap_allocated_structure_in_c.html">Initializing a heap-allocated structure in C</a></h1>
-<p>A pretty common mistake that happens when programming things in C is to
-allocate less memory than necessary to hold a structure:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">foobar</span> <span class="o">*</span><span class="n">foobar</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">foobaz</span><span class="p">));</span>
-</pre></div>
-</div>
-<p>Note that <span class="docutils literal"><span class="pre">struct</span> <span class="pre">foobaz</span></span> is passed instead of <span class="docutils literal"><span class="pre">struct</span> <span class="pre">foobar</span></span>. We might get
-lucky, and <span class="docutils literal"><span class="pre">sizeof(struct</span> <span class="pre">foobaz)</span></span> might be larger or equal than
-<span class="docutils literal"><span class="pre">sizeof(struct</span> <span class="pre">foobar)</span></span>, but we might not.</p>
-<p>There are lots of tools out there that will catch these mistakes: static
-analyzers such as the one from Clang, and Memcheck from Valgrind are just
-two examples that should be in any C programmer’s toolbelt.</p>
-<p>Even then, people often resort to a a nicer idiom: <span class="docutils literal"><span class="pre">sizeof(*foobar)</span></span>,
-which not only avoids these problems, but also is somewhat future-proof,
-should the type of <span class="docutils literal"><span class="pre">foobar</span></span> change:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">foobar</span> <span class="o">*</span><span class="n">foobar</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="o">*</span><span class="n">foobar</span><span class="p">));</span>
-</pre></div>
-</div>
-<p>However, structures often have members that, if someone forgets to
-initialize, will inflict some undefined behavior pains on the user.  The
-things in the toolbelt might help here, as well as the <span class="docutils literal"><span class="pre">calloc()</span></span>
-function, that, in addition to allocating memory, also zero-out the memory
-block:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">foobar</span> <span class="o">*</span><span class="n">foobar</span> <span class="o">=</span> <span class="n">calloc</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="o">*</span><span class="n">foobar</span><span class="p">));</span>
-</pre></div>
-</div>
-<p>Not always one would want to zero out the whole memory chunk just to fill
-out important fields afterwards, though.</p>
-<p>Here’s a trick that’s being used in a yet-to-be-released project I’ve been
-working on and off for the past few months. It starts by defining the
-generic-chunk-of-memory equivalent of <span class="docutils literal"><span class="pre">strdup()</span></span>, <span class="docutils literal"><span class="pre">memdup()</span></span>:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="kt">void</span> <span class="o">*</span><span class="nf">memdup</span><span class="p">(</span><span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">src</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">sz</span><span class="p">)</span> <span class="p">{</span>
-        <span class="kt">void</span> <span class="o">*</span><span class="n">mem</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="n">sz</span><span class="p">);</span>
-        <span class="k">return</span> <span class="n">mem</span> <span class="o">?</span> <span class="n">memcpy</span><span class="p">(</span><span class="n">mem</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">sz</span><span class="p">)</span> <span class="o">:</span> <span class="nb">NULL</span><span class="p">;</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-<p>Then a macro is defined:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="cp">#define ALLOC_INIT(type, ...)   \</span>
-<span class="cp">        (type *)memdup((type[]){ __VA_ARGS__ }, sizeof(type))</span>
-</pre></div>
-</div>
-<p>Then it is used like so:</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">foobar</span> <span class="o">*</span><span class="n">foobar</span> <span class="o">=</span> <span class="n">ALLOC_INIT</span><span class="p">(</span><span class="k">struct</span> <span class="n">foobar</span><span class="p">,</span> <span class="p">{</span>
-        <span class="p">.</span><span class="n">field</span> <span class="o">=</span> <span class="n">value</span><span class="p">,</span>
-        <span class="p">.</span><span class="n">other_field</span> <span class="o">=</span> <span class="n">other_value</span><span class="p">,</span>
-        <span class="p">.</span><span class="n">yet_another_field</span> <span class="o">=</span> <span class="n">yet_another_value</span>
-<span class="p">});</span>
-</pre></div>
-</div>
-<p>The compiler will check if <span class="docutils literal"><span class="pre">field</span></span>, <span class="docutils literal"><span class="pre">other_field</span></span>, and <span class="docutils literal"><span class="pre">yet_another_field</span></span>
-are actually part of <span class="docutils literal"><span class="pre">struct</span> <span class="pre">foobar</span></span>, and will abort compilation of a field
-isn’t there or is of the wrong type.</p>
-<p>The cast prevents the allocated memory block from being assigned to the wrong
-type. (C will happily cast any <span class="docutils literal"><span class="pre">void*</span></span> to any other pointer.)</p>
-<p>The amount of memory allocated will be exactly what’s needed by the
-structure, and all fields that not mentioned will be initialized with their
-default values as per <a class="reference external" href="https://gcc.gnu.org/onlinedocs/gcc/Designated-Inits.html">designated initializer rules</a>.</p>
-<p>If <span class="docutils literal"><span class="pre">memdup()</span></span> is inlined, a good compiler will generate pretty good code,
-that’s often byte-by-byte equivalent to allocating directly with
-<span class="docutils literal"><span class="pre">malloc()</span></span>, initializing all the fields by hand, etc.</p>
-<p>If GCC is being used, the <span class="docutils literal"><span class="pre">__auto_type</span></span> <a class="reference external" href="https://gcc.gnu.org/onlinedocs/gcc/Typeof.html">extension</a> can be used, to avoid
-having to type <span class="docutils literal"><span class="pre">struct</span> <span class="pre">foobar</span></span> twice. This has been suggested by <a class="reference external" href="https://plus.google.com/117917253135468806554/posts/DcBUyuicdLW">Thiago
-Macieira</a>. I’d use this sparingly, though.</p>
-<div class="highlight-c"><div class="highlight"><pre><span/><span class="n">__auto_type</span> <span class="n">foobar</span> <span class="o">=</span> <span class="n">ALLOC_INIT</span><span class="p">(</span><span class="k">struct</span> <span class="n">foobar</span><span class="p">,</span> <span class="p">{</span>
-        <span class="p">.</span><span class="n">field</span> <span class="o">=</span> <span class="n">value</span><span class="p">,</span>
-        <span class="p">.</span><span class="n">other_field</span> <span class="o">=</span> <span class="n">other_value</span><span class="p">,</span>
-        <span class="p">.</span><span class="n">yet_another_field</span> <span class="o">=</span> <span class="n">yet_another_value</span>
-<span class="p">});</span>
-</pre></div>
-</div>
-<p>It’s a pretty nice idiom that I haven’t seen anywhere else, and I’m blogging
-here as the project I’m working on might not ever see the light of day and
-it would be a shame if at least this didn’t become public.</p>
-
-        </div>
-        <div class="postmeta">
-        <div class="author">
-            <span>Posted by Leandro Pereira</span>
-        </div>
-        
-        <div class="tags">
-            <span>
-                Tags:
-                <a href="tags/c.html">C</a>, <a href="tags/programming.html">programming</a>, <a href="tags/trick.html">trick</a></span>
-        </div>
-        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
-            <span>November 02, 2014</span>
-        </div>
-        <div class="section">
-            <h1><a href="2014/11/02/hybrid_c_pascal_strings.html">Hybrid C/Pascal Strings</a></h1>
-<p>I’ve been thinking for a while on how to reduce the overhead in <a class="reference external" href="http://lwan.ws">Lwan</a>’s
-string buffer, when the strings are small. There are a number of
-ways of accomplishing this.</p>
-<p>A somewhat common way is what <span class="docutils literal"><span class="pre">std::string</span></span> does: it reuses the bits
-reserved for <cite>effective string length</cite>, <cite>allocated buffer size</cite>, and
-<cite>pointer to buffer</cite> to store the string contents inline.</p>
-<p>A <a class="reference external" href="http://tulrich.com/rants-2009.html#d2009-01-03T00:00:00Z">clever improvement</a> is, when the string is small, to turn the
-<cite>effective string length</cite> counter to a <cite>bytes remaining counter</cite>, and
-put it after the buffer that’s storing the string; this way, when the
-string is at full capacity, this serves as a <span class="docutils literal"><span class="pre">\0</span></span> terminator, which
-is very useful for compatibility with C.  And, of course, as a result,
-one more byte can be stored in that string.</p>
-<p>Another common approach are the strings used in <a class="reference external" href="https://en.wikipedia.org/wiki/String_(computer_science)#Length-prefixed">Pascal</a>, where the first
-byte tells the length of the string. This has the advantage of allowing
-strings to contain <span class="docutils literal"><span class="pre">\0</span></span>, but the disadvantage of limiting the maximum
-size of the string. If someone were to implement this in C, the
-advantage would turn into a disadvantage, as most string-handling
-routines present in the standard library would be then rendered useless.</p>
-<p>Or would it?</p>
-<p>I’m sure I’m not the first person to come up with the idea of having a
-C/Pascal String hybrid.  But at least the <a class="reference external" href="https://en.wikipedia.org/wiki/String_(computer_science)">Wikipedia</a> article on
-Strings doesn’t seem to mention this variant I just came up with:</p>
-<ul class="simple">
-<li>Keep the <span class="docutils literal"><span class="pre">\0</span></span> to terminate the string. This helps reusing the
-string handling routines from the C standard library, which are usually
-very fast, hand-tuned functions</li>
-<li>The first byte tells the size, not in bytes, but in 8-byte blocks.
-To calculate the string length, one just jumps that amount of 8-byte
-blocks and find the position of the <span class="docutils literal"><span class="pre">\0</span></span> terminator.</li>
-<li>Larger blocks could be considered if <a class="reference external" href="https://en.wikipedia.org/wiki/SIMD">SIMD</a> instructions were available.</li>
-</ul>
-<p>With 8-byte blocks, this can yield strings up to 2KiB of size (256 *
-8), with an overhead of only two bytes, while retaining compatibility
-with C strings.  With SIMD, the maximum string size could be easily
-doubled or quadrupled.</p>
-<p>Of course, this isn’t actually an improvement on the kind of small
-string optimization performed by <span class="docutils literal"><span class="pre">std::string</span></span>, so I’m not yet
-convinced this is the way to go. This is one of the reasons I haven’t
-yet implemented this, but I might use the fact that I’m currently
-enjoying some vacation time and write a prototype.</p>
-
-        </div>
-        <div class="postmeta">
-        <div class="author">
-            <span>Posted by Leandro Pereira</span>
-        </div>
-        
-        <div class="tags">
-            <span>
-                Tags:
-                <a href="tags/c.html">C</a>, <a href="tags/trick.html">trick</a>, <a href="tags/optimization.html">optimization</a>, <a href="tags/programming.html">programming</a></span>
-        </div>
         </div><div class="archive_link">
         <a href="archive.html"> &mdash; Blog Archive &mdash; </a>
     </div><ul class="related clearfix">
@@ -996,7 +982,11 @@ enjoying some vacation time and write a prototype.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="2018/06/28/include_next_and_portability.html">include_next and portability</a>
+        </li><li>
             <a href="2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
+        </li><li>
+            <a href="2017/05/08/coreboot_luks.html">Coreboot & LUKS</a>
         </li><li>
             <a href="2017/03/01/parsing_json.html">Parsing JSON</a>
         </li><li>
@@ -1011,10 +1001,6 @@ enjoying some vacation time and write a prototype.</p>
             <a href="2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
         </li><li>
             <a href="2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage by 94%</a>
-        </li><li>
-            <a href="2013/09/26/implementing_sequences_in_lwan_template_engine.html">Implementing sequences in lwan template engine</a>
-        </li><li>
-            <a href="2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
