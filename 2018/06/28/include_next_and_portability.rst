@@ -56,6 +56,10 @@ argument to the compiler, regardless of the order any other
 ``include_directories()`` macro is invoked.  Your build system might differ, this
 is copied straight from Lwan's.)
 
+.. image:: https://i.imgur.com/c3ntvJL.png
+   :alt: missing directory tree
+   :align: right
+
 Then it's just the matter of implementing these functions in terms of other
 functions available in the system, and code using it will be none the wise: a
 ``#include <stdlib.h>`` line will include our wrapper header, which in turn will

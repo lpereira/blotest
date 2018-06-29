@@ -106,6 +106,7 @@ by specifying an include directory with the <span class="docutils literal"><span
 argument to the compiler, regardless of the order any other
 <span class="docutils literal"><span class="pre">include_directories()</span></span> macro is invoked.  Your build system might differ, this
 is copied straight from Lwan’s.)</p>
+<img alt="missing directory tree" class="align-right" src="https://i.imgur.com/c3ntvJL.png"/>
 <p>Then it’s just the matter of implementing these functions in terms of other
 functions available in the system, and code using it will be none the wise: a
 <span class="docutils literal"><span class="pre">#include</span> <span class="pre">&lt;stdlib.h&gt;</span></span> line will include our wrapper header, which in turn will
