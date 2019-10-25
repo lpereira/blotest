@@ -22,7 +22,7 @@
             <link rel="stylesheet" href="../../../_static/flat.css" type="text/css">
             <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
             <link rel="stylesheet" href="../../../_static/font-awesome.min.css" type="text/css">
-        <link rel="shortcut icon" href="../../../_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
+        <!-- Load modernizr and JQuery -->
         <script src="../../../_static/vendor/modernizr-2.6.2.min.js"></script>
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
         <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
@@ -37,7 +37,7 @@
         SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
-    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
+    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script><script type="text/javascript" src="../../../_static/language_data.js"></script>
 <style type="text/css">img {max-width: 100%;}</style>
 </head>
     <body role="document">
@@ -47,7 +47,7 @@
 
       <div id="container"><header role="banner">
             <hgroup>
-              <h1><a href="../../../index.html">Leandro Pereira</a></h1><h2>Geek in training</h2></hgroup>
+              <h1><a href="../../../index.html">Leandro Pereira</a></h1></hgroup>
           </header>
       <nav role="navigation">
             <ul><li class="main-nav">
@@ -86,25 +86,25 @@ prototype, which can probably be better explained with the help of a
 diagram:</p>
 <img alt="diagram" class="align-center" src="https://i.imgur.com/VsAfnsC.png" />
 <p>In short, the engine will create a coroutine whenever it finds a
-<span class="docutils literal"><span class="pre">{{#sequence}}</span></span> template tag.  This coroutine will start, and will execute
+<code class="docutils literal notranslate"><span class="pre">{{#sequence}}</span></code> template tag.  This coroutine will start, and will execute
 as usual until it yields.</p>
-<p>Yielding <span class="docutils literal"><span class="pre">false</span></span>, the engine assumes the iteration ended, and proceeds to
-find the next matching <span class="docutils literal"><span class="pre">{{/sequence}}</span></span> tag to continue from there.</p>
-<p>On a <span class="docutils literal"><span class="pre">true</span></span> yield, however, the engine will recurse to apply everything is
+<p>Yielding <code class="docutils literal notranslate"><span class="pre">false</span></code>, the engine assumes the iteration ended, and proceeds to
+find the next matching <code class="docutils literal notranslate"><span class="pre">{{/sequence}}</span></code> tag to continue from there.</p>
+<p>On a <code class="docutils literal notranslate"><span class="pre">true</span></code> yield, however, the engine will recurse to apply everything is
 between the iteration tags, repeating the process when the iteration-end tag
-is found and the coroutine yields <span class="docutils literal"><span class="pre">true</span></span> again.</p>
+is found and the coroutine yields <code class="docutils literal notranslate"><span class="pre">true</span></code> again.</p>
 <p>The coroutine is supposed to clean up after itself before returning a
-<span class="docutils literal"><span class="pre">false</span></span> value.</p>
+<code class="docutils literal notranslate"><span class="pre">false</span></code> value.</p>
 <div class="figure align-center" id="id1">
 <img alt="rubegoldbergmachine" src="https://i.imgur.com/7P2yadJ.jpg" />
 <p class="caption"><span class="caption-text">Professor Butts would be proud. Maybe. <a class="reference external" href="https://en.wikipedia.org/wiki/File:Rubenvent.jpg">Source</a>.</span></p>
 </div>
 <p>A sample generator function is shown below. It iterates over a directory
-with <span class="docutils literal"><span class="pre">readdir()</span></span>, returning <span class="docutils literal"><span class="pre">1</span></span> on new item availability and <span class="docutils literal"><span class="pre">0</span></span> when there
+with <code class="docutils literal notranslate"><span class="pre">readdir()</span></code>, returning <code class="docutils literal notranslate"><span class="pre">1</span></code> on new item availability and <code class="docutils literal notranslate"><span class="pre">0</span></code> when there
 isn’t anything else to do. Notice that initialization, iteration, and cleanup
 is all contained within a single function.</p>
 <p>Also, notice that there’s no need to copy any values to and from the
-structure – calling <span class="docutils literal"><span class="pre">coro_yield()</span></span> will of course maintain the stack
+structure – calling <code class="docutils literal notranslate"><span class="pre">coro_yield()</span></code> will of course maintain the stack
 alive, so local variables can be used outside this function as long as a
 reference to them can be obtained.</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">int</span> <span class="nf">dir_list_generator</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">)</span>
@@ -161,6 +161,8 @@ about programming.  But I digress.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2019/10/24/lwan_5_years_in_snippets.html">Lwan: 5 years in snippets</a>
+        </li><li>
             <a href="../../../2018/06/28/include_next_and_portability.html">include_next and portability</a>
         </li><li>
             <a href="../../../2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
@@ -178,8 +180,6 @@ about programming.  But I digress.</p>
             <a href="../../../2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
         </li><li>
             <a href="../../../2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
-        </li><li>
-            <a href="../../12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage by 94%</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
@@ -197,7 +197,7 @@ about programming.  But I digress.</p>
       <a href="../../../tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="../../../tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
       <a href="../../../tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
-      <a href="../../../tags/lwan.html" style="font-size: 16pt">lwan</a>&nbsp;&nbsp;
+      <a href="../../../tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
       <a href="../../../tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
       <a href="../../../tags/parser.html" style="font-size: 8pt">parser</a>&nbsp;&nbsp;
       <a href="../../../tags/profusion.html" style="font-size: 9pt">profusion</a>&nbsp;&nbsp;
@@ -210,7 +210,7 @@ about programming.  But I digress.</p>
       <a href="../../../tags/zephyr.html" style="font-size: 8pt">zephyr</a>
 </div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
 
-        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2015, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
+        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2018, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
 
       </div> <!--! end of #container --><!--[if lt IE 7 ]>
           <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"></script>

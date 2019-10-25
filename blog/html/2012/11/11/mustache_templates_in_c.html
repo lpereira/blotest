@@ -22,7 +22,7 @@
             <link rel="stylesheet" href="../../../_static/flat.css" type="text/css">
             <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
             <link rel="stylesheet" href="../../../_static/font-awesome.min.css" type="text/css">
-        <link rel="shortcut icon" href="../../../_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
+        <!-- Load modernizr and JQuery -->
         <script src="../../../_static/vendor/modernizr-2.6.2.min.js"></script>
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
         <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
@@ -37,7 +37,7 @@
         SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
-    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
+    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script><script type="text/javascript" src="../../../_static/language_data.js"></script>
 <style type="text/css">img {max-width: 100%;}</style>
 </head>
     <body role="document">
@@ -47,7 +47,7 @@
 
       <div id="container"><header role="banner">
             <hgroup>
-              <h1><a href="../../../index.html">Leandro Pereira</a></h1><h2>Geek in training</h2></hgroup>
+              <h1><a href="../../../index.html">Leandro Pereira</a></h1></hgroup>
           </header>
       <nav role="navigation">
             <ul><li class="main-nav">
@@ -79,7 +79,7 @@ instance, if you have a template such as this:</p>
 <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">data</span><span class="p">);</span>
 </pre></div>
 </div>
-<p>Where <span class="docutils literal"><span class="pre">hello</span></span> is the template that was previously compiled into a series of
+<p>Where <code class="docutils literal notranslate"><span class="pre">hello</span></code> is the template that was previously compiled into a series of
 simple instructions (such as <strong>append text</strong> or <strong>append the value of a
 variable</strong>), and the second parameter is a structure containing the data
 needed by the renderer.</p>
@@ -109,7 +109,7 @@ to conveniently group the template variables:</p>
 </pre></div>
 </div>
 <p>Without a way to lookup which value to obtain from the structure, however,
-this would not help much. Enter the second trick: the <span class="docutils literal"><span class="pre">offsetof(3)</span></span> macro,
+this would not help much. Enter the second trick: the <code class="docutils literal notranslate"><span class="pre">offsetof(3)</span></code> macro,
 which computes the offset of a field in a given structure. By storing this
 offset alongside data type information, the value lookup is not only possible
 but can also work with types different than strings:</p>
@@ -161,7 +161,7 @@ but can also work with types different than strings:</p>
 </div>
 <p><a class="reference external" href="https://github.com/lpereira/lwan/blob/wip/template.c">Code for this engine</a> is available in the <a class="reference external" href="https://github.com/lpereira/lwan/tree/wip/">wip branch</a> of my toy web
 server, lwan. It is not currently used there, but it is built alongside the
-main program and can be tested by invoking the generated <span class="docutils literal"><span class="pre">template</span></span>
+main program and can be tested by invoking the generated <code class="docutils literal notranslate"><span class="pre">template</span></code>
 executable.</p>
 <p>Before using that in lwan, though, I’ll try to employ this <a class="reference external" href="http://dginasa.blogspot.com.br/2012/10/brainfuck-jit-compiler-in-around-155.html">nifty trick</a> to
 JIT-compile the template and avoid some of the overhead where it really
@@ -192,6 +192,8 @@ would it? :)</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2019/10/24/lwan_5_years_in_snippets.html">Lwan: 5 years in snippets</a>
+        </li><li>
             <a href="../../../2018/06/28/include_next_and_portability.html">include_next and portability</a>
         </li><li>
             <a href="../../../2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
@@ -209,8 +211,6 @@ would it? :)</p>
             <a href="../../../2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
         </li><li>
             <a href="../../../2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
-        </li><li>
-            <a href="../../../2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage by 94%</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
@@ -228,7 +228,7 @@ would it? :)</p>
       <a href="../../../tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="../../../tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
       <a href="../../../tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
-      <a href="../../../tags/lwan.html" style="font-size: 16pt">lwan</a>&nbsp;&nbsp;
+      <a href="../../../tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
       <a href="../../../tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
       <a href="../../../tags/parser.html" style="font-size: 8pt">parser</a>&nbsp;&nbsp;
       <a href="../../../tags/profusion.html" style="font-size: 9pt">profusion</a>&nbsp;&nbsp;
@@ -241,7 +241,7 @@ would it? :)</p>
       <a href="../../../tags/zephyr.html" style="font-size: 8pt">zephyr</a>
 </div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
 
-        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2015, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
+        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2018, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
 
       </div> <!--! end of #container --><!--[if lt IE 7 ]>
           <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"></script>

@@ -22,7 +22,7 @@
             <link rel="stylesheet" href="_static/flat.css" type="text/css">
             <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
             <link rel="stylesheet" href="_static/font-awesome.min.css" type="text/css">
-        <link rel="shortcut icon" href="_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
+        <!-- Load modernizr and JQuery -->
         <script src="_static/vendor/modernizr-2.6.2.min.js"></script>
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
         <script>window.jQuery || document.write('<script src="_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
@@ -37,7 +37,7 @@
         SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
-    </script><script type="text/javascript" src="_static/underscore.js"></script><script type="text/javascript" src="_static/doctools.js"></script>
+    </script><script type="text/javascript" src="_static/underscore.js"></script><script type="text/javascript" src="_static/doctools.js"></script><script type="text/javascript" src="_static/language_data.js"></script>
 <style type="text/css">img {max-width: 100%;}</style>
 </head>
     <body role="document">
@@ -47,7 +47,7 @@
 
       <div id="container"><header role="banner">
             <hgroup>
-              <h1><a href="index.html">Leandro Pereira</a></h1><h2>Geek in training</h2></hgroup>
+              <h1><a href="index.html">Leandro Pereira</a></h1></hgroup>
           </header>
       <nav role="navigation">
             <ul><li class="main-nav">
@@ -62,6 +62,28 @@
 <h1>Sitemap</h1>
 <div class="toctree-wrapper compound">
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="2019/10/24/lwan_5_years_in_snippets.html">Lwan: 5 years in snippets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2019/10/24/lwan_5_years_in_snippets.html#main-loop-changes">Main Loop Changes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2019/10/24/lwan_5_years_in_snippets.html#changing-connection-coroutine-yield-values">Changing Connection Coroutine Yield Values</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2019/10/24/lwan_5_years_in_snippets.html#changes-in-parsers">Changes in parsers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2019/10/24/lwan_5_years_in_snippets.html#readahead-madvise">Readahead &amp; Madvise</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2019/10/24/lwan_5_years_in_snippets.html#coroutine-changes">Coroutine changes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2019/10/24/lwan_5_years_in_snippets.html#sending-responses">Sending responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2019/10/24/lwan_5_years_in_snippets.html#cpu-topology-aware-thread-pinning-scheduling">CPU topology aware thread pinning / scheduling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2019/10/24/lwan_5_years_in_snippets.html#continuous-fuzz-testing">Continuous Fuzz-Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2019/10/24/lwan_5_years_in_snippets.html#portability">Portability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2019/10/24/lwan_5_years_in_snippets.html#declaring-new-lua-metamethods">Declaring new Lua metamethods</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2019/10/24/lwan_5_years_in_snippets.html#declaring-handlers-and-modules">Declaring Handlers and Modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2019/10/24/lwan_5_years_in_snippets.html#changes-to-the-string-buffer">Changes to the String Buffer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2019/10/24/lwan_5_years_in_snippets.html#hash-table-changes">Hash Table Changes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2019/10/24/lwan_5_years_in_snippets.html#gracefully-closing-sockets">Gracefully Closing Sockets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2019/10/24/lwan_5_years_in_snippets.html#mime-type-table-improvements">MIME Type table improvements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2019/10/24/lwan_5_years_in_snippets.html#accepting-clients">Accepting Clients</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2019/10/24/lwan_5_years_in_snippets.html#sample-programs">Sample programs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2019/10/24/lwan_5_years_in_snippets.html#proxy-protocol">Proxy Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2019/10/24/lwan_5_years_in_snippets.html#websockets">WebSockets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2019/10/24/lwan_5_years_in_snippets.html#rewrite-module">Rewrite Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2019/10/24/lwan_5_years_in_snippets.html#snippets">Snippets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="2018/06/28/include_next_and_portability.html">include_next and portability</a></li>
 <li class="toctree-l1"><a class="reference internal" href="2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a></li>
 <li class="toctree-l1"><a class="reference internal" href="2017/05/08/coreboot_luks.html">Coreboot &amp; LUKS</a></li>
@@ -102,6 +124,8 @@
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="2019/10/24/lwan_5_years_in_snippets.html">Lwan: 5 years in snippets</a>
+        </li><li>
             <a href="2018/06/28/include_next_and_portability.html">include_next and portability</a>
         </li><li>
             <a href="2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
@@ -119,8 +143,6 @@
             <a href="2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
         </li><li>
             <a href="2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
-        </li><li>
-            <a href="2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage by 94%</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
@@ -138,7 +160,7 @@
       <a href="tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
       <a href="tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
-      <a href="tags/lwan.html" style="font-size: 16pt">lwan</a>&nbsp;&nbsp;
+      <a href="tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
       <a href="tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
       <a href="tags/parser.html" style="font-size: 8pt">parser</a>&nbsp;&nbsp;
       <a href="tags/profusion.html" style="font-size: 9pt">profusion</a>&nbsp;&nbsp;
@@ -151,7 +173,7 @@
       <a href="tags/zephyr.html" style="font-size: 8pt">zephyr</a>
 </div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
 
-        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2015, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
+        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2018, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
 
       </div> <!--! end of #container --><!--[if lt IE 7 ]>
           <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"></script>

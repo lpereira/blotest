@@ -22,7 +22,7 @@
             <link rel="stylesheet" href="../../../_static/flat.css" type="text/css">
             <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
             <link rel="stylesheet" href="../../../_static/font-awesome.min.css" type="text/css">
-        <link rel="shortcut icon" href="../../../_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
+        <!-- Load modernizr and JQuery -->
         <script src="../../../_static/vendor/modernizr-2.6.2.min.js"></script>
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
         <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
@@ -37,7 +37,7 @@
         SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
-    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
+    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script><script type="text/javascript" src="../../../_static/language_data.js"></script>
 <style type="text/css">img {max-width: 100%;}</style>
 </head>
     <body role="document">
@@ -47,7 +47,7 @@
 
       <div id="container"><header role="banner">
             <hgroup>
-              <h1><a href="../../../index.html">Leandro Pereira</a></h1><h2>Geek in training</h2></hgroup>
+              <h1><a href="../../../index.html">Leandro Pereira</a></h1></hgroup>
           </header>
       <nav role="navigation">
             <ul><li class="main-nav">
@@ -65,18 +65,18 @@
 <p>I’ve been thinking for a while on how to reduce the overhead in <a class="reference external" href="http://lwan.ws">Lwan</a>’s
 string buffer, when the strings are small. There are a number of
 ways of accomplishing this.</p>
-<p>A somewhat common way is what <span class="docutils literal"><span class="pre">std::string</span></span> does: it reuses the bits
+<p>A somewhat common way is what <code class="docutils literal notranslate"><span class="pre">std::string</span></code> does: it reuses the bits
 reserved for <cite>effective string length</cite>, <cite>allocated buffer size</cite>, and
 <cite>pointer to buffer</cite> to store the string contents inline.</p>
 <p>A <a class="reference external" href="http://tulrich.com/rants-2009.html#d2009-01-03T00:00:00Z">clever improvement</a> is, when the string is small, to turn the
 <cite>effective string length</cite> counter to a <cite>bytes remaining counter</cite>, and
 put it after the buffer that’s storing the string; this way, when the
-string is at full capacity, this serves as a <span class="docutils literal"><span class="pre">\0</span></span> terminator, which
+string is at full capacity, this serves as a <code class="docutils literal notranslate"><span class="pre">\0</span></code> terminator, which
 is very useful for compatibility with C.  And, of course, as a result,
 one more byte can be stored in that string.</p>
 <p>Another common approach are the strings used in <a class="reference external" href="https://en.wikipedia.org/wiki/String_(computer_science)#Length-prefixed">Pascal</a>, where the first
 byte tells the length of the string. This has the advantage of allowing
-strings to contain <span class="docutils literal"><span class="pre">\0</span></span>, but the disadvantage of limiting the maximum
+strings to contain <code class="docutils literal notranslate"><span class="pre">\0</span></code>, but the disadvantage of limiting the maximum
 size of the string. If someone were to implement this in C, the
 advantage would turn into a disadvantage, as most string-handling
 routines present in the standard library would be then rendered useless.</p>
@@ -85,20 +85,20 @@ routines present in the standard library would be then rendered useless.</p>
 C/Pascal String hybrid.  But at least the <a class="reference external" href="https://en.wikipedia.org/wiki/String_(computer_science)">Wikipedia</a> article on
 Strings doesn’t seem to mention this variant I just came up with:</p>
 <ul class="simple">
-<li>Keep the <span class="docutils literal"><span class="pre">\0</span></span> to terminate the string. This helps reusing the
+<li><p>Keep the <code class="docutils literal notranslate"><span class="pre">\0</span></code> to terminate the string. This helps reusing the
 string handling routines from the C standard library, which are usually
-very fast, hand-tuned functions</li>
-<li>The first byte tells the size, not in bytes, but in 8-byte blocks.
+very fast, hand-tuned functions</p></li>
+<li><p>The first byte tells the size, not in bytes, but in 8-byte blocks.
 To calculate the string length, one just jumps that amount of 8-byte
-blocks and find the position of the <span class="docutils literal"><span class="pre">\0</span></span> terminator.</li>
-<li>Larger blocks could be considered if <a class="reference external" href="https://en.wikipedia.org/wiki/SIMD">SIMD</a> instructions were available.</li>
+blocks and find the position of the <code class="docutils literal notranslate"><span class="pre">\0</span></code> terminator.</p></li>
+<li><p>Larger blocks could be considered if <a class="reference external" href="https://en.wikipedia.org/wiki/SIMD">SIMD</a> instructions were available.</p></li>
 </ul>
 <p>With 8-byte blocks, this can yield strings up to 2KiB of size (256 *
 8), with an overhead of only two bytes, while retaining compatibility
 with C strings.  With SIMD, the maximum string size could be easily
 doubled or quadrupled.</p>
 <p>Of course, this isn’t actually an improvement on the kind of small
-string optimization performed by <span class="docutils literal"><span class="pre">std::string</span></span>, so I’m not yet
+string optimization performed by <code class="docutils literal notranslate"><span class="pre">std::string</span></code>, so I’m not yet
 convinced this is the way to go. This is one of the reasons I haven’t
 yet implemented this, but I might use the fact that I’m currently
 enjoying some vacation time and write a prototype.</p>
@@ -126,6 +126,8 @@ enjoying some vacation time and write a prototype.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2019/10/24/lwan_5_years_in_snippets.html">Lwan: 5 years in snippets</a>
+        </li><li>
             <a href="../../../2018/06/28/include_next_and_portability.html">include_next and portability</a>
         </li><li>
             <a href="../../../2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
@@ -143,8 +145,6 @@ enjoying some vacation time and write a prototype.</p>
             <a href="../../10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
         </li><li>
             <a href="../../06/23/integer_to_string_conversion.html">Integer to string conversion</a>
-        </li><li>
-            <a href="../../../2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage by 94%</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
@@ -162,7 +162,7 @@ enjoying some vacation time and write a prototype.</p>
       <a href="../../../tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="../../../tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
       <a href="../../../tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
-      <a href="../../../tags/lwan.html" style="font-size: 16pt">lwan</a>&nbsp;&nbsp;
+      <a href="../../../tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
       <a href="../../../tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
       <a href="../../../tags/parser.html" style="font-size: 8pt">parser</a>&nbsp;&nbsp;
       <a href="../../../tags/profusion.html" style="font-size: 9pt">profusion</a>&nbsp;&nbsp;
@@ -175,7 +175,7 @@ enjoying some vacation time and write a prototype.</p>
       <a href="../../../tags/zephyr.html" style="font-size: 8pt">zephyr</a>
 </div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
 
-        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2015, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
+        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2018, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
 
       </div> <!--! end of #container --><!--[if lt IE 7 ]>
           <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"></script>

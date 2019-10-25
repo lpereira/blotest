@@ -22,7 +22,7 @@
             <link rel="stylesheet" href="../../../_static/flat.css" type="text/css">
             <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
             <link rel="stylesheet" href="../../../_static/font-awesome.min.css" type="text/css">
-        <link rel="shortcut icon" href="../../../_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
+        <!-- Load modernizr and JQuery -->
         <script src="../../../_static/vendor/modernizr-2.6.2.min.js"></script>
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
         <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
@@ -37,7 +37,7 @@
         SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
-    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
+    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script><script type="text/javascript" src="../../../_static/language_data.js"></script>
 <style type="text/css">img {max-width: 100%;}</style>
 </head>
     <body role="document">
@@ -47,7 +47,7 @@
 
       <div id="container"><header role="banner">
             <hgroup>
-              <h1><a href="../../../index.html">Leandro Pereira</a></h1><h2>Geek in training</h2></hgroup>
+              <h1><a href="../../../index.html">Leandro Pereira</a></h1></hgroup>
           </header>
       <nav role="navigation">
             <ul><li class="main-nav">
@@ -70,7 +70,7 @@ things that I use in Lwan to parse the HTTP requests.  I didn’t spend too
 much time in that blog post to explain why it is faster, so I’m rectifying
 this now.</p>
 <p>In order to understand why it’s so fast, let me step aside for a moment and
-show a function every C programmer should be able to write: <span class="docutils literal"><span class="pre">strlen()</span></span>.</p>
+show a function every C programmer should be able to write: <code class="docutils literal notranslate"><span class="pre">strlen()</span></code>.</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">size_t</span> <span class="nf">strlen</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
     <span class="kt">size_t</span> <span class="n">len</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
 
@@ -90,7 +90,7 @@ many reasons here, so let’s explore some of them.</p>
 from memory (or cache).  And it takes roughly the same time for it to fetch
 8 bits than it takes to fetch 32 bits.  People that write C libraries know
 about this fact, so that the version that your operating system provides is
-most likely going to exploit this.  Let’s rewrite the <span class="docutils literal"><span class="pre">strlen()</span></span> function,
+most likely going to exploit this.  Let’s rewrite the <code class="docutils literal notranslate"><span class="pre">strlen()</span></code> function,
 then:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">size_t</span> <span class="nf">strlen</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
     <span class="kt">size_t</span> <span class="n">len</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
@@ -216,7 +216,7 @@ vector instructions.  But this is besides the point of explaining why the
 string switch trick works so well.</p>
 <p>Now, this kind of optimization happens on pratically all string handling functions
 in the C standard library.  And functions that perform substring comparison,
-such as <span class="docutils literal"><span class="pre">strncmp()</span></span>, are no exception.</p>
+such as <code class="docutils literal notranslate"><span class="pre">strncmp()</span></code>, are no exception.</p>
 <p>When faced with the necessity to check for a bunch of strings, the idiomatic
 C way of doing so would be the following:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">strncmp</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s">&quot;GET &quot;</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
@@ -231,8 +231,8 @@ C way of doing so would be the following:</p>
 <span class="k">return</span> <span class="n">HTTP_METHOD_UNKNOWN</span><span class="p">;</span>
 </pre></div>
 </div>
-<p>It’s not difficult to imagine that each invocation of <span class="docutils literal"><span class="pre">strncmp()</span></span> would have to
-do things that are similar to what our toy <span class="docutils literal"><span class="pre">strlen()</span></span> implementation had to do:
+<p>It’s not difficult to imagine that each invocation of <code class="docutils literal notranslate"><span class="pre">strncmp()</span></code> would have to
+do things that are similar to what our toy <code class="docutils literal notranslate"><span class="pre">strlen()</span></code> implementation had to do:
 align the pointer (which is slow) before it could start the fast path.  But, in
 this case, things are even worse, because, if the pointer isn’t aligned, it
 might not even get to the point where the fast path will make sense, because the
@@ -276,22 +276,22 @@ size for this computer!</p>
 highest level statement in the language: the compiler can get really
 creative in how its code is generated.  It’s not uncommon for it to generate
 jump tables or even binary searches.  So this implementation would actually
-be faster than the various calls to <span class="docutils literal"><span class="pre">strncmp()</span></span> because:</p>
+be faster than the various calls to <code class="docutils literal notranslate"><span class="pre">strncmp()</span></code> because:</p>
 <ol class="arabic simple">
-<li>Comparing integers is dirt cheap.</li>
-<li>The compiler knows what <span class="docutils literal"><span class="pre">memcpy()</span></span> does, so it’s very likely that on
+<li><p>Comparing integers is dirt cheap.</p></li>
+<li><p>The compiler knows what <code class="docutils literal notranslate"><span class="pre">memcpy()</span></code> does, so it’s very likely that on
 architectures where unaligned memory access is fine and there’s no
 performance penalty (any Intel Core CPU after Sandy Bridge for instance),
 it’ll be just a regular old MOV instruction when the size is small
-and known at compile time.</li>
-<li>Even if the compiler didn’t know what <span class="docutils literal"><span class="pre">memcpy()</span></span> does, it would only
+and known at compile time.</p></li>
+<li><p>Even if the compiler didn’t know what <code class="docutils literal notranslate"><span class="pre">memcpy()</span></code> does, it would only
 fill a register once, by doing potentially expensive byte-by-byte copies
 because of unaligned pointer access, and then proceed to just compare
-integers.</li>
-<li>There is less function call overhead; specially nice since this is
-most likely not going through the PLT.</li>
-<li>The compiler can reorder the comparisons as it see fit, often producing
-very tight code.</li>
+integers.</p></li>
+<li><p>There is less function call overhead; specially nice since this is
+most likely not going through the PLT.</p></li>
+<li><p>The compiler can reorder the comparisons as it see fit, often producing
+very tight code.</p></li>
 </ol>
 <p>These kinds of micro-optimizations don’t necessarily have to be completely
 unreadable and full of magical constants.</p>
@@ -319,6 +319,8 @@ unreadable and full of magical constants.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2019/10/24/lwan_5_years_in_snippets.html">Lwan: 5 years in snippets</a>
+        </li><li>
             <a href="../../06/28/include_next_and_portability.html">include_next and portability</a>
         </li><li>
             <a href="#">More on string switch in C</a>
@@ -336,8 +338,6 @@ unreadable and full of magical constants.</p>
             <a href="../../../2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
         </li><li>
             <a href="../../../2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
-        </li><li>
-            <a href="../../../2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage by 94%</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
@@ -355,7 +355,7 @@ unreadable and full of magical constants.</p>
       <a href="../../../tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="../../../tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
       <a href="../../../tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
-      <a href="../../../tags/lwan.html" style="font-size: 16pt">lwan</a>&nbsp;&nbsp;
+      <a href="../../../tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
       <a href="../../../tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
       <a href="../../../tags/parser.html" style="font-size: 8pt">parser</a>&nbsp;&nbsp;
       <a href="../../../tags/profusion.html" style="font-size: 9pt">profusion</a>&nbsp;&nbsp;
@@ -368,7 +368,7 @@ unreadable and full of magical constants.</p>
       <a href="../../../tags/zephyr.html" style="font-size: 8pt">zephyr</a>
 </div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
 
-        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2015, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
+        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2018, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
 
       </div> <!--! end of #container --><!--[if lt IE 7 ]>
           <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"></script>

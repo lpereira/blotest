@@ -1,26 +1,30 @@
 About
 =====
 
-Who is this guy anyway?
-~~~~~~~~~~~~~~~~~~~~~~~
+Leandro has a bachelor's degree in Computer Engineering (a cross between
+Electrical Engineering and Computer Science) by `PUC Campinas`_, and is a
+Software Engineer in the .NET Core team at `Microsoft`_.
 
-.. image:: https://pbs.twimg.com/profile_images/562321950190862336/KkMbfsmw.jpeg
-    :alt: me
-    :align: right
-    :width: 42%
+He authored some open source projects, including `HardInfo`_, a system
+profiler and benchmark suite for Linux; `SuxPanel`_, a lightweight and
+extensible launcher panel; `Lwan`_, a high-performance and scalable web
+server; and `Gomoku`_, a compiler for the Go programming language targetting
+C++.
 
+.. _Microsoft: https://www.microsoft.com
 
-Leandro A. F. Pereira tinkers with computers since 8 years old. He has a
-bachelor's degree in Computer Engineering by `PUC Campinas`_, is a Senior
-Developer at `Intel Open Source Technology Center`_, and a co-founding
-member of `Laboratório Hacker de Campinas`_, a hackerspace in São Paulo
-countryside.
+He is also the co-founder of `Laboratório Hacker de Campinas`_, a
+hackerspace in the city of `Campinas`_ (Brazil).
 
-He wrote some assorted utilities, with the most known being `HardInfo`_,
-`SuxPanel`_, and `Pense-Bem Simulator`_.  He also contributed to projects
-like `Claws Mail`_, `WebKit`_, and the `Enlightenment Foundation
-Libraries`_.  He has recently gained interest in writing a `web server`_ and
-eventually blogs about it.
+.. _Campinas: https://en.wikipedia.org/wiki/Campinas
+.. _Lwan: https://lwan.ws
+.. _SuxPanel: https://github.com/lpereira/suxpanel
+.. _HardInfo: http://hardinfo.org
+.. _Claws Mail: http://claws-mail.org
+.. _WebKit: http://webkit.org
+.. _Enlightenment Foundation Libraries: http://enlightenment.org
+.. _a few others: https://www.openhub.net/accounts/lafp
+.. _Gomoku: https://github.com/lpereira/gomoku
 
 While online, he usually hangs out in `IRC`_, as ``acidx``. He can also be
 found on `LinkedIn`_ or `Twitter`_.  His email address is
@@ -47,10 +51,4 @@ not those of his employer.
 .. _Intel Open Source Technology Center: http://01.org
 .. _ProFUSION: http://profusion.mobi
 .. _Laboratório Hacker de Campinas: http://lhc.net.br
-.. _HardInfo: http://hardinfo.org
-.. _SuxPanel: http://suxpanel.berlios.de
-.. _Pense-Bem Simulator: http://labs.hardinfo.org/pb
-.. _Claws Mail: http://claws-mail.org
-.. _WebKit: http://webkit.org
-.. _Enlightenment Foundation Libraries: http://enlightenment.org
 .. _IRC: http://freenode.net

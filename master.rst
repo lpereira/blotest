@@ -4,12 +4,12 @@ Sitemap
 .. toctree::
    :maxdepth: 1
 
+   2019/10/24/lwan_5_years_in_snippets
    2018/06/28/include_next_and_portability
    2018/02/01/more_on_string_switch_in_c
    2017/05/08/coreboot_luks
    2017/03/01/parsing_json
    2016/11/08/infect_to_protect
-   2016/11/06/reverse_quarantine
    2015/05/01/initializing_a_heap_allocated_structure_in_c
    2014/11/02/hybrid_c_pascal_strings
    2014/10/06/life_of_a_http_request

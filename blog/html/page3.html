@@ -22,7 +22,7 @@
             <link rel="stylesheet" href="_static/flat.css" type="text/css">
             <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
             <link rel="stylesheet" href="_static/font-awesome.min.css" type="text/css">
-        <link rel="shortcut icon" href="_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
+        <!-- Load modernizr and JQuery -->
         <script src="_static/vendor/modernizr-2.6.2.min.js"></script>
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
         <script>window.jQuery || document.write('<script src="_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
@@ -37,7 +37,7 @@
         SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
-    </script><script type="text/javascript" src="_static/underscore.js"></script><script type="text/javascript" src="_static/doctools.js"></script>
+    </script><script type="text/javascript" src="_static/underscore.js"></script><script type="text/javascript" src="_static/doctools.js"></script><script type="text/javascript" src="_static/language_data.js"></script>
 <style type="text/css">img {max-width: 100%;}</style>
 </head>
     <body role="document">
@@ -47,7 +47,7 @@
 
       <div id="container"><header role="banner">
             <hgroup>
-              <h1><a href="index.html">Leandro Pereira</a></h1><h2>Geek in training</h2></hgroup>
+              <h1><a href="index.html">Leandro Pereira</a></h1></hgroup>
           </header>
       <nav role="navigation">
             <ul><li class="main-nav">
@@ -58,6 +58,112 @@
                 </li>
               </ul>
           </nav><div class="main-container" role="main"><div class="main wrapper body clearfix"><article><div class="timestamp postmeta">
+            <span>December 08, 2013</span>
+        </div>
+        <div class="section">
+            <h1><a href="2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage by 94%</a></h1>
+<p>One of the things that bothers me when I’m writing software is that I <a class="reference external" href="https://www.youtube.com/watch?v=csyL9EC0S0c">never
+get things right the first time</a>.  It takes me quite a few iterations to
+achieve a good result – be it performance, memory usage, or a good
+architecture.  Getting things to a “good enough” state is also very frequent
+as projects need to move forward; however, written code often ends up in
+sort of a low priority refactoring thread inside my head.  Sometimes this
+thread is able to produce a thing or two, and I’m able to revisit these
+things.</p>
+<div class="figure align-center" id="id1">
+<img alt="projectmovingforward" src="https://farm1.staticflickr.com/64/169229347_f554a9c9ea.jpg"/>
+<p class="caption"><span class="caption-text">Project moving forward picture by <a class="reference external" href="http://www.flickr.com/photos/tsdesign/">Todd Smith</a>. Sometimes you’re so
+focused on the goal that you end up not appreciating the journey.</span></p>
+</div>
+<div class="section" id="background-toys">
+<h2>Background toys</h2>
+<p>One of the things that were in that refactoring thread was <a class="reference external" href="http://github.com/lpereira/lwan">my toy web
+server</a>’s memory usage.  It would consume a whopping <strong>855MB</strong> of memory
+while idling; recent commits dropped this amount to a mere <strong>32MB</strong> (with
+maybe some more room to spare).  It used to use <strong>2670%</strong> more memory.</p>
+<p>This was only possible because I know the code inside out and was able to
+refactor the code a few times.</p>
+<div class="figure align-center" id="id2">
+<a class="reference internal image-reference" href="2013/12/08/https://i.imgur.com/xSB5PZp.png"><img alt="massifscreenshot0" src="https://i.imgur.com/xSB5PZp.png" style="width: 100%;"/></a>
+<p class="caption"><span class="caption-text">Massif-visualizer windows shown at different scales.</span></p>
+</div>
+</div>
+<div class="section" id="structure-diet">
+<h2>Structure diet</h2>
+<p>Lwan allocates almost all memory it is going to need even before creating
+the main socket.  This means it has to keep around some structures with
+information about connections, requests, and their responses.</p>
+<p>The first drop in memory usage was the highest one. It was possible because
+the structure that keep state for these things also kept state that was only
+useful during the request parsing stage.  By segregating this temporary
+state to another structure, which is allocated in the request parsing
+routine stack, memory usage fell dramatically.</p>
+<p>Lots of flags were saved using bitfields in different substructures. Most of
+these were booleans, and having less than 32 of them meant I could coalesce
+all of them in a single unsigned integer.  Memory usage dropped again.</p>
+</div>
+<div class="section" id="architecture-smell">
+<h2>Architecture smell</h2>
+<p>Then a few months passed, and out of the blue I realized that there was
+something wrong in the architecture: the same structure I was using to track
+request state, I was also using to track connection state.</p>
+<p>So I moved all things that only matters to a connection to a structure –
+which is the structure that’s preallocated on startup – and made the
+request structure be allocated in the request processor routine’s stack.
+This stack lives in a coroutine – which won’t use more memory than it was
+already allocated for the coroutine stack.  Another worthy reduction of
+memory usage.</p>
+<p>This also made keep-alive connections a tiny bit faster, as there’s no need to
+<code class="docutils literal notranslate"><span class="pre">memset()</span></code> the request structure to clean state for the next request
+anymore.</p>
+<div class="figure align-center" id="id3">
+<a class="reference internal image-reference" href="2013/12/08/https://i.imgur.com/3BrC0KB.png"><img alt="massifscreenshot" src="https://i.imgur.com/3BrC0KB.png" style="width: 100%;"/></a>
+<p class="caption"><span class="caption-text">Same scale this time. <em>That drop</em>.</span></p>
+</div>
+</div>
+<div class="section" id="reducing-it-further">
+<h2>Reducing it further</h2>
+<p>There’s another possibility for memory reduction, but I’m not sure if it is
+worthy implementing.</p>
+<p>Lwan uses <code class="docutils literal notranslate"><span class="pre">epoll()</span></code> – and when a file descriptor is added to a poller,
+one can pass arbitrary data inside <code class="docutils literal notranslate"><span class="pre">epoll_data_t</span></code>, up to 64-bit in size.
+Both the file descriptor and the remote IP address could then be passed as
+this data, removing both fields from the connection structure.</p>
+<p>This is possible because these are constant values while the connection is
+active; everything else is either useless to identify the connection (the
+file descriptor is used as an index in an array of connections) or changes
+all the time, such as the flags (which would incur the penalty of calling
+<code class="docutils literal notranslate"><span class="pre">epoll_ctl()</span></code> every time they change).</p>
+<p>This would reduce structures by a few megabytes, which isn’t really worth
+the effort considering IPv6 support would need to be implemented someday and
+this trick would be then rendered useless.  Maybe my refactoring thread will
+be able to answer that in a few months.</p>
+<p>I’m still considering if it is worthy the trouble of leaking the
+request/connection abstraction and removing an integer from the request
+structure so all request-related flags would be set in the connection
+structure.</p>
+<p><strong>Update (11 Dec):</strong> I’ve found another way to remove these two structure
+members; I’ve committed this code on a <a class="reference external" href="https://github.com/lpereira/lwan/tree/32-byte-connection-struct">separate branch</a> as further tests
+must be performed.  In the same circumstances as the other tests, the server
+is now using 2MiB less memory.  Basically:</p>
+<ol class="arabic simple">
+<li><p>The remote IP address can be obtained through the <code class="docutils literal notranslate"><span class="pre">getpeername()</span></code> function; since it’s not usually required, the need to keep this information around is reduced.</p></li>
+<li><p>The socket file descriptor can be calculated by pointer arithmetic. Each connection has a reference to the huge connection array that it is part of; subtracting this from the connection pointer yields the file descriptor.</p></li>
+</ol>
+</div>
+
+        </div>
+        <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/trick.html">trick</a></span>
+        </div>
+        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
             <span>September 26, 2013</span>
         </div>
         <div class="section">
@@ -86,25 +192,25 @@ prototype, which can probably be better explained with the help of a
 diagram:</p>
 <img alt="diagram" class="align-center" src="https://i.imgur.com/VsAfnsC.png"/>
 <p>In short, the engine will create a coroutine whenever it finds a
-<span class="docutils literal"><span class="pre">{{#sequence}}</span></span> template tag.  This coroutine will start, and will execute
+<code class="docutils literal notranslate"><span class="pre">{{#sequence}}</span></code> template tag.  This coroutine will start, and will execute
 as usual until it yields.</p>
-<p>Yielding <span class="docutils literal"><span class="pre">false</span></span>, the engine assumes the iteration ended, and proceeds to
-find the next matching <span class="docutils literal"><span class="pre">{{/sequence}}</span></span> tag to continue from there.</p>
-<p>On a <span class="docutils literal"><span class="pre">true</span></span> yield, however, the engine will recurse to apply everything is
+<p>Yielding <code class="docutils literal notranslate"><span class="pre">false</span></code>, the engine assumes the iteration ended, and proceeds to
+find the next matching <code class="docutils literal notranslate"><span class="pre">{{/sequence}}</span></code> tag to continue from there.</p>
+<p>On a <code class="docutils literal notranslate"><span class="pre">true</span></code> yield, however, the engine will recurse to apply everything is
 between the iteration tags, repeating the process when the iteration-end tag
-is found and the coroutine yields <span class="docutils literal"><span class="pre">true</span></span> again.</p>
+is found and the coroutine yields <code class="docutils literal notranslate"><span class="pre">true</span></code> again.</p>
 <p>The coroutine is supposed to clean up after itself before returning a
-<span class="docutils literal"><span class="pre">false</span></span> value.</p>
+<code class="docutils literal notranslate"><span class="pre">false</span></code> value.</p>
 <div class="figure align-center" id="id1">
 <img alt="rubegoldbergmachine" src="https://i.imgur.com/7P2yadJ.jpg"/>
 <p class="caption"><span class="caption-text">Professor Butts would be proud. Maybe. <a class="reference external" href="https://en.wikipedia.org/wiki/File:Rubenvent.jpg">Source</a>.</span></p>
 </div>
 <p>A sample generator function is shown below. It iterates over a directory
-with <span class="docutils literal"><span class="pre">readdir()</span></span>, returning <span class="docutils literal"><span class="pre">1</span></span> on new item availability and <span class="docutils literal"><span class="pre">0</span></span> when there
+with <code class="docutils literal notranslate"><span class="pre">readdir()</span></code>, returning <code class="docutils literal notranslate"><span class="pre">1</span></code> on new item availability and <code class="docutils literal notranslate"><span class="pre">0</span></code> when there
 isn’t anything else to do. Notice that initialization, iteration, and cleanup
 is all contained within a single function.</p>
 <p>Also, notice that there’s no need to copy any values to and from the
-structure – calling <span class="docutils literal"><span class="pre">coro_yield()</span></span> will of course maintain the stack
+structure – calling <code class="docutils literal notranslate"><span class="pre">coro_yield()</span></code> will of course maintain the stack
 alive, so local variables can be used outside this function as long as a
 reference to them can be obtained.</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="kt">int</span> <span class="nf">dir_list_generator</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">)</span>
@@ -155,8 +261,8 @@ about programming.  But I digress.</p>
         <div class="section">
             <h1><a href="2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a></h1>
 <p>There are some functions in the standard C library that takes a function
-pointer to be used as a callback later on.  Examples include <span class="docutils literal"><span class="pre">atexit()</span></span>
-and <span class="docutils literal"><span class="pre">signal()</span></span>.  However, these functions can’t receive an arbitrary
+pointer to be used as a callback later on.  Examples include <code class="docutils literal notranslate"><span class="pre">atexit()</span></code>
+and <code class="docutils literal notranslate"><span class="pre">signal()</span></code>.  However, these functions can’t receive an arbitrary
 pointer (which could hold some important program state) in addition to the
 function pointer, so you’re left with pesky global variables:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="cm">/* You have: */</span>
@@ -188,7 +294,7 @@ to be generated by the compiler:</p>
 </pre></div>
 </div>
 <p>The funky-looking cast basically says “call a function pointer at
-<span class="docutils literal"><span class="pre">FUNCTION_CONSTANT</span></span> with a pointer pointing to <span class="docutils literal"><span class="pre">PARAMETER_CONSTANT</span></span>”. Of
+<code class="docutils literal notranslate"><span class="pre">FUNCTION_CONSTANT</span></code> with a pointer pointing to <code class="docutils literal notranslate"><span class="pre">PARAMETER_CONSTANT</span></code>”. Of
 course, if you call this code as is, the program will most likely crash.
 The idea is that this generates this code (IA32 assembly):</p>
 <div class="highlight-objdump notranslate"><div class="highlight"><pre><span/><span class="mh">0f00deba</span> <span class="p">&lt;</span><span class="nf">partial_template_function</span><span class="p">&gt;:</span>
@@ -236,7 +342,7 @@ function or some real pointer argument):</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>And using it to patch the pointers in a page allocated with <span class="docutils literal"><span class="pre">mmap()</span></span>
+<p>And using it to patch the pointers in a page allocated with <code class="docutils literal notranslate"><span class="pre">mmap()</span></code>
 (comments and error recovery have been ommitted for brevity; full source
 code is linked below):</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">Partial</span> <span class="o">*</span>
@@ -328,7 +434,7 @@ instance, if you have a template such as this:</p>
 <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">data</span><span class="p">);</span>
 </pre></div>
 </div>
-<p>Where <span class="docutils literal"><span class="pre">hello</span></span> is the template that was previously compiled into a series of
+<p>Where <code class="docutils literal notranslate"><span class="pre">hello</span></code> is the template that was previously compiled into a series of
 simple instructions (such as <strong>append text</strong> or <strong>append the value of a
 variable</strong>), and the second parameter is a structure containing the data
 needed by the renderer.</p>
@@ -358,7 +464,7 @@ to conveniently group the template variables:</p>
 </pre></div>
 </div>
 <p>Without a way to lookup which value to obtain from the structure, however,
-this would not help much. Enter the second trick: the <span class="docutils literal"><span class="pre">offsetof(3)</span></span> macro,
+this would not help much. Enter the second trick: the <code class="docutils literal notranslate"><span class="pre">offsetof(3)</span></code> macro,
 which computes the offset of a field in a given structure. By storing this
 offset alongside data type information, the value lookup is not only possible
 but can also work with types different than strings:</p>
@@ -410,7 +516,7 @@ but can also work with types different than strings:</p>
 </div>
 <p><a class="reference external" href="https://github.com/lpereira/lwan/blob/wip/template.c">Code for this engine</a> is available in the <a class="reference external" href="https://github.com/lpereira/lwan/tree/wip/">wip branch</a> of my toy web
 server, lwan. It is not currently used there, but it is built alongside the
-main program and can be tested by invoking the generated <span class="docutils literal"><span class="pre">template</span></span>
+main program and can be tested by invoking the generated <code class="docutils literal notranslate"><span class="pre">template</span></code>
 executable.</p>
 <p>Before using that in lwan, though, I’ll try to employ this <a class="reference external" href="http://dginasa.blogspot.com.br/2012/10/brainfuck-jit-compiler-in-around-155.html">nifty trick</a> to
 JIT-compile the template and avoid some of the overhead where it really
@@ -477,53 +583,6 @@ to join me for some beers, don’t hesitate to contact me!)</p>
                 Tags:
                 <a href="tags/profusion.html">profusion</a>, <a href="tags/finf.html">finf</a>, <a href="tags/conferences.html">conferences</a>, <a href="tags/arduino.html">arduino</a></span>
         </div>
-        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
-            <span>October 14, 2012</span>
-        </div>
-        <div class="section">
-            <h1><a href="2012/10/14/vectored_i_o_with_mmap___to_serve_files.html">Vectored I/O with mmap() to serve files</a></h1>
-<p>Previously, I’ve <a class="reference external" href="/posts/file_serving_with_few_syscalls/">improved file serving performance</a> in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a> by
-dramatially cutting down on the number of system calls performed to serve a
-file. However, for small files (&lt; 16KiB), the throughput drop from the
-<span class="docutils literal"><span class="pre">hello</span></span> handler (which merely responds “Hello, World!”) was significant,
-since lwan was still performing system calls to open, obtain the size, and
-close the file.</p>
-<p>I’ve experimented with userland caching before, but it never occurred to me
-to use <span class="docutils literal"><span class="pre">mmap()</span></span>. For the unitiated, this system call offers a way to map a
-file into memory, by giving a pointer to the process virtual memory space,
-that, when dereferenced, will perform the necessary disk I/O if the pages
-were not already present in the kernel buffers. <a class="reference external" href="https://en.wikipedia.org/wiki/Mmap">Wikipedia</a> has more details
-about it. Using <span class="docutils literal"><span class="pre">mmap()</span></span> greatly simplifies caching code by relaying it to
-the kernel, closer to where the low level buffers are.</p>
-<p>By using a memory-mapped buffer and <a class="reference external" href="https://en.wikipedia.org/wiki/Vectored_I/O">writev()</a> (which the <span class="docutils literal"><span class="pre">hello</span></span> handler
-uses through lwan’s abstractions), the file serving performance improved
-about 60%! Before the optimization, <a class="reference external" href="https://github.com/lighttpd/weighttp">weighttp</a> would be able to make ~170000
-requests/s. Now, ~286000 requests/s can be made. (That’s on my laptop, a Core
-i7 2640m, with 8GiB of RAM and without spinning platters.)</p>
-<p>Of course, introducing caching also introduces a lot of complexity. Not only
-the file serving handler almost doubled its size (from 350 lines to 610
-lines), but I’ve had to add a hash table implementation (with around 430
-lines) and a directory watcher that uses <a class="reference external" href="https://en.wikipedia.org/wiki/Inotify">inotify</a> at around 150 lines of C
-code. In the order of 840 lines of code to improve performance by about 60%.
-About 30% more lines of code to improve performance in 60% – not bad,
-methinks.</p>
-<p>On the other hand, the cache mechanism brings shared mutable state. This is
-protected by mutexes, of course, but I’m not sure if I got it right. One more
-reason to <strong>not</strong> use lwan in production.</p>
-<p>As a bonus to these things, lwan now offers <a class="reference external" href="https://en.wikipedia.org/wiki/Deflate">deflated</a> content for the files
-in the cache when asked.</p>
-
-        </div>
-        <div class="postmeta">
-        <div class="author">
-            <span>Posted by Leandro Pereira</span>
-        </div>
-        
-        <div class="tags">
-            <span>
-                Tags:
-                <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/c.html">C</a>, <a href="tags/linux.html">linux</a></span>
-        </div>
         </div><div class="archive_link">
         <a href="archive.html"> &mdash; Blog Archive &mdash; </a>
     </div><ul class="related clearfix">
@@ -538,6 +597,8 @@ in the cache when asked.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="2019/10/24/lwan_5_years_in_snippets.html">Lwan: 5 years in snippets</a>
+        </li><li>
             <a href="2018/06/28/include_next_and_portability.html">include_next and portability</a>
         </li><li>
             <a href="2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
@@ -555,8 +616,6 @@ in the cache when asked.</p>
             <a href="2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
         </li><li>
             <a href="2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
-        </li><li>
-            <a href="2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage by 94%</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
@@ -574,7 +633,7 @@ in the cache when asked.</p>
       <a href="tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
       <a href="tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
-      <a href="tags/lwan.html" style="font-size: 16pt">lwan</a>&nbsp;&nbsp;
+      <a href="tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
       <a href="tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
       <a href="tags/parser.html" style="font-size: 8pt">parser</a>&nbsp;&nbsp;
       <a href="tags/profusion.html" style="font-size: 9pt">profusion</a>&nbsp;&nbsp;
@@ -587,7 +646,7 @@ in the cache when asked.</p>
       <a href="tags/zephyr.html" style="font-size: 8pt">zephyr</a>
 </div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
 
-        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2015, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
+        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2018, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
 
       </div> <!--! end of #container --><!--[if lt IE 7 ]>
           <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"></script>

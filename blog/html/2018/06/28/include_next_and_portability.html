@@ -1,0 +1,201 @@
+<!DOCTYPE html><!--[if lt IE 7]>      <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width">
+        <title>include_next and portability &mdash; Leandro Pereira</title>
+            <link rel="stylesheet" href="../../../_static/normalize.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/sphinx.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/main.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/flat.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+            <link rel="stylesheet" href="../../../_static/font-awesome.min.css" type="text/css">
+        <!-- Load modernizr and JQuery -->
+        <script src="../../../_static/vendor/modernizr-2.6.2.min.js"></script>
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+        <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
+        <script src="../../../_static/plugins.js"></script>
+        <script src="../../../_static/main.js"></script>
+        <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="More on string switch in C" href="../../02/01/more_on_string_switch_in_c.html" /><link rel="prev" title="Lwan: 5 years in snippets" href="../../../2019/10/24/lwan_5_years_in_snippets.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.7.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        SOURCELINK_SUFFIX: '.txt',
+        HAS_SOURCE:  true
+      };
+    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script><script type="text/javascript" src="../../../_static/language_data.js"></script>
+<style type="text/css">img {max-width: 100%;}</style>
+</head>
+    <body role="document">
+        <!--[if lt IE 7]>
+            <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
+        <![endif]-->
+
+      <div id="container"><header role="banner">
+            <hgroup>
+              <h1><a href="../../../index.html">Leandro Pereira</a></h1></hgroup>
+          </header>
+      <nav role="navigation">
+            <ul><li class="main-nav">
+                  <a href="../../../index.html">Home</a>
+                </li>
+              <li class="main-nav">
+                  <a href="../../../pages/about.html">About</a>
+                </li>
+              </ul>
+          </nav><div class="main-container" role="main"><div class="main wrapper body clearfix"><article><div class="timestamp postmeta">
+            <span>June 28, 2018</span>
+        </div>
+    <div class="section" id="include-next-and-portability">
+<h1>include_next and portability</h1>
+<p>One of the decisions I took early on while writing Lwan was to only support
+Linux, and think about portability later; this decision was influenced by the
+way the <a class="reference external" href="https://www.openbsd.org/papers/portability.pdf">OpenBSD project approaches portability</a>.</p>
+<p>In retrospect, this was a good decision: this avoided many of the pitfalls
+associated in <a class="reference external" href="http://wiki.c2.com/?PrematureAbstraction">writing abstractions too early in the game</a>.  It also made the code cleaner:
+the abundance of C preprocessor usage, common in some portable code, hinders
+legibility and maintainability.  Of course, this decision made it
+challenging to port it to other operating systems.</p>
+<p>I was content with this decision – until people began asking for BSD and Mac
+ports.  With the exception of some system calls (e.g.  epoll, or the Linux
+<a class="reference external" href="http://man7.org/linux/man-pages/man2/sendfile.2.html">sendfile</a> variant), porting shouldn’t be surprising.  Ideally, having the code
+largely <code class="docutils literal notranslate"><span class="pre">#ifdef</span></code> free would be ideal, so I had to find a way to make this happen.</p>
+<p>While reading the GCC manual, I found out about an extension – that also
+happens to be <a class="reference external" href="https://clang.llvm.org/docs/LanguageExtensions.html">implemented by Clang</a> – that fit perfectly
+this scenario: <a class="reference external" href="https://gcc.gnu.org/onlinedocs/cpp/Wrapper-Headers.html">wrapper headers</a>.  It’s a C
+preprocessor extension that includes the next file in the include lookup
+path.  With this extension, it’s possible to write our own substitute header
+files, named after standard header files:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="cpf">_next &lt;stdlib.h&gt; /* Include stdlib.h from system includes */</span><span class="cp"></span>
+
+<span class="cp">#ifndef MISSING_STDLIB_H_</span>
+<span class="cp">#define MISSING_STDLIB_H_</span>
+
+<span class="cp">#if !defined(HAVE_MKOSTEMP)</span>
+<span class="kt">int</span> <span class="nf">mkostemp</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">tmpl</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">);</span>
+<span class="cp">#endif</span>
+
+<span class="cp">#if !defined(HAVE_REALLOCARRAY)</span>
+<span class="kt">void</span> <span class="o">*</span><span class="nf">reallocarray</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">optr</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nmemb</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">size</span><span class="p">);</span>
+<span class="cp">#endif</span>
+
+<span class="cp">#endif </span><span class="cm">/* MISSING_STDLIB_H_ */</span><span class="cp"></span>
+</pre></div>
+</div>
+<p>Have it in a directory named, say, “missing”, and modify the header lookup path
+so it is looked up first by the compiler.  This is easily accomplished in CMake
+by specifying an include directory with the <code class="docutils literal notranslate"><span class="pre">BEFORE</span></code> option:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">include_directories</span><span class="p">(</span><span class="n">BEFORE</span> <span class="n">src</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">missing</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>(This just ensures that <code class="docutils literal notranslate"><span class="pre">src/lib/missing</span></code> will be passed before any other <code class="docutils literal notranslate"><span class="pre">-I</span></code>
+argument to the compiler, regardless of the order any other
+<code class="docutils literal notranslate"><span class="pre">include_directories()</span></code> macro is invoked.  Your build system might differ, this
+is copied straight from Lwan’s.)</p>
+<img alt="missing directory tree" class="align-right" src="https://i.imgur.com/c3ntvJL.png" />
+<p>Then it’s just the matter of implementing these functions in terms of other
+functions available in the system, and code using it will be none the wise: a
+<code class="docutils literal notranslate"><span class="pre">#include</span> <span class="pre">&lt;stdlib.h&gt;</span></code> line will include our wrapper header, which in turn will
+include the system’s <code class="docutils literal notranslate"><span class="pre">stdlib.h</span></code> header; it then might define, in this example,
+additional prototypes, based on what the build system could determine during the
+configuration phase.</p>
+<p>This way, most <code class="docutils literal notranslate"><span class="pre">#ifdefs</span></code> are hidden away in a single file, making it a lot easier
+to maintain and read the code.  No application-specific abstraction layer with
+quirky semantics; just the familiar quirkiness from POSIX.</p>
+<p>One of the things I’m particular proud of is the miniature <a class="reference external" href="http://man7.org/linux/man-pages/man7/epoll.7.html">epoll(7)</a> implementation on top
+of <a class="reference external" href="https://www.freebsd.org/cgi/man.cgi?query=kqueue&amp;sektion=2">kqueue</a>
+(available in BSD systems).  I considered moving Lwan to use an abstraction
+library (such as <a class="reference external" href="http://libevent.org/">libevent</a> or <a class="reference external" href="https://libuv.org/">libuv</a>) just for this, but was able to keep using its
+event-handling loop as is.  Not only I understand 100% of it, it was a
+worthwhile learning experience.  With ~120 lines of C code, this epoll
+implementation is easier to wrap my head around than the thousands of lines
+of code from those libraries.</p>
+</div>
+
+    <div class="postmeta">
+        
+        
+        
+        </div><ul class="related clearfix">
+            <li class="left"> &laquo; <a href="../../../2019/10/24/lwan_5_years_in_snippets.html">Lwan: 5 years in snippets</a></li>
+            <li class="right"><a href="../../02/01/more_on_string_switch_in_c.html">More on string switch in C</a> &raquo; </li>
+        </ul></article><aside class="sidebar"><section><div class="widget" id="searchbox" role="search">
+    <h1><a href="#searchbox">Search</a></h1>
+    <form action="../../../search.html" method="get">
+        <input type="text" name="q" />
+        <button type="submit"><span class="fa fa-search"></span></button>
+    </form>
+</div></section><section><div class="widget">
+    <h1>Recent Posts</h1>
+    <ul><li>
+            <a href="../../../2019/10/24/lwan_5_years_in_snippets.html">Lwan: 5 years in snippets</a>
+        </li><li>
+            <a href="#">include_next and portability</a>
+        </li><li>
+            <a href="../../02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
+        </li><li>
+            <a href="../../../2017/05/08/coreboot_luks.html">Coreboot & LUKS</a>
+        </li><li>
+            <a href="../../../2017/03/01/parsing_json.html">Parsing JSON</a>
+        </li><li>
+            <a href="../../../2016/11/08/infect_to_protect.html">Infect to Protect</a>
+        </li><li>
+            <a href="../../../2015/05/01/initializing_a_heap_allocated_structure_in_c.html">Initializing a heap-allocated structure in C</a>
+        </li><li>
+            <a href="../../../2014/11/02/hybrid_c_pascal_strings.html">Hybrid C/Pascal Strings</a>
+        </li><li>
+            <a href="../../../2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
+        </li><li>
+            <a href="../../../2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
+        </li></ul>
+</div>
+</section><section><div class="widget">
+    <h1>Tags Cloud</h1>
+      <a href="../../../tags/arduino.html" style="font-size: 8pt">arduino</a>&nbsp;&nbsp;
+      <a href="../../../tags/assembly.html" style="font-size: 8pt">assembly</a>&nbsp;&nbsp;
+      <a href="../../../tags/bpf.html" style="font-size: 8pt">bpf</a>&nbsp;&nbsp;
+      <a href="../../../tags/c.html" style="font-size: 16pt">C</a>&nbsp;&nbsp;
+      <a href="../../../tags/c.html" style="font-size: 8pt">c</a>&nbsp;&nbsp;
+      <a href="../../../tags/conferences.html" style="font-size: 8pt">conferences</a>&nbsp;&nbsp;
+      <a href="../../../tags/container.html" style="font-size: 8pt">container</a>&nbsp;&nbsp;
+      <a href="../../../tags/data_structure.html" style="font-size: 8pt">data-structure</a>&nbsp;&nbsp;
+      <a href="../../../tags/efl.html" style="font-size: 8pt">efl</a>&nbsp;&nbsp;
+      <a href="../../../tags/enlightenment.html" style="font-size: 8pt">enlightenment</a>&nbsp;&nbsp;
+      <a href="../../../tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
+      <a href="../../../tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
+      <a href="../../../tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
+      <a href="../../../tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
+      <a href="../../../tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
+      <a href="../../../tags/parser.html" style="font-size: 8pt">parser</a>&nbsp;&nbsp;
+      <a href="../../../tags/profusion.html" style="font-size: 9pt">profusion</a>&nbsp;&nbsp;
+      <a href="../../../tags/programming.html" style="font-size: 20pt">programming</a>&nbsp;&nbsp;
+      <a href="../../../tags/strace.html" style="font-size: 8pt">strace</a>&nbsp;&nbsp;
+      <a href="../../../tags/template.html" style="font-size: 8pt">template</a>&nbsp;&nbsp;
+      <a href="../../../tags/tizen.html" style="font-size: 8pt">tizen</a>&nbsp;&nbsp;
+      <a href="../../../tags/trick.html" style="font-size: 14pt">trick</a>&nbsp;&nbsp;
+      <a href="../../../tags/tricks.html" style="font-size: 8pt">tricks</a>&nbsp;&nbsp;
+      <a href="../../../tags/zephyr.html" style="font-size: 8pt">zephyr</a>
+</div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
+
+        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2018, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
+
+      </div> <!--! end of #container --><!--[if lt IE 7 ]>
+          <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"></script>
+          <script>window.attachEvent('onload',function(){CFInstall.check({mode:'overlay'})})</script>
+        <![endif]-->
+    </body>
+</html>

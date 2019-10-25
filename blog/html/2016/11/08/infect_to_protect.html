@@ -22,7 +22,7 @@
             <link rel="stylesheet" href="../../../_static/flat.css" type="text/css">
             <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
             <link rel="stylesheet" href="../../../_static/font-awesome.min.css" type="text/css">
-        <link rel="shortcut icon" href="../../../_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
+        <!-- Load modernizr and JQuery -->
         <script src="../../../_static/vendor/modernizr-2.6.2.min.js"></script>
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
         <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
@@ -37,7 +37,7 @@
         SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
-    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
+    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script><script type="text/javascript" src="../../../_static/language_data.js"></script>
 <style type="text/css">img {max-width: 100%;}</style>
 </head>
     <body role="document">
@@ -47,7 +47,7 @@
 
       <div id="container"><header role="banner">
             <hgroup>
-              <h1><a href="../../../index.html">Leandro Pereira</a></h1><h2>Geek in training</h2></hgroup>
+              <h1><a href="../../../index.html">Leandro Pereira</a></h1></hgroup>
           </header>
       <nav role="navigation">
             <ul><li class="main-nav">
@@ -120,14 +120,14 @@ transforms any program into a sandboxed version of itself.</p>
 limiting, just once, which system calls a program can execute.</p>
 <p>Sort of a less-powerful version of <a class="reference external" href="http://man.openbsd.org/cgi-bin/man.cgi/OpenBSD-current/man2/pledge.2">OpenBSD’s
 pledge(2)</a>
-(née <span class="docutils literal"><span class="pre">tame(2)</span></span>), which can be repeatedly called to reduce the amount of
+(née <code class="docutils literal notranslate"><span class="pre">tame(2)</span></code>), which can be repeatedly called to reduce the amount of
 privileges a process has. Useful, for instance, in cases where a
 configuration file has to be read before processing user-supplied work.
 That BSD version has <a class="reference external" href="https://www.openbsd.org/papers/hackfest2015-pledge/mgp00001.html">been sprinkling calls to
 pledge()</a>
 in almost all of the programs in the base install (which is easier for a
 BSD system, since everything is kept under the same roof.)</p>
-<p>But, unlike <span class="docutils literal"><span class="pre">pledge(2)</span></span>, this thing can be applied to binaries that have
+<p>But, unlike <code class="docutils literal notranslate"><span class="pre">pledge(2)</span></code>, this thing can be applied to binaries that have
 been already built. No source code modifications are necessary. If your
 distribution can withstand the stench, “infected” binaries could be a
 thing in the default installation.</p>
@@ -183,7 +183,7 @@ assembler</a>,
 and wrote a few macros that let me write BPF programs as if they were
 standard x86-64 instructions.</p>
 <p>The remaining issue is that a pointer to the BPF program must be passed
-to the call to <span class="docutils literal"><span class="pre">prctl()</span></span>, and the shellcode must be relocatable. A <a class="reference external" href="http://stackoverflow.com/a/15704848">common
+to the call to <code class="docutils literal notranslate"><span class="pre">prctl()</span></code>, and the shellcode must be relocatable. A <a class="reference external" href="http://stackoverflow.com/a/15704848">common
 trick</a> to perform in these
 scenarios is to employ the fact that, on x86, when a call instruction is
 made, the return address (i.e. the address of the byte right after the
@@ -203,14 +203,14 @@ call instruction) is pushed to the stack:</p>
 <span class="nl">bpf_end:</span>
 </pre></div>
 </div>
-<p>The <span class="docutils literal"><span class="pre">bpf</span></span> label doesn’t point to any x86 instruction: it contains only
-macros that expands to the definitions of <span class="docutils literal"><span class="pre">struct</span> <span class="pre">sock_filter</span></span> as defined
-in <span class="docutils literal"><span class="pre">linux/filter.h</span></span>.  To copy the BPF program to the kernel, the <cite>prctl()</cite>
-call expects a <span class="docutils literal"><span class="pre">struct</span> <span class="pre">sock_fprog</span></span>, which contains the BPF program length
-(in number of <span class="docutils literal"><span class="pre">struct</span> <span class="pre">sock_filter</span></span> elements), and a pointer to the base of
+<p>The <code class="docutils literal notranslate"><span class="pre">bpf</span></code> label doesn’t point to any x86 instruction: it contains only
+macros that expands to the definitions of <code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">sock_filter</span></code> as defined
+in <code class="docutils literal notranslate"><span class="pre">linux/filter.h</span></code>.  To copy the BPF program to the kernel, the <cite>prctl()</cite>
+call expects a <code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">sock_fprog</span></code>, which contains the BPF program length
+(in number of <code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">sock_filter</span></code> elements), and a pointer to the base of
 that array.  Since there’s no way to know where this code is gong to land in
-memory beforehand, this trick comes in handy: after the <span class="docutils literal"><span class="pre">call</span>
-<span class="pre">apply_filter</span></span> instruction, the top of the stack now contains the base
+memory beforehand, this trick comes in handy: after the <code class="docutils literal notranslate"><span class="pre">call</span>
+<span class="pre">apply_filter</span></code> instruction, the top of the stack now contains the base
 address of that array.</p>
 <p>Now that I had a way to write the shellcode, it was just the matter of
 shoehorning it into the executable.</p>
@@ -243,7 +243,7 @@ the Turbo Debugger I used to use in the DOS days) is not it’s strong
 suit. I’m not used to using it to debug programs without access to
 source, and this was a good opportunity to learn a few things.</p>
 <p>Since the infection program modifies the ELF entry point, setting a
-breakpoint on <span class="docutils literal"><span class="pre">main()</span></span> won’t actually work. But this is easily solvable:
+breakpoint on <code class="docutils literal notranslate"><span class="pre">main()</span></code> won’t actually work. But this is easily solvable:
 just use <a class="reference external" href="https://linux.die.net/man/1/readelf">readelf(1)</a> to find
 where the new entry point is, and set a breakpoint to that:</p>
 <div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> gcc -o hello hello.c
@@ -270,7 +270,7 @@ registers</a>.</p>
 </div>
 <div class="section" id="watching-the-magic-happen">
 <h2>Watching the magic happen</h2>
-<p>The <span class="docutils literal"><span class="pre">hello</span></span> program is very short and the call to <span class="docutils literal"><span class="pre">socket(2)</span></span> doesn’t
+<p>The <code class="docutils literal notranslate"><span class="pre">hello</span></code> program is very short and the call to <code class="docutils literal notranslate"><span class="pre">socket(2)</span></code> doesn’t
 make much sense there.  It’s just a way to test what’s going to happen when
 the filter is in place, without the need to modify the program to test this
 assumption.  (<a class="reference external" href="https://www.bsdcan.org/2016/schedule/attachments/357_20160610-bsdcan-helloworld.pdf">Lots of things</a>
@@ -332,7 +332,7 @@ exit_group(0)                           = ?
 +++ exited with 0 +++
 </pre></div>
 </div>
-<p>Notice the calls to <span class="docutils literal"><span class="pre">prctl()</span></span>, very similar to the ones found in the
+<p>Notice the calls to <code class="docutils literal notranslate"><span class="pre">prctl()</span></code>, very similar to the ones found in the
 previously-mentioned commit. And then the program executes as usual.
 Now, if an argument is passed, the program will attempt to create a
 socket:</p>
@@ -345,7 +345,7 @@ socket(AF_INET, SOCK_STREAM, IPPROTO_TCP) = 41
 [1]    27536 invalid system call (core dumped)  strace ./hello 1
 </pre></div>
 </div>
-<p>And Seccomp kicks in and kills the program with a <span class="docutils literal"><span class="pre">SIGSYS</span></span> signal. As
+<p>And Seccomp kicks in and kills the program with a <code class="docutils literal notranslate"><span class="pre">SIGSYS</span></code> signal. As
 expected. <strong>It’s alive!</strong></p>
 <div class="figure align-center">
 <img alt="It's alive!" src="https://i.imgur.com/sWwquxp.jpg" />
@@ -361,13 +361,13 @@ before even considering this idea for anything.</p>
 not optimal. Maintaining a list such as this for each and every program
 will most likely be so boring nobody is going to do that.</p>
 <p>I can think of three possible ways of coming up with this list.</p>
-<p>The first would be doing the same thing <span class="docutils literal"><span class="pre">pledge(2)</span></span> does: allowing a very
+<p>The first would be doing the same thing <code class="docutils literal notranslate"><span class="pre">pledge(2)</span></code> does: allowing a very
 restrict set of system calls at first, with some limitations, and then
 providing a few sets of calls per set of features a program might use: stdio,
 inet, tty, etc.  The nice thing about this is that the filters are more fine
 grained; it’s not just a whitelist of system calls.  (The <a class="reference external" href="http://man.openbsd.org/cgi-bin/man.cgi/OpenBSD-current/man2/pledge.2">man page</a> has
 more details.)</p>
-<p>The second way would involve running the program under <span class="docutils literal"><span class="pre">strace(1)</span></span> and
+<p>The second way would involve running the program under <code class="docutils literal notranslate"><span class="pre">strace(1)</span></code> and
 record which system calls the program makes from a few runs.  If the test
 coverage for each run is sufficiently high, this will work very reliably;
 this isn’t always the case, so the mileage may vary.  Also, for certain
@@ -375,10 +375,10 @@ large, complicated programs, stracing it all automatically could prove to be
 a challenge.</p>
 <p>Another way would be the following: Grab a list of undefined symbols a
 program uses, and find them in the shared libraries it links to.  Then scan
-the executable and the libraries for sequences like <span class="docutils literal"><span class="pre">mov</span> <span class="pre">eax,</span> <span class="pre">57;</span> <span class="pre">syscall</span></span>
-(for the oldschool <span class="docutils literal"><span class="pre">fork(2)</span></span> syscall on x86-64) or <span class="docutils literal"><span class="pre">mov</span> <span class="pre">rdi,</span> <span class="pre">57;</span> <span class="pre">call</span>
-<span class="pre">syscall&#64;plt</span></span>.  This is still not foolproof, since not necessarily a system
-call number (loaded into <span class="docutils literal"><span class="pre">eax</span></span>) will be hardcoded within a program or
+the executable and the libraries for sequences like <code class="docutils literal notranslate"><span class="pre">mov</span> <span class="pre">eax,</span> <span class="pre">57;</span> <span class="pre">syscall</span></code>
+(for the oldschool <code class="docutils literal notranslate"><span class="pre">fork(2)</span></code> syscall on x86-64) or <code class="docutils literal notranslate"><span class="pre">mov</span> <span class="pre">rdi,</span> <span class="pre">57;</span> <span class="pre">call</span>
+<span class="pre">syscall&#64;plt</span></code>.  This is still not foolproof, since not necessarily a system
+call number (loaded into <code class="docutils literal notranslate"><span class="pre">eax</span></code>) will be hardcoded within a program or
 shared library.</p>
 <p>There’s a fourth idea, as well, which involves both doing the automated
 static analysis on the binary and running strace to catch “runaway”
@@ -386,20 +386,20 @@ syscalls. This can get quite complicated and it’s unlikely I’ll get it
 correct in the first few tries (and, yet, the same shortcomings will
 apply in the end.)</p>
 <p>For me, though, these experiments are all about the hunt, not about the
-treasure. So the tried and true approach that <span class="docutils literal"><span class="pre">pledge(2)</span></span> uses won’t be
+treasure. So the tried and true approach that <code class="docutils literal notranslate"><span class="pre">pledge(2)</span></code> uses won’t be
 used at first.</p>
 </div>
 <div class="section" id="filter-optimization">
 <h3>Filter optimization</h3>
 <p>Another thing that might be a problem is: on x86-64, Linux has hundreds of
-system calls.  (329 according to <span class="docutils literal"><span class="pre">sys/syscall.h</span></span> at the moment I write
+system calls.  (329 according to <code class="docutils literal notranslate"><span class="pre">sys/syscall.h</span></code> at the moment I write
 this.)</p>
 <p>Even if the JIT for BPFs is quite efficient, doing a linear search before each
 and every system call will certainly be a bottleneck.  Also, BPF programs are
 limited in size, and a large whitelist that’s implemented the same way as the
 prototype will limit the possibility for more fine-grained filters.  Things
-like “the <span class="docutils literal"><span class="pre">socket(2)</span></span> call is allowed only for UNIX-domain sockets”, rather than
-allowing whatever call to <span class="docutils literal"><span class="pre">socket(2)</span></span> would be impractical.</p>
+like “the <code class="docutils literal notranslate"><span class="pre">socket(2)</span></code> call is allowed only for UNIX-domain sockets”, rather than
+allowing whatever call to <code class="docutils literal notranslate"><span class="pre">socket(2)</span></code> would be impractical.</p>
 <p>Since each syscall is identified by a number, a simple bitmap could be
 used to implement the whitelist. This will also free up some space in
 the BPF program for more detailed whitelisting for certain syscalls (for
@@ -426,8 +426,8 @@ accept:
         return SECCOMP_RET_ACCEPT
 </pre></div>
 </div>
-<p>(Some of the <span class="docutils literal"><span class="pre">if</span> <span class="pre">syscall_number</span> <span class="pre">&lt;</span> <span class="pre">N</span></span> blocks could be changed to
-<span class="docutils literal"><span class="pre">syscall_number</span> <span class="pre">-=</span> <span class="pre">M</span></span> if their respective bitmask is <span class="docutils literal"><span class="pre">0</span></span>.)</p>
+<p>(Some of the <code class="docutils literal notranslate"><span class="pre">if</span> <span class="pre">syscall_number</span> <span class="pre">&lt;</span> <span class="pre">N</span></code> blocks could be changed to
+<code class="docutils literal notranslate"><span class="pre">syscall_number</span> <span class="pre">-=</span> <span class="pre">M</span></code> if their respective bitmask is <code class="docutils literal notranslate"><span class="pre">0</span></code>.)</p>
 <p>Or maybe just a bloom filter instead of a series of bitmaps. I’ll have
 to experiment.</p>
 </div>
@@ -481,6 +481,8 @@ repository</a>.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2019/10/24/lwan_5_years_in_snippets.html">Lwan: 5 years in snippets</a>
+        </li><li>
             <a href="../../../2018/06/28/include_next_and_portability.html">include_next and portability</a>
         </li><li>
             <a href="../../../2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
@@ -498,8 +500,6 @@ repository</a>.</p>
             <a href="../../../2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
         </li><li>
             <a href="../../../2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
-        </li><li>
-            <a href="../../../2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage by 94%</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
@@ -517,7 +517,7 @@ repository</a>.</p>
       <a href="../../../tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="../../../tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
       <a href="../../../tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
-      <a href="../../../tags/lwan.html" style="font-size: 16pt">lwan</a>&nbsp;&nbsp;
+      <a href="../../../tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
       <a href="../../../tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
       <a href="../../../tags/parser.html" style="font-size: 8pt">parser</a>&nbsp;&nbsp;
       <a href="../../../tags/profusion.html" style="font-size: 9pt">profusion</a>&nbsp;&nbsp;
@@ -530,7 +530,7 @@ repository</a>.</p>
       <a href="../../../tags/zephyr.html" style="font-size: 8pt">zephyr</a>
 </div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
 
-        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2015, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
+        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2018, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
 
       </div> <!--! end of #container --><!--[if lt IE 7 ]>
           <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"></script>

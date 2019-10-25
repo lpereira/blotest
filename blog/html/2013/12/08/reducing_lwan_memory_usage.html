@@ -22,7 +22,7 @@
             <link rel="stylesheet" href="../../../_static/flat.css" type="text/css">
             <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
             <link rel="stylesheet" href="../../../_static/font-awesome.min.css" type="text/css">
-        <link rel="shortcut icon" href="../../../_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
+        <!-- Load modernizr and JQuery -->
         <script src="../../../_static/vendor/modernizr-2.6.2.min.js"></script>
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
         <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
@@ -37,7 +37,7 @@
         SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
-    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
+    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script><script type="text/javascript" src="../../../_static/language_data.js"></script>
 <style type="text/css">img {max-width: 100%;}</style>
 </head>
     <body role="document">
@@ -47,7 +47,7 @@
 
       <div id="container"><header role="banner">
             <hgroup>
-              <h1><a href="../../../index.html">Leandro Pereira</a></h1><h2>Geek in training</h2></hgroup>
+              <h1><a href="../../../index.html">Leandro Pereira</a></h1></hgroup>
           </header>
       <nav role="navigation">
             <ul><li class="main-nav">
@@ -114,7 +114,7 @@ This stack lives in a coroutine – which won’t use more memory than it was
 already allocated for the coroutine stack.  Another worthy reduction of
 memory usage.</p>
 <p>This also made keep-alive connections a tiny bit faster, as there’s no need to
-<span class="docutils literal"><span class="pre">memset()</span></span> the request structure to clean state for the next request
+<code class="docutils literal notranslate"><span class="pre">memset()</span></code> the request structure to clean state for the next request
 anymore.</p>
 <div class="figure align-center" id="id3">
 <a class="reference internal image-reference" href="https://i.imgur.com/3BrC0KB.png"><img alt="massifscreenshot" src="https://i.imgur.com/3BrC0KB.png" style="width: 100%;" /></a>
@@ -125,15 +125,15 @@ anymore.</p>
 <h2>Reducing it further</h2>
 <p>There’s another possibility for memory reduction, but I’m not sure if it is
 worthy implementing.</p>
-<p>Lwan uses <span class="docutils literal"><span class="pre">epoll()</span></span> – and when a file descriptor is added to a poller,
-one can pass arbitrary data inside <span class="docutils literal"><span class="pre">epoll_data_t</span></span>, up to 64-bit in size.
+<p>Lwan uses <code class="docutils literal notranslate"><span class="pre">epoll()</span></code> – and when a file descriptor is added to a poller,
+one can pass arbitrary data inside <code class="docutils literal notranslate"><span class="pre">epoll_data_t</span></code>, up to 64-bit in size.
 Both the file descriptor and the remote IP address could then be passed as
 this data, removing both fields from the connection structure.</p>
 <p>This is possible because these are constant values while the connection is
 active; everything else is either useless to identify the connection (the
 file descriptor is used as an index in an array of connections) or changes
 all the time, such as the flags (which would incur the penalty of calling
-<span class="docutils literal"><span class="pre">epoll_ctl()</span></span> every time they change).</p>
+<code class="docutils literal notranslate"><span class="pre">epoll_ctl()</span></code> every time they change).</p>
 <p>This would reduce structures by a few megabytes, which isn’t really worth
 the effort considering IPv6 support would need to be implemented someday and
 this trick would be then rendered useless.  Maybe my refactoring thread will
@@ -147,8 +147,8 @@ members; I’ve committed this code on a <a class="reference external" href="htt
 must be performed.  In the same circumstances as the other tests, the server
 is now using 2MiB less memory.  Basically:</p>
 <ol class="arabic simple">
-<li>The remote IP address can be obtained through the <span class="docutils literal"><span class="pre">getpeername()</span></span> function; since it’s not usually required, the need to keep this information around is reduced.</li>
-<li>The socket file descriptor can be calculated by pointer arithmetic. Each connection has a reference to the huge connection array that it is part of; subtracting this from the connection pointer yields the file descriptor.</li>
+<li><p>The remote IP address can be obtained through the <code class="docutils literal notranslate"><span class="pre">getpeername()</span></code> function; since it’s not usually required, the need to keep this information around is reduced.</p></li>
+<li><p>The socket file descriptor can be calculated by pointer arithmetic. Each connection has a reference to the huge connection array that it is part of; subtracting this from the connection pointer yields the file descriptor.</p></li>
 </ol>
 </div>
 </div>
@@ -175,6 +175,8 @@ is now using 2MiB less memory.  Basically:</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2019/10/24/lwan_5_years_in_snippets.html">Lwan: 5 years in snippets</a>
+        </li><li>
             <a href="../../../2018/06/28/include_next_and_portability.html">include_next and portability</a>
         </li><li>
             <a href="../../../2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
@@ -192,8 +194,6 @@ is now using 2MiB less memory.  Basically:</p>
             <a href="../../../2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
         </li><li>
             <a href="../../../2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
-        </li><li>
-            <a href="#">Reducing Lwan memory usage by 94%</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
@@ -211,7 +211,7 @@ is now using 2MiB less memory.  Basically:</p>
       <a href="../../../tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="../../../tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
       <a href="../../../tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
-      <a href="../../../tags/lwan.html" style="font-size: 16pt">lwan</a>&nbsp;&nbsp;
+      <a href="../../../tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
       <a href="../../../tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
       <a href="../../../tags/parser.html" style="font-size: 8pt">parser</a>&nbsp;&nbsp;
       <a href="../../../tags/profusion.html" style="font-size: 9pt">profusion</a>&nbsp;&nbsp;
@@ -224,7 +224,7 @@ is now using 2MiB less memory.  Basically:</p>
       <a href="../../../tags/zephyr.html" style="font-size: 8pt">zephyr</a>
 </div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
 
-        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2015, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
+        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2018, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
 
       </div> <!--! end of #container --><!--[if lt IE 7 ]>
           <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"></script>

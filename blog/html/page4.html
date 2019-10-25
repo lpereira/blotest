@@ -22,7 +22,7 @@
             <link rel="stylesheet" href="_static/flat.css" type="text/css">
             <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
             <link rel="stylesheet" href="_static/font-awesome.min.css" type="text/css">
-        <link rel="shortcut icon" href="_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
+        <!-- Load modernizr and JQuery -->
         <script src="_static/vendor/modernizr-2.6.2.min.js"></script>
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
         <script>window.jQuery || document.write('<script src="_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
@@ -37,7 +37,7 @@
         SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
-    </script><script type="text/javascript" src="_static/underscore.js"></script><script type="text/javascript" src="_static/doctools.js"></script>
+    </script><script type="text/javascript" src="_static/underscore.js"></script><script type="text/javascript" src="_static/doctools.js"></script><script type="text/javascript" src="_static/language_data.js"></script>
 <style type="text/css">img {max-width: 100%;}</style>
 </head>
     <body role="document">
@@ -47,7 +47,7 @@
 
       <div id="container"><header role="banner">
             <hgroup>
-              <h1><a href="index.html">Leandro Pereira</a></h1><h2>Geek in training</h2></hgroup>
+              <h1><a href="index.html">Leandro Pereira</a></h1></hgroup>
           </header>
       <nav role="navigation">
             <ul><li class="main-nav">
@@ -58,6 +58,53 @@
                 </li>
               </ul>
           </nav><div class="main-container" role="main"><div class="main wrapper body clearfix"><article><div class="timestamp postmeta">
+            <span>October 14, 2012</span>
+        </div>
+        <div class="section">
+            <h1><a href="2012/10/14/vectored_i_o_with_mmap___to_serve_files.html">Vectored I/O with mmap() to serve files</a></h1>
+<p>Previously, I’ve <a class="reference external" href="/posts/file_serving_with_few_syscalls/">improved file serving performance</a> in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a> by
+dramatially cutting down on the number of system calls performed to serve a
+file. However, for small files (&lt; 16KiB), the throughput drop from the
+<code class="docutils literal notranslate"><span class="pre">hello</span></code> handler (which merely responds “Hello, World!”) was significant,
+since lwan was still performing system calls to open, obtain the size, and
+close the file.</p>
+<p>I’ve experimented with userland caching before, but it never occurred to me
+to use <code class="docutils literal notranslate"><span class="pre">mmap()</span></code>. For the unitiated, this system call offers a way to map a
+file into memory, by giving a pointer to the process virtual memory space,
+that, when dereferenced, will perform the necessary disk I/O if the pages
+were not already present in the kernel buffers. <a class="reference external" href="https://en.wikipedia.org/wiki/Mmap">Wikipedia</a> has more details
+about it. Using <code class="docutils literal notranslate"><span class="pre">mmap()</span></code> greatly simplifies caching code by relaying it to
+the kernel, closer to where the low level buffers are.</p>
+<p>By using a memory-mapped buffer and <a class="reference external" href="https://en.wikipedia.org/wiki/Vectored_I/O">writev()</a> (which the <code class="docutils literal notranslate"><span class="pre">hello</span></code> handler
+uses through lwan’s abstractions), the file serving performance improved
+about 60%! Before the optimization, <a class="reference external" href="https://github.com/lighttpd/weighttp">weighttp</a> would be able to make ~170000
+requests/s. Now, ~286000 requests/s can be made. (That’s on my laptop, a Core
+i7 2640m, with 8GiB of RAM and without spinning platters.)</p>
+<p>Of course, introducing caching also introduces a lot of complexity. Not only
+the file serving handler almost doubled its size (from 350 lines to 610
+lines), but I’ve had to add a hash table implementation (with around 430
+lines) and a directory watcher that uses <a class="reference external" href="https://en.wikipedia.org/wiki/Inotify">inotify</a> at around 150 lines of C
+code. In the order of 840 lines of code to improve performance by about 60%.
+About 30% more lines of code to improve performance in 60% – not bad,
+methinks.</p>
+<p>On the other hand, the cache mechanism brings shared mutable state. This is
+protected by mutexes, of course, but I’m not sure if I got it right. One more
+reason to <strong>not</strong> use lwan in production.</p>
+<p>As a bonus to these things, lwan now offers <a class="reference external" href="https://en.wikipedia.org/wiki/Deflate">deflated</a> content for the files
+in the cache when asked.</p>
+
+        </div>
+        <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/c.html">C</a>, <a href="tags/linux.html">linux</a></span>
+        </div>
+        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
             <span>September 29, 2012</span>
         </div>
         <div class="section">
@@ -73,9 +120,9 @@ favor of threads, the functions and structures found in this header are one
 of the unpopular gems in the POSIX C library.</p>
 <div class="section" id="coroutines-in-lwan-my-toy-web-server">
 <h2>Coroutines in lwan, my toy web server</h2>
-<p>In <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>, there are <span class="docutils literal"><span class="pre">n</span> <span class="pre">+</span> <span class="pre">1</span></span> worker threads, where <span class="docutils literal"><span class="pre">n</span></span> is the number of
+<p>In <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>, there are <code class="docutils literal notranslate"><span class="pre">n</span> <span class="pre">+</span> <span class="pre">1</span></code> worker threads, where <code class="docutils literal notranslate"><span class="pre">n</span></code> is the number of
 logical CPUs. One thread is the <em>acceptor</em> thread, which accepts connections,
-and gives control to the other <span class="docutils literal"><span class="pre">n</span></span> threads, which in turn do all the work
+and gives control to the other <code class="docutils literal notranslate"><span class="pre">n</span></code> threads, which in turn do all the work
 of receiving a request, parsing, and delivering the response.</p>
 <p>Each of these worker threads can multiplex thousands of connections by
 polling on events: so, for each worker thread, only one request can be
@@ -114,9 +161,9 @@ has more fields, but they’re implementation details:</p>
 <span class="p">};</span>
 </pre></div>
 </div>
-<p>To allocate one, just allocate space for <span class="docutils literal"><span class="pre">sizeof(coro_t_)</span> <span class="pre">+</span> <span class="pre">stack_size</span></span>,
-initialize the variables, and call <span class="docutils literal"><span class="pre">getcontext(&amp;coro-&gt;context)</span></span>. (These
-context-swapping functions are weirdly-named in my opinion: <span class="docutils literal"><span class="pre">getcontext</span></span>
+<p>To allocate one, just allocate space for <code class="docutils literal notranslate"><span class="pre">sizeof(coro_t_)</span> <span class="pre">+</span> <span class="pre">stack_size</span></code>,
+initialize the variables, and call <code class="docutils literal notranslate"><span class="pre">getcontext(&amp;coro-&gt;context)</span></code>. (These
+context-swapping functions are weirdly-named in my opinion: <code class="docutils literal notranslate"><span class="pre">getcontext</span></code>
 actually <em>saves</em> the current context into the variable pointed to by its sole
 parameter.)</p>
 <p>After that, one just need to set up the context so that it points to the
@@ -127,11 +174,11 @@ newly-allocated stack:</p>
 <span class="n">coro</span><span class="o">-&gt;</span><span class="n">context</span><span class="p">.</span><span class="n">uc_link</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
 </pre></div>
 </div>
-<p>And then call <span class="docutils literal"><span class="pre">makecontext()</span></span> so that the coroutine entry point can be
+<p>And then call <code class="docutils literal notranslate"><span class="pre">makecontext()</span></code> so that the coroutine entry point can be
 called when resuming the coroutine. (Another weirdly-named function. No
 wonder why this thing is quite unpopular.) This function takes a variable
 number of parameters, each one being a 32-bit integer value. I don’t know why
-a <span class="docutils literal"><span class="pre">void</span> <span class="pre">*</span></span> wasn’t used instead – so, on 64-bit, I use an union to break a
+a <code class="docutils literal notranslate"><span class="pre">void</span> <span class="pre">*</span></code> wasn’t used instead – so, on 64-bit, I use an union to break a
 pointer into two 32-bit components:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">union</span> <span class="n">ptr_splitter</span> <span class="p">{</span>
     <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">;</span>
@@ -143,7 +190,7 @@ pointer into two 32-bit components:</p>
 </div>
 <div class="section" id="freeing-a-coroutine">
 <h2>Freeing a coroutine</h2>
-<p>Just free the coroutine’s <span class="docutils literal"><span class="pre">coro_t</span></span> structure. Lwan’s implementation does
+<p>Just free the coroutine’s <code class="docutils literal notranslate"><span class="pre">coro_t</span></code> structure. Lwan’s implementation does
 run the deferred statements at this moment.</p>
 </div>
 <div class="section" id="resuming-a-coroutine">
@@ -154,12 +201,12 @@ yields, return the contexts where they were.</p>
 </div>
 <div class="section" id="yielding-from-a-coroutine">
 <h2>Yielding from a coroutine</h2>
-<p>To yield from a coroutine, just save <span class="docutils literal"><span class="pre">value</span></span> into <span class="docutils literal"><span class="pre">coro_t</span></span>’s
-<span class="docutils literal"><span class="pre">yield_value</span></span> field, and make a call to <span class="docutils literal"><span class="pre">swapcontext()</span></span>, swapping the
+<p>To yield from a coroutine, just save <code class="docutils literal notranslate"><span class="pre">value</span></code> into <code class="docutils literal notranslate"><span class="pre">coro_t</span></code>’s
+<code class="docutils literal notranslate"><span class="pre">yield_value</span></code> field, and make a call to <code class="docutils literal notranslate"><span class="pre">swapcontext()</span></code>, swapping the
 current coroutine stack with the context that was active when the coroutine
 was resumed (which happens to be the routine that resumes a coroutine – which
 now cleans up and return to whoever called it, most probably the main loop).
-<span class="docutils literal"><span class="pre">value</span></span> is now available to whoever called <span class="docutils literal"><span class="pre">coro_resume()</span></span> and is used in
+<code class="docutils literal notranslate"><span class="pre">value</span></code> is now available to whoever called <code class="docutils literal notranslate"><span class="pre">coro_resume()</span></code> and is used in
 lwan to determine if a coroutine should be resumed.</p>
 </div>
 <div class="section" id="using-the-coroutines">
@@ -168,7 +215,7 @@ lwan to determine if a coroutine should be resumed.</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">lwan_sendfile</span><span class="p">(</span><span class="n">request</span><span class="o">-&gt;</span><span class="n">socket</span><span class="p">,</span> <span class="n">file_fd</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">total_bytes</span><span class="p">);</span>
 </pre></div>
 </div>
-<p>Behind the scenes, <span class="docutils literal"><span class="pre">lwan_sendfile</span></span> is actually doing this (error handling
+<p>Behind the scenes, <code class="docutils literal notranslate"><span class="pre">lwan_sendfile</span></code> is actually doing this (error handling
 omitted for brevity):</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">while</span> <span class="p">(</span><span class="n">sent_bytes</span> <span class="o">&lt;</span> <span class="n">total_bytes</span><span class="p">)</span> <span class="p">{</span>
     <span class="n">read_bytes</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">file_fd</span><span class="p">,</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">buffer_size</span><span class="p">);</span>
@@ -193,19 +240,19 @@ indefinitely.</p>
 <div class="section" id="implementation-details">
 <h2>Implementation details</h2>
 <ul class="simple">
-<li>On 64-bit, hand-tuned assembly versions of <span class="docutils literal"><span class="pre">ucontext</span></span> routines are
+<li><p>On 64-bit, hand-tuned assembly versions of <code class="docutils literal notranslate"><span class="pre">ucontext</span></code> routines are
 used. These routines avoid saving and restoring the signal mask (avoiding
 two roundtrips to the kernel), and does not save the floating point
-registers.</li>
-<li>Also, on 64-bit, resuming a coroutine is orders of magnitude faster,
-since not everything is copied when switching contexts.</li>
-<li>Swapping stacks makes tools like <a class="reference external" href="http://valgrind.org/">Valgrind</a> get pretty crazy. Lwan’s
+registers.</p></li>
+<li><p>Also, on 64-bit, resuming a coroutine is orders of magnitude faster,
+since not everything is copied when switching contexts.</p></li>
+<li><p>Swapping stacks makes tools like <a class="reference external" href="http://valgrind.org/">Valgrind</a> get pretty crazy. Lwan’s
 implementation uses Valgrind-provided macros that marks the newly-
-allocated blocks (from the heap) as stacks.</li>
-<li>The real implementation has a <span class="docutils literal"><span class="pre">coro_switcher_t</span></span> data structure.
+allocated blocks (from the heap) as stacks.</p></li>
+<li><p>The real implementation has a <code class="docutils literal notranslate"><span class="pre">coro_switcher_t</span></code> data structure.
 This structure is used to both avoid race conditions when swapping
 coroutines in different threads, but also to maintain coroutine state
-from different threads.</li>
+from different threads.</p></li>
 </ul>
 <p>There are other details that were ommitted from this post. Lwan’s source code
 is small enough it can digested easily, and if you’re not sleeping already,
@@ -226,11 +273,11 @@ that would be a lot easier to write and maintain.</p>
 more threads than there are processors will often hurt performance (for
 various reasons) in noticeable ways. Also, coroutines are cheaper on the
 memory requirements: in Lwan, they sport 16KiB of stack space and it takes a
-little bit more than a <span class="docutils literal"><span class="pre">malloc()</span></span> to set them up.</p>
+little bit more than a <code class="docutils literal notranslate"><span class="pre">malloc()</span></code> to set them up.</p>
 <p>I believe we should stop using callbacks for asynchronous I/O and use things
-like this. Even if <span class="docutils literal"><span class="pre">ucontext.h</span></span> is deprecated from POSIX, the functions a
+like this. Even if <code class="docutils literal notranslate"><span class="pre">ucontext.h</span></code> is deprecated from POSIX, the functions a
 fairly trivial to write (even in assembly language) – actually, encouraged,
-given that <span class="docutils literal"><span class="pre">swapcontext()</span></span> and <span class="docutils literal"><span class="pre">getcontext()</span></span> makes often unnecessary
+given that <code class="docutils literal notranslate"><span class="pre">swapcontext()</span></code> and <code class="docutils literal notranslate"><span class="pre">getcontext()</span></code> makes often unnecessary
 system calls.</p>
 </div>
 
@@ -269,13 +316,13 @@ sample EasyUI applications being executed:</p>
 </iframe></div>
 <div class="section" id="brief-overview-of-an-easyui-app">
 <h2>Brief overview of an EasyUI app</h2>
-<dl class="docutils">
-<dt>An app begins with a simple call to <span class="docutils literal"><span class="pre">EUI.app()</span></span>, passing at least one parameter:</dt>
-<dd>the main view-controller. The other parameter is an optional object that
+<dl class="simple">
+<dt>An app begins with a simple call to <code class="docutils literal notranslate"><span class="pre">EUI.app()</span></code>, passing at least one parameter:</dt><dd><p>the main view-controller. The other parameter is an optional object that
 contains application settings, such as the theme or window titles. EasyUI
 applications are contained inside one window only, since the main focus
 are apps for mobile devices with stacked lists and the eventual popup
-that appears on top of the content.</dd>
+that appears on top of the content.</p>
+</dd>
 </dl>
 <p>The code below shows a typical controller-view; explanation will follow.</p>
 <div class="highlight-javascript notranslate"><div class="highlight"><pre><span/><span class="nx">MainController</span> <span class="o">=</span> <span class="nx">EUI</span><span class="p">.</span><span class="nx">ListController</span><span class="p">({</span>
@@ -298,14 +345,14 @@ that appears on top of the content.</dd>
 <span class="p">});</span>
 </pre></div>
 </div>
-<p>Lots of things happens with the declaration of <span class="docutils literal"><span class="pre">MainController</span></span>. Of note:</p>
+<p>Lots of things happens with the declaration of <code class="docutils literal notranslate"><span class="pre">MainController</span></code>. Of note:</p>
 <ul class="simple">
-<li>As opposed to the traditional way of laying out components on screen
+<li><p>As opposed to the traditional way of laying out components on screen
 with EFL, controllers implements the basic user interface and the
-application developer focuses only on defining behavior.</li>
-<li>Attributes can be functions, which will be called whenever EasyUI
+application developer focuses only on defining behavior.</p></li>
+<li><p>Attributes can be functions, which will be called whenever EasyUI
 needs them. For instance, one could change the title based on how many
-fruits were in the model, by writing a <span class="docutils literal"><span class="pre">title</span></span> function like so:</li>
+fruits were in the model, by writing a <code class="docutils literal notranslate"><span class="pre">title</span></code> function like so:</p></li>
 </ul>
 <div class="highlight-javascript notranslate"><div class="highlight"><pre><span/><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
     <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">model</span><span class="p">.</span><span class="nx">length</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
@@ -315,15 +362,15 @@ fruits were in the model, by writing a <span class="docutils literal"><span clas
 </pre></div>
 </div>
 <ul class="simple">
-<li><span class="docutils literal"><span class="pre">MainController</span></span> is derived from <span class="docutils literal"><span class="pre">ListController</span></span>. This means
+<li><p><code class="docutils literal notranslate"><span class="pre">MainController</span></code> is derived from <code class="docutils literal notranslate"><span class="pre">ListController</span></code>. This means
 that it follows a <em>collection</em> contract, and must implement methods like
-<span class="docutils literal"><span class="pre">itemAtIndex</span></span> and <span class="docutils literal"><span class="pre">selectedItemAtIndex</span></span>, as well as providing a
-<span class="docutils literal"><span class="pre">model</span></span> attribute.</li>
-<li>One could simply swap <span class="docutils literal"><span class="pre">ListController</span></span> for <span class="docutils literal"><span class="pre">GridController</span></span> if a
-grid layout were to be more appropriate for this particular application.</li>
-<li>In addition to the basic <em>contract</em>, controllers might sign for more;
-for instance by declaring <span class="docutils literal"><span class="pre">navigationBarItems</span></span>, one is required to
-implement <span class="docutils literal"><span class="pre">selectedNavigationBarItem</span></span>.</li>
+<code class="docutils literal notranslate"><span class="pre">itemAtIndex</span></code> and <code class="docutils literal notranslate"><span class="pre">selectedItemAtIndex</span></code>, as well as providing a
+<code class="docutils literal notranslate"><span class="pre">model</span></code> attribute.</p></li>
+<li><p>One could simply swap <code class="docutils literal notranslate"><span class="pre">ListController</span></code> for <code class="docutils literal notranslate"><span class="pre">GridController</span></code> if a
+grid layout were to be more appropriate for this particular application.</p></li>
+<li><p>In addition to the basic <em>contract</em>, controllers might sign for more;
+for instance by declaring <code class="docutils literal notranslate"><span class="pre">navigationBarItems</span></code>, one is required to
+implement <code class="docutils literal notranslate"><span class="pre">selectedNavigationBarItem</span></code>.</p></li>
 </ul>
 <p>Behind the scenes, the framework will initialize the EFL, create the window
 and required widgets, listen to callbacks – and call the application code in
@@ -443,26 +490,27 @@ that mess into this:</p>
 </div>
 <p>Ah, much better! This was a result of these steps:</p>
 <ol class="arabic simple">
-<li>Caching the root directory information. This is mainly its
-<span class="docutils literal"><span class="pre">realpath()</span></span> and an open file descriptor to the directory.<ul>
-<li>The <span class="docutils literal"><span class="pre">realpath()</span></span> result is used with a <span class="docutils literal"><span class="pre">strncmp()</span></span> after so that requests to file outside the root directory are not served successfully. The string length for the root path is also calculated only once.</li>
-<li>The astute reader will notice the usage of the Linux-only <span class="docutils literal"><span class="pre">openat()</span></span> and <span class="docutils literal"><span class="pre">newfstatat()</span></span> system calls. These <span class="docutils literal"><span class="pre">-at()</span></span> variants perform much like their standard ones, but they work relative to the directory pointed to the file descriptor passed as the first parameter, avoiding some expensive path-to-inode conversions.</li>
+<li><p>Caching the root directory information. This is mainly its
+<code class="docutils literal notranslate"><span class="pre">realpath()</span></code> and an open file descriptor to the directory.</p>
+<ul class="simple">
+<li><p>The <code class="docutils literal notranslate"><span class="pre">realpath()</span></code> result is used with a <code class="docutils literal notranslate"><span class="pre">strncmp()</span></code> after so that requests to file outside the root directory are not served successfully. The string length for the root path is also calculated only once.</p></li>
+<li><p>The astute reader will notice the usage of the Linux-only <code class="docutils literal notranslate"><span class="pre">openat()</span></code> and <code class="docutils literal notranslate"><span class="pre">newfstatat()</span></code> system calls. These <code class="docutils literal notranslate"><span class="pre">-at()</span></code> variants perform much like their standard ones, but they work relative to the directory pointed to the file descriptor passed as the first parameter, avoiding some expensive path-to-inode conversions.</p></li>
 </ul>
 </li>
-<li>Using <span class="docutils literal"><span class="pre">sendto()</span></span> with <span class="docutils literal"><span class="pre">MSG_MORE</span></span> flag instead of using
-<span class="docutils literal"><span class="pre">TCP_CORK</span></span> flag. This makes for two less roundtrips to the kernel to
-set a socket option.</li>
-<li>Using <span class="docutils literal"><span class="pre">sendfile()</span></span> with the whole file instead of sending it in
-chunks, to avoid coroutine context switches. <span class="docutils literal"><span class="pre">sendfile()</span></span> might still
+<li><p>Using <code class="docutils literal notranslate"><span class="pre">sendto()</span></code> with <code class="docutils literal notranslate"><span class="pre">MSG_MORE</span></code> flag instead of using
+<code class="docutils literal notranslate"><span class="pre">TCP_CORK</span></code> flag. This makes for two less roundtrips to the kernel to
+set a socket option.</p></li>
+<li><p>Using <code class="docutils literal notranslate"><span class="pre">sendfile()</span></code> with the whole file instead of sending it in
+chunks, to avoid coroutine context switches. <code class="docutils literal notranslate"><span class="pre">sendfile()</span></code> might still
 block, but in this case, the coroutine will yield and the next time, try
-to send a smaller chunk.</li>
-<li>The <span class="docutils literal"><span class="pre">-at()</span></span> version of system calls are also being used by a
-replacement <span class="docutils literal"><span class="pre">realpath()</span></span> routine that I’ve adapted from <a class="reference external" href="http://www.gnu.org/software/libc/">glibc</a>. This
+to send a smaller chunk.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">-at()</span></code> version of system calls are also being used by a
+replacement <code class="docutils literal notranslate"><span class="pre">realpath()</span></code> routine that I’ve adapted from <a class="reference external" href="http://www.gnu.org/software/libc/">glibc</a>. This
 improved the performance as well by not only reducing the number of
-system calls (the standard <span class="docutils literal"><span class="pre">realpath()</span></span> will perform a <span class="docutils literal"><span class="pre">lstat()</span></span> for
+system calls (the standard <code class="docutils literal notranslate"><span class="pre">realpath()</span></code> will perform a <code class="docutils literal notranslate"><span class="pre">lstat()</span></code> for
 every path component, whereas this version will only perform
-<span class="docutils literal"><span class="pre">newfstatat()</span></span> for relative components), but also using the lighter
-<span class="docutils literal"><span class="pre">-at()</span></span> variants.</li>
+<code class="docutils literal notranslate"><span class="pre">newfstatat()</span></code> for relative components), but also using the lighter
+<code class="docutils literal notranslate"><span class="pre">-at()</span></code> variants.</p></li>
 </ol>
 <p>These improvements resulted in <em>very low overhead</em> while serving files. In
 fact, compared to a simple <em>hello world</em> handler and file serving – without
@@ -491,8 +539,8 @@ through <a class="reference external" href="https://en.wikipedia.org/wiki/Resour
 <p>In <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>, I’m using my own home-cooked <a class="reference external" href="https://en.wikipedia.org/wiki/Coroutine">coroutine</a> implementation. All
 requests are handled by coroutines, so that it makes easy to condition the
 execution of deferred statements with the cleanup of a coroutine. And that’s
-what I did, by implementing <span class="docutils literal"><span class="pre">coro_defer()</span></span>, which adds hooks that will be
-called sequentially by <span class="docutils literal"><span class="pre">coro_free()</span></span>.</p>
+what I did, by implementing <code class="docutils literal notranslate"><span class="pre">coro_defer()</span></code>, which adds hooks that will be
+called sequentially by <code class="docutils literal notranslate"><span class="pre">coro_free()</span></code>.</p>
 <p>This can be used for various purposes, including garbage collection and other
 miscellaneous cleanup code:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="kt">void</span><span class="o">*</span> <span class="nf">coro_malloc</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">sz</span><span class="p">)</span> <span class="p">{</span>
@@ -532,44 +580,6 @@ leave the cleanup to <a class="reference external" href="http://github.com/lpere
                 Tags:
                 <a href="tags/trick.html">trick</a>, <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/c.html">C</a></span>
         </div>
-        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
-            <span>August 10, 2012</span>
-        </div>
-        <div class="section">
-            <h1><a href="2012/08/10/hash_trie.html">Hash trie</a></h1>
-<p><a class="reference external" href="https://en.wikipedia.org/wiki/Trie">Tries</a> are very useful data structures if you need to perform longest
-subprefix matching. Unfortunately, simple implementations uses a lot of
-memory, which is often solved by collapsing common prefixes in a single node
-(like a <a class="reference external" href="https://en.wikipedia.org/wiki/Radix_tree">Radix tree</a>). However, this adds to the implementation complexity,
-which is something I like to avoid.</p>
-<p><a class="reference external" href="http://github.com/lpereira/lwan">Lwan</a>’s original trie implementation required 256 pointers per trie node
-(one per possible byte). This is not only wasteful, but also meant lwan would
-get a lot of cache misses.</p>
-<p>Instead of just using a <a class="reference external" href="https://en.wikipedia.org/wiki/Radix_tree">Radix tree</a>, I decided to keep the same basic
-implementation but lower the number of pointers per node to just 8 – and hash
-each key byte by calculating <span class="docutils literal"><span class="pre">MOD</span> <span class="pre">8</span></span>. This was a very cheap optimization,
-which works pretty well.</p>
-<p>But this optimization leads to the same problem found in <a class="reference external" href="https://en.wikipedia.org/wiki/Hash_table">hash tables</a>:
-<a class="reference external" href="https://en.wikipedia.org/wiki/Collision_(computer_science)">collisions</a>. The problem is minimized by the fact that collisions can only
-happen when using keys with the same length – which is uncommon in the basic
-use case for these tries in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>: matching URLs by their prefix to
-determine which handler to call.</p>
-<p>Nonetheless, this is easily fixed by adding a linked list to each leaf node.
-To avoid having to perform one last string comparison if there’s just one
-node in this linked list (and hence no collisions), <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>’s trie assume it
-was a match.</p>
-
-        </div>
-        <div class="postmeta">
-        <div class="author">
-            <span>Posted by Leandro Pereira</span>
-        </div>
-        
-        <div class="tags">
-            <span>
-                Tags:
-                <a href="tags/data_structure.html">data-structure</a>, <a href="tags/programming.html">programming</a>, <a href="tags/lwan.html">lwan</a></span>
-        </div>
         </div><div class="archive_link">
         <a href="archive.html"> &mdash; Blog Archive &mdash; </a>
     </div><ul class="related clearfix">
@@ -584,6 +594,8 @@ was a match.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="2019/10/24/lwan_5_years_in_snippets.html">Lwan: 5 years in snippets</a>
+        </li><li>
             <a href="2018/06/28/include_next_and_portability.html">include_next and portability</a>
         </li><li>
             <a href="2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
@@ -601,8 +613,6 @@ was a match.</p>
             <a href="2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
         </li><li>
             <a href="2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
-        </li><li>
-            <a href="2013/12/08/reducing_lwan_memory_usage.html">Reducing Lwan memory usage by 94%</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
@@ -620,7 +630,7 @@ was a match.</p>
       <a href="tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
       <a href="tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
-      <a href="tags/lwan.html" style="font-size: 16pt">lwan</a>&nbsp;&nbsp;
+      <a href="tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
       <a href="tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
       <a href="tags/parser.html" style="font-size: 8pt">parser</a>&nbsp;&nbsp;
       <a href="tags/profusion.html" style="font-size: 9pt">profusion</a>&nbsp;&nbsp;
@@ -633,7 +643,7 @@ was a match.</p>
       <a href="tags/zephyr.html" style="font-size: 8pt">zephyr</a>
 </div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
 
-        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2015, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
+        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2018, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
 
       </div> <!--! end of #container --><!--[if lt IE 7 ]>
           <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"></script>
