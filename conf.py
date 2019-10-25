@@ -20,7 +20,7 @@ description = ''
 author = 'Leandro Pereira'
 
 # Change this to your copyright string
-copyright = u'2012—2018, ' + author
+copyright = u'2012—2019, ' + author
 
 # Change this to your blog root URL (required for RSS feed)
 website = 'http://tia.mat.br/blog/html/'
