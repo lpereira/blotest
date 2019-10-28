@@ -724,7 +724,7 @@ configuration file parser is also being fuzzed, although the work has
 just recently started (I don’t have a lot of information on this yet).
 Time permitting, I’ll add more fuzzers to the mix.
 
-As I write this, over 18 trillion tests in the past 30 days (counting only
+As I write this, over 56 trillion tests in the past 30 days (counting only
 the tests with `libFuzzer <https://llvm.org/docs/LibFuzzer.html>`__,
 although `AFL <http://lcamtuf.coredump.cx/afl/>`__ is also used), which is
 nothing short of amazing.
