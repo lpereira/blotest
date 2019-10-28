@@ -724,9 +724,9 @@ configuration file parser is also being fuzzed, although the work has
 just recently started (I don’t have a lot of information on this yet).
 Time permitting, I’ll add more fuzzers to the mix.
 
-As I write this, over 18 trillion tests (counting only the tests with
-`libFuzzer <https://llvm.org/docs/LibFuzzer.html>`__, although
-`AFL <http://lcamtuf.coredump.cx/afl/>`__ is also used), which is
+As I write this, over 18 trillion tests in the past 30 days (counting only
+the tests with `libFuzzer <https://llvm.org/docs/LibFuzzer.html>`__,
+although `AFL <http://lcamtuf.coredump.cx/afl/>`__ is also used), which is
 nothing short of amazing.
 
 Portability
@@ -1446,9 +1446,9 @@ Snippets
 Non-boolean predicates
 ----------------------
 
-C lacks sum types, but sometimes you can get creative with what you
-have. For instance, I like how elegant this small piece of code that
-determines the temporary directory turned out:
+C lacks option types, but sometimes you can get creative with what you have. 
+For instance, I like how elegant this small piece of code that determines
+the temporary directory turned out:
 
 .. code:: c
 

@@ -744,9 +744,9 @@ this is around 15%, which is pretty decent all things considered. The
 configuration file parser is also being fuzzed, although the work has
 just recently started (I don’t have a lot of information on this yet).
 Time permitting, I’ll add more fuzzers to the mix.</p>
-<p>As I write this, over 18 trillion tests (counting only the tests with
-<a class="reference external" href="https://llvm.org/docs/LibFuzzer.html">libFuzzer</a>, although
-<a class="reference external" href="http://lcamtuf.coredump.cx/afl/">AFL</a> is also used), which is
+<p>As I write this, over 18 trillion tests in the past 30 days (counting only
+the tests with <a class="reference external" href="https://llvm.org/docs/LibFuzzer.html">libFuzzer</a>,
+although <a class="reference external" href="http://lcamtuf.coredump.cx/afl/">AFL</a> is also used), which is
 nothing short of amazing.</p>
 </div>
 <div class="section" id="portability">
@@ -1415,9 +1415,9 @@ without having to worry about overreading the main configuration.)</p>
 <h1>Snippets</h1>
 <div class="section" id="non-boolean-predicates">
 <h2>Non-boolean predicates</h2>
-<p>C lacks sum types, but sometimes you can get creative with what you
-have. For instance, I like how elegant this small piece of code that
-determines the temporary directory turned out:</p>
+<p>C lacks option types, but sometimes you can get creative with what you have.
+For instance, I like how elegant this small piece of code that determines
+the temporary directory turned out:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">static</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="nf">is_dir</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">v</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="k">struct</span> <span class="n">stat</span> <span class="n">st</span><span class="p">;</span>
