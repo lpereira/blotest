@@ -22,7 +22,7 @@
             <link rel="stylesheet" href="../../../_static/flat.css" type="text/css">
             <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
             <link rel="stylesheet" href="../../../_static/font-awesome.min.css" type="text/css">
-        <!-- Load modernizr and JQuery -->
+        <link rel="shortcut icon" href="../../../_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
         <script src="../../../_static/vendor/modernizr-2.6.2.min.js"></script>
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
         <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
@@ -31,13 +31,13 @@
         <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Parsing JSON" href="../../03/01/parsing_json.html" /><link rel="prev" title="More on string switch in C" href="../../../2018/02/01/more_on_string_switch_in_c.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     '1.7.1',
+        VERSION:     '1.7.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
-    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script><script type="text/javascript" src="../../../_static/language_data.js"></script>
+    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
 <style type="text/css">img {max-width: 100%;}</style>
 </head>
     <body role="document">
@@ -88,7 +88,7 @@ instead.</p>
 <p>However, instead of using <a class="reference external" href="https://en.wikipedia.org/wiki/SeaBIOS">SeaBIOS</a>
 as the payload and have a standard bootloader, I opted to go through a
 slightly different route: have a custom-built Linux inside the ROM, open the
-<code class="docutils literal notranslate"><span class="pre">/boot</span></code> partition with LUKS, and
+<span class="docutils literal"><span class="pre">/boot</span></span> partition with LUKS, and
 <a class="reference external" href="http://man7.org/linux/man-pages/man2/kexec_load.2.html">kexec</a> the current
 vmlinuz/initrd.</p>
 <p>Compared to the usual setup of using SeaBIOS as a payload, this setup
@@ -99,8 +99,8 @@ bare minimum drivers are built-in, USB is limited to HID devices, etc; the
 compressed kernel has ~1.7MiB with room to shrink.  The in-ROM initrd is
 also quite minimal, containing just one file.</p>
 <p>The only file is a <a class="reference external" href="https://gist.github.com/lpereira/845fe060ba68a5db95827cbc5496bb6d">hacked version</a> of
-cryptsetup that acts as a primitive init, creating <code class="docutils literal notranslate"><span class="pre">/proc</span></code>, <code class="docutils literal notranslate"><span class="pre">/dev</span></code> (and mounting
-these two), and <code class="docutils literal notranslate"><span class="pre">/boot</span></code>, decrypting <code class="docutils literal notranslate"><span class="pre">/boot</span></code>, and performing kexec.  It’s
+cryptsetup that acts as a primitive init, creating <span class="docutils literal"><span class="pre">/proc</span></span>, <span class="docutils literal"><span class="pre">/dev</span></span> (and mounting
+these two), and <span class="docutils literal"><span class="pre">/boot</span></span>, decrypting <span class="docutils literal"><span class="pre">/boot</span></span>, and performing kexec.  It’s
 statically linked with <a class="reference external" href="https://www.musl-libc.org/">musl libc</a>.</p>
 <p>Flashing this requires opening the laptop, and I’m planning to do this next
 weekend when replacing the USB ports.  However, the setup works very well
@@ -132,6 +132,8 @@ something similar to this idea, I’d love to know as well.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2020/02/10/optimizing_a_json_serializer.html">Optimizing a JSON serializer (part 1)</a>
+        </li><li>
             <a href="../../../2019/10/24/lwan_5_years_in_snippets.html">Lwan: 5 years in snippets</a>
         </li><li>
             <a href="../../../2018/06/28/include_next_and_portability.html">include_next and portability</a>
@@ -149,8 +151,6 @@ something similar to this idea, I’d love to know as well.</p>
             <a href="../../../2014/11/02/hybrid_c_pascal_strings.html">Hybrid C/Pascal Strings</a>
         </li><li>
             <a href="../../../2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
-        </li><li>
-            <a href="../../../2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
@@ -167,6 +167,7 @@ something similar to this idea, I’d love to know as well.</p>
       <a href="../../../tags/enlightenment.html" style="font-size: 8pt">enlightenment</a>&nbsp;&nbsp;
       <a href="../../../tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="../../../tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
+      <a href="../../../tags/json.html" style="font-size: 8pt">json</a>&nbsp;&nbsp;
       <a href="../../../tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
       <a href="../../../tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
       <a href="../../../tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;

@@ -1,0 +1,248 @@
+<!DOCTYPE html><!--[if lt IE 7]>      <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:og="http://ogp.me/ns#"
+    xmlns:fb="https://www.facebook.com/2008/fbml" class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width">
+        <title>Optimizing a JSON serializer (part 1) &mdash; Leandro Pereira</title>
+            <link rel="stylesheet" href="../../../_static/normalize.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/sphinx.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/main.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/flat.css" type="text/css">
+            <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+            <link rel="stylesheet" href="../../../_static/font-awesome.min.css" type="text/css">
+        <link rel="shortcut icon" href="../../../_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
+        <script src="../../../_static/vendor/modernizr-2.6.2.min.js"></script>
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+        <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
+        <script src="../../../_static/plugins.js"></script>
+        <script src="../../../_static/main.js"></script>
+        <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Lwan: 5 years in snippets" href="../../../2019/10/24/lwan_5_years_in_snippets.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.7.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        SOURCELINK_SUFFIX: '.txt',
+        HAS_SOURCE:  true
+      };
+    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
+<style type="text/css">img {max-width: 100%;}</style>
+</head>
+    <body role="document">
+        <!--[if lt IE 7]>
+            <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
+        <![endif]-->
+
+      <div id="container"><header role="banner">
+            <hgroup>
+              <h1><a href="../../../index.html">Leandro Pereira</a></h1></hgroup>
+          </header>
+      <nav role="navigation">
+            <ul><li class="main-nav">
+                  <a href="../../../index.html">Home</a>
+                </li>
+              <li class="main-nav">
+                  <a href="../../../pages/about.html">About</a>
+                </li>
+              </ul>
+          </nav><div class="main-container" role="main"><div class="main wrapper body clearfix"><article><div class="timestamp postmeta">
+            <span>February 10, 2020</span>
+        </div>
+    <div class="section" id="optimizing-a-json-serializer-part-1">
+<h1>Optimizing a JSON serializer (part 1)</h1>
+<p>A few years back, I wrote a <a class="reference external" href="https://tia.mat.br/posts/2017/03/01/parsing_json.html">tiny JSON library for the Zephyr OS</a>; it focused
+mostly in things that are important for an embedded real-time operating
+system: code size, type-safety, and predictability (both for memory and CPU
+time usage).  It was never tuned to ace performance benchmarks: the other
+constraints were far more important driver for its design decisions.</p>
+<p>As part of the Lwan entry in the <a class="reference external" href="https://www.techempower.com/benchmarks/">TechEmpower Web Framework Benchmarks</a> (TWFB), the <a class="reference external" href="https://github.com/rustyrussell/ccan/tree/master/ccan/json">JSON library</a> from CCAN
+was used.  It was responsible in part for Lwan <a class="reference external" href="https://www.techempower.com/blog/2015/04/21/framework-benchmarks-round-10/">“taking the crown”</a> for that
+around, according to their blog post.  It’s certainly not a bad library, but
+considering I can reason about every line of code in the JSON library I
+wrote for Zephyr, I decided to use it instead, moving forward.</p>
+<p>I could just consider the JSON library as a black box and not worry about
+its guts, but I wanted to optimize it – just for fun – and being able to
+understand every design decision in the new library contributed a lot to the
+decision of changing libraries.</p>
+<p>In the end, though, there’s not much point in spending time optimizing a
+JSON encoder that’s good enough already; most of the time is spent in the
+network transport, and it’s very unlikely that changes in something like
+this will actually influence benchmarks.  Lwan is, however, more of a
+testbed of ideas, where I’m free to try out different techniques or play
+with things I rarely have the opportunity to play with in the “real world”,
+so this seemed like a good candidate to start.</p>
+<p>For those unfamiliar with the JSON benchmark in TWFB, it essentially has the
+requirement that, for a particular endpoint, an object is created and
+serialized on-the-fly (without caching).  The object has to have the content
+(<span class="docutils literal"><span class="pre">{&quot;message&quot;:</span> <span class="pre">&quot;Hello,</span> <span class="pre">World!&quot;}</span></span>), so unless the JSON library is pretty bad
+to begin with, there isn’t much that can be done to speed this up.</p>
+<p>The CCAN library requires a JSON object tree to be built before
+it can serialize, just to require that data to be torn down immediately
+afterwards; it is kind of wasteful.  It also requires serializing the whole
+JSON buffer into a chunk of memory that’s allocated by the encoder,
+potentially requiring copies.</p>
+<p>The new JSON library, however, takes a different approach.</p>
+<p>Instead of requiring an object tree to be built, the serializer traverses a
+descriptor array while obtaining values from a user-supplied struct (the
+descriptor contains the type and offserts to the user-supplied pointer where
+the values can be obtained); it kind of does “manual reflection”, if such
+thing would make sense.  The struct can be allocated in the stack, avoiding
+expensive roundtrips to malloc (and occasional heap fragmentation).  My
+<a class="reference external" href="https://tia.mat.br/posts/2017/03/01/parsing_json.html">previous blog post about the JSON library</a> has more details
+on how this works, from the parsing side.</p>
+<p>In addition, the encoder takes a function pointer that’s called to append
+bytes to a buffer; this interface, inspired by Go’s Writer interface,
+completely decouples the JSON encoder from the buffer manipulation
+facilities.  For the benchmark, since each response in Lwan has a <span class="docutils literal"><span class="pre">struct</span>
+<span class="pre">lwan_strbuf</span></span>, that’s what the supplied callback ends up using.  (This
+function pointer is also used as a way to calculate the amount of memory
+necessary to serialize some piece of data.  More on this later.)</p>
+<div class="section" id="miscelaneous-little-improvements">
+<h2>Miscelaneous little improvements</h2>
+<p><strong>Alignment: shift ➡ full values.</strong> Zephyr is built for embedded devices.
+Memory is severely constrained, so it’s usually fine to pay the price of
+packing multiple integer values into a single <cite>uint32_t</cite>.  Lwan doesn’t
+have that limitation, so bitfields were removed from that version.</p>
+<p><strong>Getting rid of branches while encoding commas between elements:</strong> JSON
+uses commas as item delimiter in its collection types; as such, it doesn’t
+allow trailing commas.  The encoder originally checked if every descriptor
+entry was the last item; it was modified to never check if it’s the last
+item, but rather:</p>
+<ul class="simple">
+<li>For objects, is starts looping from the second descriptor element,
+always appending a comma inside the loop; when that’s done, the first
+descriptor is serialized.</li>
+<li>For arrays, the loop runs <span class="docutils literal"><span class="pre">(N</span> <span class="pre">-</span> <span class="pre">1)</span></span> times, always appending the comma,
+and finally adds the last element.</li>
+</ul>
+<p><strong>Using `int_to_string()` to serialize integers:</strong> the library originally
+used <span class="docutils literal"><span class="pre">snprintf()</span></span> to serialize integers.  This is inneficient, <a class="reference external" href="https://tia.mat.br/posts/2014/06/23/integer_to_string_conversion.html">so another
+method to convert integers to string</a>
+was used instead.</p>
+<p><strong>Keys don’t need to be escaped, most of the time.</strong>  If that’s the case,
+branches can be removed from the fast path and <span class="docutils literal"><span class="pre">append_bytes()</span></span> can be
+called with the key name directly.  This saves a lot of indirect function
+calls.   For keys that need to be escaped, or for string values, the
+library would previously call <span class="docutils literal"><span class="pre">append_bytes()</span></span> for each byte from the
+string to be escaped; it’s now batched and only split into multiple calls
+if there’s a character that needs to be escaped.</p>
+<p><strong>Deferred error checking: ``append_bytes()`` isn’t supposed to fail, most of
+the time.</strong>  So it’s fine to not return early and keep trying to serialize,
+as long as the original caller knows that an encoding error happened. So,
+instead of many <span class="docutils literal"><span class="pre">err</span> <span class="pre">=</span> <span class="pre">append_bytes(...);</span> <span class="pre">if</span> <span class="pre">(err</span> <span class="pre">&lt;</span> <span class="pre">0)</span> <span class="pre">{</span> <span class="pre">return</span> <span class="pre">err;</span> <span class="pre">}</span></span>
+lines, the encoder essentially does <span class="docutils literal"><span class="pre">err</span> <span class="pre">|=</span> <span class="pre">append_bytes(...)</span></span> and returns
+<span class="docutils literal"><span class="pre">err</span></span> at the end.  This code is not equivalent, especially since
+<span class="docutils literal"><span class="pre">append_bytes()</span></span> can return any negative error code, but it does remove
+alot of branches in the fast path.  If you know your error codes (e.g.
+they’re all power of two), this can actually be a good solution, and better
+than relying on error codes from <span class="docutils literal"><span class="pre">&lt;errno.h&gt;</span></span>.</p>
+<p><strong>Pre-encode keys with quotes and colon:</strong> for every key/value pair in an
+object, the encoder had to call <span class="docutils literal"><span class="pre">append_bytes()</span></span> at least 5 times: one for
+each comma, one for the colon, one for the key, and one for the value.  By
+pre-calculating the key+colon in compile time, each key/value pair will
+make at most 2 calls to <span class="docutils literal"><span class="pre">append_bytes()</span></span>: one for the key, and one for the
+value.  This could be easily done in the macros that define a JSON object
+descriptor, and stored right after the unencoded key (because each
+descriptor also carries the key length with it).</p>
+</div>
+<div class="section" id="next-time">
+<h2>Next time</h2>
+<p>I’ll probably continue working in this JSON library before the next round of
+the TWFB takes place.  I’m working on another improvement (that will take
+some time to finish) that, if it works, will be described here in the blog.
+(And, of course, next time performance numbers will accompany the article.)</p>
+</div>
+</div>
+
+    <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="../../../tags/lwan.html">lwan</a>, <a href="../../../tags/json.html">json</a>, <a href="../../../tags/optimization.html">optimization</a>, <a href="../../../tags/programming.html">programming</a></span>
+        </div>
+        </div><ul class="related clearfix">
+            <li class="left"></li>
+            <li class="right"><a href="../../../2019/10/24/lwan_5_years_in_snippets.html">Lwan: 5 years in snippets</a> &raquo; </li>
+        </ul></article><aside class="sidebar"><section><div class="widget" id="searchbox" role="search">
+    <h1><a href="#searchbox">Search</a></h1>
+    <form action="../../../search.html" method="get">
+        <input type="text" name="q" />
+        <button type="submit"><span class="fa fa-search"></span></button>
+    </form>
+</div></section><section><div class="widget">
+    <h1>Recent Posts</h1>
+    <ul><li>
+            <a href="#">Optimizing a JSON serializer (part 1)</a>
+        </li><li>
+            <a href="../../../2019/10/24/lwan_5_years_in_snippets.html">Lwan: 5 years in snippets</a>
+        </li><li>
+            <a href="../../../2018/06/28/include_next_and_portability.html">include_next and portability</a>
+        </li><li>
+            <a href="../../../2018/02/01/more_on_string_switch_in_c.html">More on string switch in C</a>
+        </li><li>
+            <a href="../../../2017/05/08/coreboot_luks.html">Coreboot & LUKS</a>
+        </li><li>
+            <a href="../../../2017/03/01/parsing_json.html">Parsing JSON</a>
+        </li><li>
+            <a href="../../../2016/11/08/infect_to_protect.html">Infect to Protect</a>
+        </li><li>
+            <a href="../../../2015/05/01/initializing_a_heap_allocated_structure_in_c.html">Initializing a heap-allocated structure in C</a>
+        </li><li>
+            <a href="../../../2014/11/02/hybrid_c_pascal_strings.html">Hybrid C/Pascal Strings</a>
+        </li><li>
+            <a href="../../../2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
+        </li></ul>
+</div>
+</section><section><div class="widget">
+    <h1>Tags Cloud</h1>
+      <a href="../../../tags/arduino.html" style="font-size: 8pt">arduino</a>&nbsp;&nbsp;
+      <a href="../../../tags/assembly.html" style="font-size: 8pt">assembly</a>&nbsp;&nbsp;
+      <a href="../../../tags/bpf.html" style="font-size: 8pt">bpf</a>&nbsp;&nbsp;
+      <a href="../../../tags/c.html" style="font-size: 16pt">C</a>&nbsp;&nbsp;
+      <a href="../../../tags/c.html" style="font-size: 8pt">c</a>&nbsp;&nbsp;
+      <a href="../../../tags/conferences.html" style="font-size: 8pt">conferences</a>&nbsp;&nbsp;
+      <a href="../../../tags/container.html" style="font-size: 8pt">container</a>&nbsp;&nbsp;
+      <a href="../../../tags/data_structure.html" style="font-size: 8pt">data-structure</a>&nbsp;&nbsp;
+      <a href="../../../tags/efl.html" style="font-size: 8pt">efl</a>&nbsp;&nbsp;
+      <a href="../../../tags/enlightenment.html" style="font-size: 8pt">enlightenment</a>&nbsp;&nbsp;
+      <a href="../../../tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
+      <a href="../../../tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
+      <a href="../../../tags/json.html" style="font-size: 8pt">json</a>&nbsp;&nbsp;
+      <a href="../../../tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
+      <a href="../../../tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
+      <a href="../../../tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
+      <a href="../../../tags/parser.html" style="font-size: 8pt">parser</a>&nbsp;&nbsp;
+      <a href="../../../tags/profusion.html" style="font-size: 9pt">profusion</a>&nbsp;&nbsp;
+      <a href="../../../tags/programming.html" style="font-size: 20pt">programming</a>&nbsp;&nbsp;
+      <a href="../../../tags/strace.html" style="font-size: 8pt">strace</a>&nbsp;&nbsp;
+      <a href="../../../tags/template.html" style="font-size: 8pt">template</a>&nbsp;&nbsp;
+      <a href="../../../tags/tizen.html" style="font-size: 8pt">tizen</a>&nbsp;&nbsp;
+      <a href="../../../tags/trick.html" style="font-size: 14pt">trick</a>&nbsp;&nbsp;
+      <a href="../../../tags/tricks.html" style="font-size: 8pt">tricks</a>&nbsp;&nbsp;
+      <a href="../../../tags/zephyr.html" style="font-size: 8pt">zephyr</a>
+</div></section></aside></div> <!-- #main --></div> <!-- #main-container -->
+
+        <div class="footer-container" role="contentinfo"><footer class="wrapper">&copy; Copyright 2012—2019, Leandro Pereira. Powered by <a href="http://www.tinkerer.me/">Tinkerer</a> and <a href="http://sphinx.pocoo.org/">Sphinx</a>.</footer></div> <!-- footer-container -->
+
+      </div> <!--! end of #container --><!--[if lt IE 7 ]>
+          <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"></script>
+          <script>window.attachEvent('onload',function(){CFInstall.check({mode:'overlay'})})</script>
+        <![endif]-->
+    </body>
+</html>

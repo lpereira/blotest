@@ -22,7 +22,7 @@
             <link rel="stylesheet" href="../../../_static/flat.css" type="text/css">
             <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
             <link rel="stylesheet" href="../../../_static/font-awesome.min.css" type="text/css">
-        <!-- Load modernizr and JQuery -->
+        <link rel="shortcut icon" href="../../../_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
         <script src="../../../_static/vendor/modernizr-2.6.2.min.js"></script>
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
         <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
@@ -31,13 +31,13 @@
         <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Hash trie" href="../10/hash_trie.html" /><link rel="prev" title="File serving with few system calls" href="../12/file_serving_with_few_system_calls.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     '1.7.1',
+        VERSION:     '1.7.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
-    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script><script type="text/javascript" src="../../../_static/language_data.js"></script>
+    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
 <style type="text/css">img {max-width: 100%;}</style>
 </head>
     <body role="document">
@@ -68,8 +68,8 @@ through <a class="reference external" href="https://en.wikipedia.org/wiki/Resour
 <p>In <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>, I’m using my own home-cooked <a class="reference external" href="https://en.wikipedia.org/wiki/Coroutine">coroutine</a> implementation. All
 requests are handled by coroutines, so that it makes easy to condition the
 execution of deferred statements with the cleanup of a coroutine. And that’s
-what I did, by implementing <code class="docutils literal notranslate"><span class="pre">coro_defer()</span></code>, which adds hooks that will be
-called sequentially by <code class="docutils literal notranslate"><span class="pre">coro_free()</span></code>.</p>
+what I did, by implementing <span class="docutils literal"><span class="pre">coro_defer()</span></span>, which adds hooks that will be
+called sequentially by <span class="docutils literal"><span class="pre">coro_free()</span></span>.</p>
 <p>This can be used for various purposes, including garbage collection and other
 miscellaneous cleanup code:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span><span class="o">*</span> <span class="nf">coro_malloc</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">sz</span><span class="p">)</span> <span class="p">{</span>
@@ -121,6 +121,8 @@ leave the cleanup to <a class="reference external" href="http://github.com/lpere
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2020/02/10/optimizing_a_json_serializer.html">Optimizing a JSON serializer (part 1)</a>
+        </li><li>
             <a href="../../../2019/10/24/lwan_5_years_in_snippets.html">Lwan: 5 years in snippets</a>
         </li><li>
             <a href="../../../2018/06/28/include_next_and_portability.html">include_next and portability</a>
@@ -138,8 +140,6 @@ leave the cleanup to <a class="reference external" href="http://github.com/lpere
             <a href="../../../2014/11/02/hybrid_c_pascal_strings.html">Hybrid C/Pascal Strings</a>
         </li><li>
             <a href="../../../2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
-        </li><li>
-            <a href="../../../2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
@@ -156,6 +156,7 @@ leave the cleanup to <a class="reference external" href="http://github.com/lpere
       <a href="../../../tags/enlightenment.html" style="font-size: 8pt">enlightenment</a>&nbsp;&nbsp;
       <a href="../../../tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="../../../tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
+      <a href="../../../tags/json.html" style="font-size: 8pt">json</a>&nbsp;&nbsp;
       <a href="../../../tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
       <a href="../../../tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
       <a href="../../../tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;

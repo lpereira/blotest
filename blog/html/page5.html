@@ -22,7 +22,7 @@
             <link rel="stylesheet" href="_static/flat.css" type="text/css">
             <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
             <link rel="stylesheet" href="_static/font-awesome.min.css" type="text/css">
-        <!-- Load modernizr and JQuery -->
+        <link rel="shortcut icon" href="_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
         <script src="_static/vendor/modernizr-2.6.2.min.js"></script>
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
         <script>window.jQuery || document.write('<script src="_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
@@ -31,13 +31,13 @@
         <link rel="search" title="Search" href="search.html" /><link rel="prev" title="Newer" href="page4.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '1.7.1',
+        VERSION:     '1.7.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
-    </script><script type="text/javascript" src="_static/underscore.js"></script><script type="text/javascript" src="_static/doctools.js"></script><script type="text/javascript" src="_static/language_data.js"></script>
+    </script><script type="text/javascript" src="_static/underscore.js"></script><script type="text/javascript" src="_static/doctools.js"></script>
 <style type="text/css">img {max-width: 100%;}</style>
 </head>
     <body role="document">
@@ -58,6 +58,58 @@
                 </li>
               </ul>
           </nav><div class="main-container" role="main"><div class="main wrapper body clearfix"><article><div class="timestamp postmeta">
+            <span>August 11, 2012</span>
+        </div>
+        <div class="section">
+            <h1><a href="2012/08/11/deferred_statements_in_c.html">Deferred statements in C</a></h1>
+<p><a class="reference external" href="http://golang.org">Golang</a> has a lot of nice features – and one I found pretty interesting is
+called <a class="reference external" href="http://blog.golang.org/2010/08/defer-panic-and-recover.html">deferred statements</a>. This can be implemented in C++ pretty easily
+through <a class="reference external" href="https://en.wikipedia.org/wiki/Resource_Acquisition_Is_Initialization">RAII</a>, but in C we’re pretty much out of luck. Or are we?</p>
+<p>In <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>, I’m using my own home-cooked <a class="reference external" href="https://en.wikipedia.org/wiki/Coroutine">coroutine</a> implementation. All
+requests are handled by coroutines, so that it makes easy to condition the
+execution of deferred statements with the cleanup of a coroutine. And that’s
+what I did, by implementing <span class="docutils literal"><span class="pre">coro_defer()</span></span>, which adds hooks that will be
+called sequentially by <span class="docutils literal"><span class="pre">coro_free()</span></span>.</p>
+<p>This can be used for various purposes, including garbage collection and other
+miscellaneous cleanup code:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="kt">void</span><span class="o">*</span> <span class="nf">coro_malloc</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">sz</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="n">sz</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">ptr</span><span class="p">)</span>
+            <span class="n">coro_defer</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="n">free</span><span class="p">,</span> <span class="n">ptr</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">ptr</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">void</span><span class="o">*</span> <span class="nf">coro_strdup</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">str</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">dup</span> <span class="o">=</span> <span class="n">strdup</span><span class="p">(</span><span class="n">str</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">dup</span><span class="p">)</span>
+            <span class="n">coro_defer</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="n">free</span><span class="p">,</span> <span class="n">ptr</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">dup</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">coro_open</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">path</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">fd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">flags</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">fd</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">coro_defer</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="n">close</span><span class="p">,</span> <span class="n">INT_TO_PTR</span><span class="p">(</span><span class="n">fd</span><span class="p">));</span>
+    <span class="k">return</span> <span class="n">fd</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>This way, one can easily allocate memory, lock mutexes, open files – and
+leave the cleanup to <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>.</p>
+
+        </div>
+        <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="tags/trick.html">trick</a>, <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/c.html">C</a></span>
+        </div>
+        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
             <span>August 10, 2012</span>
         </div>
         <div class="section">
@@ -72,7 +124,7 @@ which is something I like to avoid.</p>
 get a lot of cache misses.</p>
 <p>Instead of just using a <a class="reference external" href="https://en.wikipedia.org/wiki/Radix_tree">Radix tree</a>, I decided to keep the same basic
 implementation but lower the number of pointers per node to just 8 – and hash
-each key byte by calculating <code class="docutils literal notranslate"><span class="pre">MOD</span> <span class="pre">8</span></code>. This was a very cheap optimization,
+each key byte by calculating <span class="docutils literal"><span class="pre">MOD</span> <span class="pre">8</span></span>. This was a very cheap optimization,
 which works pretty well.</p>
 <p>But this optimization leads to the same problem found in <a class="reference external" href="https://en.wikipedia.org/wiki/Hash_table">hash tables</a>:
 <a class="reference external" href="https://en.wikipedia.org/wiki/Collision_(computer_science)">collisions</a>. The problem is minimized by the fact that collisions can only
@@ -100,22 +152,22 @@ was a match.</p>
         </div>
         <div class="section">
             <h1><a href="2012/08/09/string_switch_in_c.html">String switch in C</a></h1>
-<p>C’s <code class="docutils literal notranslate"><span class="pre">switch</span></code> statement is very powerful. However, it can’t be used with
+<p>C’s <span class="docutils literal"><span class="pre">switch</span></span> statement is very powerful. However, it can’t be used with
 strings, only with constant integral types. This is understandable, since
 strings in C are merely arrays – they’re not first-class citizens.</p>
 <p>There are cases where such statement would be useful for strings. Here’s a
-trick I’m employing in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a> to avoid calling the <code class="docutils literal notranslate"><span class="pre">strcmp</span></code> family of
+trick I’m employing in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a> to avoid calling the <span class="docutils literal"><span class="pre">strcmp</span></span> family of
 functions in some hot paths. This exploits the notion that strings are just
 an array of bytes – and by casting them to a pointer to a 32-bit integer, and
 dereferencing this pointer, we’ll be able to perform a switch statement on
 very small strings (such as file extensions, which are usually comprised of
 four characters, including the dot).</p>
 <p>C also supports multicharacters integral constants. However, because of
-endianess concerns, GCC warns by default when <code class="docutils literal notranslate"><span class="pre">-Wall</span> <span class="pre">-Wextra</span></code> is used with
+endianess concerns, GCC warns by default when <span class="docutils literal"><span class="pre">-Wall</span> <span class="pre">-Wextra</span></span> is used with
 these constants. My solution was to just use a macro in conjuntion with an
-<code class="docutils literal notranslate"><span class="pre">enum</span></code>, to create the constant integral types expected by the compiler.</p>
+<span class="docutils literal"><span class="pre">enum</span></span>, to create the constant integral types expected by the compiler.</p>
 <p>The code below, copied directly from <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>, illustrates an usage of this
-<code class="docutils literal notranslate"><span class="pre">STRING_SWITCH</span></code> statement:</p>
+<span class="docutils literal"><span class="pre">STRING_SWITCH</span></span> statement:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="cp">#define STRING_SWITCH_L(s) switch (*((int32_t *)(s)) | 0x20202020)</span>
 <span class="cp">#define MULTICHAR_CONSTANT(a,b,c,d) ((int32_t)((a) | (b) &lt;&lt; 8 | (c)</span>
 <span class="o">&lt;&lt;</span> <span class="mi">16</span> <span class="o">|</span> <span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="mi">24</span><span class="p">))</span>
@@ -149,7 +201,7 @@ these constants. My solution was to just use a macro in conjuntion with an
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>Note that <code class="docutils literal notranslate"><span class="pre">STRING_SWITCH_L</span></code> performs a bitwise OR with the 32-bit integral
+<p>Note that <span class="docutils literal"><span class="pre">STRING_SWITCH_L</span></span> performs a bitwise OR with the 32-bit integral
 value – this is a fast means of lowering the case of four characters at once.</p>
 <p>This kind of switch statement is used in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a> to match HTTP headers and
 HTTP methods, and also the naïve file extension to MIME-Type conversion code
@@ -232,6 +284,8 @@ thank my employer, ProFUSION Embedded Systems, for sponsoring my trip.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="2020/02/10/optimizing_a_json_serializer.html">Optimizing a JSON serializer (part 1)</a>
+        </li><li>
             <a href="2019/10/24/lwan_5_years_in_snippets.html">Lwan: 5 years in snippets</a>
         </li><li>
             <a href="2018/06/28/include_next_and_portability.html">include_next and portability</a>
@@ -249,8 +303,6 @@ thank my employer, ProFUSION Embedded Systems, for sponsoring my trip.</p>
             <a href="2014/11/02/hybrid_c_pascal_strings.html">Hybrid C/Pascal Strings</a>
         </li><li>
             <a href="2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
-        </li><li>
-            <a href="2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
@@ -267,6 +319,7 @@ thank my employer, ProFUSION Embedded Systems, for sponsoring my trip.</p>
       <a href="tags/enlightenment.html" style="font-size: 8pt">enlightenment</a>&nbsp;&nbsp;
       <a href="tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
+      <a href="tags/json.html" style="font-size: 8pt">json</a>&nbsp;&nbsp;
       <a href="tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
       <a href="tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
       <a href="tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;

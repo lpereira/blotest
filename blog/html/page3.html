@@ -22,7 +22,7 @@
             <link rel="stylesheet" href="_static/flat.css" type="text/css">
             <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
             <link rel="stylesheet" href="_static/font-awesome.min.css" type="text/css">
-        <!-- Load modernizr and JQuery -->
+        <link rel="shortcut icon" href="_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
         <script src="_static/vendor/modernizr-2.6.2.min.js"></script>
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
         <script>window.jQuery || document.write('<script src="_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
@@ -31,13 +31,13 @@
         <link rel="search" title="Search" href="search.html" /><link rel="next" title="Older" href="page4.html" /><link rel="prev" title="Newer" href="page2.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '1.7.1',
+        VERSION:     '1.7.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
-    </script><script type="text/javascript" src="_static/underscore.js"></script><script type="text/javascript" src="_static/doctools.js"></script><script type="text/javascript" src="_static/language_data.js"></script>
+    </script><script type="text/javascript" src="_static/underscore.js"></script><script type="text/javascript" src="_static/doctools.js"></script>
 <style type="text/css">img {max-width: 100%;}</style>
 </head>
     <body role="document">
@@ -58,6 +58,143 @@
                 </li>
               </ul>
           </nav><div class="main-container" role="main"><div class="main wrapper body clearfix"><article><div class="timestamp postmeta">
+            <span>June 23, 2014</span>
+        </div>
+        <div class="section">
+            <h1><a href="2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a></h1>
+<p>There are various ways to convert integers to their string representation.
+These conversions are rarely a bottleneck, but they often show up while
+profiling certain applications.  For instance, they’re very common in
+<a class="reference external" href="http://lwan.ws">Lwan</a> while building the response headers.</p>
+<p>To use Lwan as an example: initially, <span class="docutils literal"><span class="pre">snprintf()</span></span> was used to convert
+numbers.  Although this works, it is quite boring, performance-wise.</p>
+<p>The second approach was using the naïve algorithm, which basically divides
+the number by <span class="docutils literal"><span class="pre">10</span></span> in succession, writing backwards the result of modulus by
+<span class="docutils literal"><span class="pre">10</span></span> to a string, and then reversing the string when the number reaches <span class="docutils literal"><span class="pre">0</span></span>.</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="c1">// Code based on https://code.google.com/p/stringencoders/</span>
+<span class="kt">size_t</span> <span class="nf">naive_uint32_to_str</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">value</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">str</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">wstr</span> <span class="o">=</span> <span class="n">str</span><span class="p">;</span>
+    <span class="c1">// Conversion. Number is reversed.</span>
+    <span class="k">do</span>
+       <span class="o">*</span><span class="n">wstr</span><span class="o">++</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span><span class="p">)</span> <span class="n">decimal_digits</span><span class="p">[</span><span class="n">uvalue</span> <span class="o">%</span> <span class="mi">10</span><span class="p">];</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">uvalue</span> <span class="o">/=</span> <span class="mi">10</span><span class="p">);</span>
+    <span class="o">*</span><span class="n">wstr</span> <span class="o">=</span> <span class="sc">'\0'</span><span class="p">;</span>
+    <span class="c1">// Reverse string</span>
+    <span class="n">strreverse</span><span class="p">(</span><span class="n">str</span><span class="p">,</span> <span class="n">wstr</span> <span class="o">-</span> <span class="mi">1</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">wstr</span> <span class="o">-</span> <span class="n">str</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>This was fine for a while, but that string reversion step always bothered
+me.  Why not just write the string backwards already?</p>
+<p>I’ve then changed the code in Lwan to the following snippet. Note the nice
+trick of multiplying the size of an integer in bytes by <span class="docutils literal"><span class="pre">3</span></span> to obtain an
+approximation of the number of digits for <span class="docutils literal"><span class="pre">MAX_INT</span></span>, including the zero
+terminator, regardless of what <span class="docutils literal"><span class="pre">sizeof(int)</span></span> is.</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="cp">#define INT_TO_STR_BUFFER_SIZE (3 * sizeof(int))</span>
+
+<span class="kt">char</span> <span class="o">*</span><span class="nf">lwan_uint32_to_str</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">value</span><span class="p">,</span>
+            <span class="kt">char</span> <span class="n">buffer</span><span class="p">[</span><span class="k">static</span> <span class="n">INT_TO_STR_BUFFER_SIZE</span><span class="p">],</span>
+            <span class="kt">size_t</span> <span class="o">*</span><span class="n">len</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">p</span> <span class="o">=</span> <span class="n">buffer</span> <span class="o">+</span> <span class="n">INT_TO_STR_BUFFER_SIZE</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span>
+
+    <span class="o">*</span><span class="n">p</span> <span class="o">=</span> <span class="sc">'\0'</span><span class="p">;</span>
+    <span class="k">do</span> <span class="p">{</span>
+        <span class="o">*--</span><span class="n">p</span> <span class="o">=</span> <span class="s">"0123456789"</span><span class="p">[</span><span class="n">value</span> <span class="o">%</span> <span class="mi">10</span><span class="p">];</span>
+    <span class="p">}</span> <span class="k">while</span> <span class="p">(</span><span class="n">value</span> <span class="o">/=</span> <span class="mi">10</span><span class="p">);</span>
+
+    <span class="kt">size_t</span> <span class="n">difference</span> <span class="o">=</span> <span class="p">(</span><span class="kt">size_t</span><span class="p">)(</span><span class="n">p</span> <span class="o">-</span> <span class="n">buffer</span><span class="p">);</span>
+    <span class="o">*</span><span class="n">len</span> <span class="o">=</span> <span class="p">(</span><span class="kt">size_t</span><span class="p">)(</span><span class="n">INT_TO_STR_BUFFER_SIZE</span> <span class="o">-</span> <span class="n">difference</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span>
+
+    <span class="k">return</span> <span class="n">p</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Reducing writes to the array made this algorithm significantly faster.
+However, I eventually did what one should always avoid when tinkering with
+this kind of thing: I’ve changed the array lookup to an addition, without
+measuring if it would perform better, and committed the code anyway.  The
+lookup table is ~9% faster.  Ouch!</p>
+<p>Last year, the Facebook Engineering team <a class="reference external" href="https://www.facebook.com/notes/facebook-engineering/three-optimization-tips-for-c/10151361643253920">posted a function</a> to convert
+integers to strings that manages to be even faster.  They do use the same
+idea of avoiding having to reverse the string after they’re done converting
+each digit, and they use a lookup table as well.</p>
+<p>But the nice trick is that, instead of having a lookup table for 10 digits,
+there’s a table for all pair of digits, from <cite>00</cite> to <cite>99</cite>.  This cuts the
+amount of divisions by half, yielding a significantly faster algorithm:
+around 31% faster than the above snippet:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="kt">size_t</span> <span class="nf">facebook_uint32_to_str</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">value</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">dst</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">static</span> <span class="k">const</span> <span class="kt">char</span> <span class="n">digits</span><span class="p">[</span><span class="mi">201</span><span class="p">]</span> <span class="o">=</span>
+        <span class="s">"0001020304050607080910111213141516171819"</span>
+        <span class="s">"2021222324252627282930313233343536373839"</span>
+        <span class="s">"4041424344454647484950515253545556575859"</span>
+        <span class="s">"6061626364656667686970717273747576777879"</span>
+        <span class="s">"8081828384858687888990919293949596979899"</span><span class="p">;</span>
+    <span class="kt">size_t</span> <span class="k">const</span> <span class="n">length</span> <span class="o">=</span> <span class="n">digits10</span><span class="p">(</span><span class="n">value</span><span class="p">);</span>
+    <span class="kt">size_t</span> <span class="n">next</span> <span class="o">=</span> <span class="n">length</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">value</span> <span class="o">&gt;=</span> <span class="mi">100</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">auto</span> <span class="k">const</span> <span class="n">i</span> <span class="o">=</span> <span class="p">(</span><span class="n">value</span> <span class="o">%</span> <span class="mi">100</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span><span class="p">;</span>
+        <span class="n">value</span> <span class="o">/=</span> <span class="mi">100</span><span class="p">;</span>
+        <span class="n">dst</span><span class="p">[</span><span class="n">next</span><span class="p">]</span> <span class="o">=</span> <span class="n">digits</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">];</span>
+        <span class="n">dst</span><span class="p">[</span><span class="n">next</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">digits</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+        <span class="n">next</span> <span class="o">-=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="c1">// Handle last 1-2 digits</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">value</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">dst</span><span class="p">[</span><span class="n">next</span><span class="p">]</span> <span class="o">=</span> <span class="sc">'0'</span> <span class="o">+</span> <span class="kt">uint32_t</span><span class="p">(</span><span class="n">value</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="k">auto</span> <span class="n">i</span> <span class="o">=</span> <span class="kt">uint32_t</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span><span class="p">;</span>
+        <span class="n">dst</span><span class="p">[</span><span class="n">next</span><span class="p">]</span> <span class="o">=</span> <span class="n">digits</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">];</span>
+        <span class="n">dst</span><span class="p">[</span><span class="n">next</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">digits</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">length</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The <span class="docutils literal"><span class="pre">digits10()</span></span> function is also another function that calculates the
+number of digits of a number in a very efficient manner.  Even being
+performant, though, one can get rid of the call altogether: using a constant
+like <span class="docutils literal"><span class="pre">numeric_limits&lt;uint32_t&gt;::digits10</span></span> will keep the same interface.
+This is possible because the <span class="docutils literal"><span class="pre">dst</span></span> buffer should be large enough to hold
+all the digits of the largest 32-bit unsigned integer anyway.</p>
+<p>Because of implementation details – the function basically compares numbers
+to powers of 10 and recurses when the number of digits surpasses the maximum
+power that they’re comparing to – the speedup of using a constant length
+won’t be significant for small numbers (one and two digits); but if you’re
+optimizing to this level, using a constant won’t hurt.  So much so, that it
+is consistently faster on my machine (a Core i7 2640M laptop, with an
+up-to-date 64-bit Arch Linux):</p>
+<div class="figure align-center" id="id1">
+<a class="reference internal image-reference" href="2014/06/23/https://i.imgur.com/9V0PsPK.png"><img alt="relativespeedup" src="https://i.imgur.com/9V0PsPK.png" style="width: 100%;"/></a>
+<p class="caption"><span class="caption-text">Relative speedup of <span class="docutils literal"><span class="pre">facebook_uint32_to_str()</span></span> using <span class="docutils literal"><span class="pre">digits10()</span></span> and a
+constant value</span></p>
+</div>
+<p>That chart was obtained by using a <a class="reference external" href="https://gist.github.com/lpereira/c0bf3ca3148321395037">benchmark program</a> I wrote that will
+test all these ways of converting an integer to their string representation.
+To compare with other methods, here’s the full chart:</p>
+<div class="figure align-center" id="id2">
+<a class="reference internal image-reference" href="2014/06/23/https://i.imgur.com/b2enLNt.png"><img alt="benchmark" src="https://i.imgur.com/b2enLNt.png" style="width: 100%;"/></a>
+<p class="caption"><span class="caption-text">Results for <span class="docutils literal"><span class="pre">snprintf()</span></span> omitted to not skew results. Spoiler: it’s slow.</span></p>
+</div>
+<p>Unfortunately, there’s a licencing issue that won’t let me use this code in
+Lwan.  The blog post doesn’t mention the license.  I’ve found this <a class="reference external" href="https://mail-archives.apache.org/mod_mbox/apr-dev/200704.mbox/%3C344-65769@sneakemail.com%3E">two-digit
+lookup table in places unrelated to Facebook</a> as well, so I’m not sure who
+had this idea first.  My go-to source of this kind of thing is usually
+<a class="reference external" href="http://www.hackersdelight.org/">Hacker’s Delight</a>, but even then it’s not there.</p>
+
+        </div>
+        <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/trick.html">trick</a>, <a href="tags/c.html">C</a></span>
+        </div>
+        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
             <span>December 08, 2013</span>
         </div>
         <div class="section">
@@ -114,7 +251,7 @@ This stack lives in a coroutine – which won’t use more memory than it was
 already allocated for the coroutine stack.  Another worthy reduction of
 memory usage.</p>
 <p>This also made keep-alive connections a tiny bit faster, as there’s no need to
-<code class="docutils literal notranslate"><span class="pre">memset()</span></code> the request structure to clean state for the next request
+<span class="docutils literal"><span class="pre">memset()</span></span> the request structure to clean state for the next request
 anymore.</p>
 <div class="figure align-center" id="id3">
 <a class="reference internal image-reference" href="2013/12/08/https://i.imgur.com/3BrC0KB.png"><img alt="massifscreenshot" src="https://i.imgur.com/3BrC0KB.png" style="width: 100%;"/></a>
@@ -125,15 +262,15 @@ anymore.</p>
 <h2>Reducing it further</h2>
 <p>There’s another possibility for memory reduction, but I’m not sure if it is
 worthy implementing.</p>
-<p>Lwan uses <code class="docutils literal notranslate"><span class="pre">epoll()</span></code> – and when a file descriptor is added to a poller,
-one can pass arbitrary data inside <code class="docutils literal notranslate"><span class="pre">epoll_data_t</span></code>, up to 64-bit in size.
+<p>Lwan uses <span class="docutils literal"><span class="pre">epoll()</span></span> – and when a file descriptor is added to a poller,
+one can pass arbitrary data inside <span class="docutils literal"><span class="pre">epoll_data_t</span></span>, up to 64-bit in size.
 Both the file descriptor and the remote IP address could then be passed as
 this data, removing both fields from the connection structure.</p>
 <p>This is possible because these are constant values while the connection is
 active; everything else is either useless to identify the connection (the
 file descriptor is used as an index in an array of connections) or changes
 all the time, such as the flags (which would incur the penalty of calling
-<code class="docutils literal notranslate"><span class="pre">epoll_ctl()</span></code> every time they change).</p>
+<span class="docutils literal"><span class="pre">epoll_ctl()</span></span> every time they change).</p>
 <p>This would reduce structures by a few megabytes, which isn’t really worth
 the effort considering IPv6 support would need to be implemented someday and
 this trick would be then rendered useless.  Maybe my refactoring thread will
@@ -147,8 +284,8 @@ members; I’ve committed this code on a <a class="reference external" href="htt
 must be performed.  In the same circumstances as the other tests, the server
 is now using 2MiB less memory.  Basically:</p>
 <ol class="arabic simple">
-<li><p>The remote IP address can be obtained through the <code class="docutils literal notranslate"><span class="pre">getpeername()</span></code> function; since it’s not usually required, the need to keep this information around is reduced.</p></li>
-<li><p>The socket file descriptor can be calculated by pointer arithmetic. Each connection has a reference to the huge connection array that it is part of; subtracting this from the connection pointer yields the file descriptor.</p></li>
+<li>The remote IP address can be obtained through the <span class="docutils literal"><span class="pre">getpeername()</span></span> function; since it’s not usually required, the need to keep this information around is reduced.</li>
+<li>The socket file descriptor can be calculated by pointer arithmetic. Each connection has a reference to the huge connection array that it is part of; subtracting this from the connection pointer yields the file descriptor.</li>
 </ol>
 </div>
 
@@ -192,25 +329,25 @@ prototype, which can probably be better explained with the help of a
 diagram:</p>
 <img alt="diagram" class="align-center" src="https://i.imgur.com/VsAfnsC.png"/>
 <p>In short, the engine will create a coroutine whenever it finds a
-<code class="docutils literal notranslate"><span class="pre">{{#sequence}}</span></code> template tag.  This coroutine will start, and will execute
+<span class="docutils literal"><span class="pre">{{#sequence}}</span></span> template tag.  This coroutine will start, and will execute
 as usual until it yields.</p>
-<p>Yielding <code class="docutils literal notranslate"><span class="pre">false</span></code>, the engine assumes the iteration ended, and proceeds to
-find the next matching <code class="docutils literal notranslate"><span class="pre">{{/sequence}}</span></code> tag to continue from there.</p>
-<p>On a <code class="docutils literal notranslate"><span class="pre">true</span></code> yield, however, the engine will recurse to apply everything is
+<p>Yielding <span class="docutils literal"><span class="pre">false</span></span>, the engine assumes the iteration ended, and proceeds to
+find the next matching <span class="docutils literal"><span class="pre">{{/sequence}}</span></span> tag to continue from there.</p>
+<p>On a <span class="docutils literal"><span class="pre">true</span></span> yield, however, the engine will recurse to apply everything is
 between the iteration tags, repeating the process when the iteration-end tag
-is found and the coroutine yields <code class="docutils literal notranslate"><span class="pre">true</span></code> again.</p>
+is found and the coroutine yields <span class="docutils literal"><span class="pre">true</span></span> again.</p>
 <p>The coroutine is supposed to clean up after itself before returning a
-<code class="docutils literal notranslate"><span class="pre">false</span></code> value.</p>
+<span class="docutils literal"><span class="pre">false</span></span> value.</p>
 <div class="figure align-center" id="id1">
 <img alt="rubegoldbergmachine" src="https://i.imgur.com/7P2yadJ.jpg"/>
 <p class="caption"><span class="caption-text">Professor Butts would be proud. Maybe. <a class="reference external" href="https://en.wikipedia.org/wiki/File:Rubenvent.jpg">Source</a>.</span></p>
 </div>
 <p>A sample generator function is shown below. It iterates over a directory
-with <code class="docutils literal notranslate"><span class="pre">readdir()</span></code>, returning <code class="docutils literal notranslate"><span class="pre">1</span></code> on new item availability and <code class="docutils literal notranslate"><span class="pre">0</span></code> when there
+with <span class="docutils literal"><span class="pre">readdir()</span></span>, returning <span class="docutils literal"><span class="pre">1</span></span> on new item availability and <span class="docutils literal"><span class="pre">0</span></span> when there
 isn’t anything else to do. Notice that initialization, iteration, and cleanup
 is all contained within a single function.</p>
 <p>Also, notice that there’s no need to copy any values to and from the
-structure – calling <code class="docutils literal notranslate"><span class="pre">coro_yield()</span></code> will of course maintain the stack
+structure – calling <span class="docutils literal"><span class="pre">coro_yield()</span></span> will of course maintain the stack
 alive, so local variables can be used outside this function as long as a
 reference to them can be obtained.</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="kt">int</span> <span class="nf">dir_list_generator</span><span class="p">(</span><span class="n">coro_t</span> <span class="o">*</span><span class="n">coro</span><span class="p">)</span>
@@ -261,8 +398,8 @@ about programming.  But I digress.</p>
         <div class="section">
             <h1><a href="2013/07/20/partial_functions_in_c.html">Partially Applied Functions in C</a></h1>
 <p>There are some functions in the standard C library that takes a function
-pointer to be used as a callback later on.  Examples include <code class="docutils literal notranslate"><span class="pre">atexit()</span></code>
-and <code class="docutils literal notranslate"><span class="pre">signal()</span></code>.  However, these functions can’t receive an arbitrary
+pointer to be used as a callback later on.  Examples include <span class="docutils literal"><span class="pre">atexit()</span></span>
+and <span class="docutils literal"><span class="pre">signal()</span></span>.  However, these functions can’t receive an arbitrary
 pointer (which could hold some important program state) in addition to the
 function pointer, so you’re left with pesky global variables:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="cm">/* You have: */</span>
@@ -294,7 +431,7 @@ to be generated by the compiler:</p>
 </pre></div>
 </div>
 <p>The funky-looking cast basically says “call a function pointer at
-<code class="docutils literal notranslate"><span class="pre">FUNCTION_CONSTANT</span></code> with a pointer pointing to <code class="docutils literal notranslate"><span class="pre">PARAMETER_CONSTANT</span></code>”. Of
+<span class="docutils literal"><span class="pre">FUNCTION_CONSTANT</span></span> with a pointer pointing to <span class="docutils literal"><span class="pre">PARAMETER_CONSTANT</span></span>”. Of
 course, if you call this code as is, the program will most likely crash.
 The idea is that this generates this code (IA32 assembly):</p>
 <div class="highlight-objdump notranslate"><div class="highlight"><pre><span/><span class="mh">0f00deba</span> <span class="p">&lt;</span><span class="nf">partial_template_function</span><span class="p">&gt;:</span>
@@ -342,7 +479,7 @@ function or some real pointer argument):</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>And using it to patch the pointers in a page allocated with <code class="docutils literal notranslate"><span class="pre">mmap()</span></code>
+<p>And using it to patch the pointers in a page allocated with <span class="docutils literal"><span class="pre">mmap()</span></span>
 (comments and error recovery have been ommitted for brevity; full source
 code is linked below):</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">Partial</span> <span class="o">*</span>
@@ -434,7 +571,7 @@ instance, if you have a template such as this:</p>
 <span class="n">lwan_tpl_render</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">data</span><span class="p">);</span>
 </pre></div>
 </div>
-<p>Where <code class="docutils literal notranslate"><span class="pre">hello</span></code> is the template that was previously compiled into a series of
+<p>Where <span class="docutils literal"><span class="pre">hello</span></span> is the template that was previously compiled into a series of
 simple instructions (such as <strong>append text</strong> or <strong>append the value of a
 variable</strong>), and the second parameter is a structure containing the data
 needed by the renderer.</p>
@@ -464,7 +601,7 @@ to conveniently group the template variables:</p>
 </pre></div>
 </div>
 <p>Without a way to lookup which value to obtain from the structure, however,
-this would not help much. Enter the second trick: the <code class="docutils literal notranslate"><span class="pre">offsetof(3)</span></code> macro,
+this would not help much. Enter the second trick: the <span class="docutils literal"><span class="pre">offsetof(3)</span></span> macro,
 which computes the offset of a field in a given structure. By storing this
 offset alongside data type information, the value lookup is not only possible
 but can also work with types different than strings:</p>
@@ -516,7 +653,7 @@ but can also work with types different than strings:</p>
 </div>
 <p><a class="reference external" href="https://github.com/lpereira/lwan/blob/wip/template.c">Code for this engine</a> is available in the <a class="reference external" href="https://github.com/lpereira/lwan/tree/wip/">wip branch</a> of my toy web
 server, lwan. It is not currently used there, but it is built alongside the
-main program and can be tested by invoking the generated <code class="docutils literal notranslate"><span class="pre">template</span></code>
+main program and can be tested by invoking the generated <span class="docutils literal"><span class="pre">template</span></span>
 executable.</p>
 <p>Before using that in lwan, though, I’ll try to employ this <a class="reference external" href="http://dginasa.blogspot.com.br/2012/10/brainfuck-jit-compiler-in-around-155.html">nifty trick</a> to
 JIT-compile the template and avoid some of the overhead where it really
@@ -535,54 +672,6 @@ would it? :)</p>
                 Tags:
                 <a href="tags/lwan.html">lwan</a>, <a href="tags/c.html">C</a>, <a href="tags/tricks.html">tricks</a>, <a href="tags/template.html">template</a></span>
         </div>
-        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
-            <span>October 27, 2012</span>
-        </div>
-        <div class="section">
-            <h1><a href="2012/10/27/programming_on_an_arduino_without_a_pc.html">Programming on an Arduino without a PC</a></h1>
-<p>I’ve attended this year’s <a class="reference external" href="http://softwarelivre.org/fisl13">FISL</a>, both as a booth attendee (at
-<a class="reference external" href="http://profusion.mobi">ProFUSION</a>’s booth, demonstrating a few of our end-user-visible projects),
-and as a speaker for my old <a class="reference external" href="http://github.com/lpereira/finf">FINF</a> project.</p>
-<p>FINF is a <a class="reference external" href="http://en.wikipedia.org/wiki/Forth_(programming_language)">Forth</a>-like programming environment that I’ve written in my first
-year at the college. It’s not the first compiler I wrote, but it was the
-first that was actually fun to write. Some years later, I’ve decided to
-rewrite it so that it would work on the <a class="reference external" href="http://www.arduino.cc">Arduino</a> – and that’s what I went
-to FISL to talk about.</p>
-<img alt="audience" class="align-center" src="https://i.imgur.com/AsCOr.jpg"/>
-<p>Arduinos are traditionally programmed by using its IDE, in a language that
-resembles C++. In fact, it is C++, but some of the (boring) details are
-hidden. But, being C++, it’s bound to the slow write-compile-upload-test
-procedures; there’s no interactive prompt, such as you have with Python or
-the venerable 8-bit Microsoft Basic. And since Arduino is all about
-experimentation, an interactive prompt is a must.</p>
-<p>FINF is there to fill this gap. It is not a full <a class="reference external" href="http://en.wikipedia.org/wiki/Forth_(programming_language)">FORTH</a> implementation;
-only a small subset of it is there, but it’s enough to blink some LEDs, make
-some noise, and – if a video output shield is used – use the Arduino as an
-8-bit computer! But, since user code actually runs on top of a very simple
-virtual machine due to the <a class="reference external" href="http://en.wikipedia.org/wiki/Harvard_architecture">Harvard architecture</a> used by the AVR
-microcontroller, it’s not possible to expand the interpreter without getting
-dirt in your hands. Add that to the quite messy code, mix it with myself not
-being a good marketer, and you have yet another failed open source project of
-mine! :)</p>
-<p>In any case, the <a class="reference external" href="https://docs.google.com/presentation/d/1w23aLeFgbvjztjtDIFcGTAl7ghlfxsxH_lW4Fyw8lzw/edit">slides</a> (in Portuguese) are available online.
-Unfortunately, the presentation was not recorded, so if you were not there,
-you’ve missed the great opportunity of seeing myself making a LED blink in
-front of an audience.</p>
-<p>(By the way, I’ll be talking during EFL Developer Day in Barcelona early next
-month. If you’re there for LinuxCon/Embedded Linux Conference and would like
-to join me for some beers, don’t hesitate to contact me!)</p>
-
-        </div>
-        <div class="postmeta">
-        <div class="author">
-            <span>Posted by Leandro Pereira</span>
-        </div>
-        
-        <div class="tags">
-            <span>
-                Tags:
-                <a href="tags/profusion.html">profusion</a>, <a href="tags/finf.html">finf</a>, <a href="tags/conferences.html">conferences</a>, <a href="tags/arduino.html">arduino</a></span>
-        </div>
         </div><div class="archive_link">
         <a href="archive.html"> &mdash; Blog Archive &mdash; </a>
     </div><ul class="related clearfix">
@@ -597,6 +686,8 @@ to join me for some beers, don’t hesitate to contact me!)</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="2020/02/10/optimizing_a_json_serializer.html">Optimizing a JSON serializer (part 1)</a>
+        </li><li>
             <a href="2019/10/24/lwan_5_years_in_snippets.html">Lwan: 5 years in snippets</a>
         </li><li>
             <a href="2018/06/28/include_next_and_portability.html">include_next and portability</a>
@@ -614,8 +705,6 @@ to join me for some beers, don’t hesitate to contact me!)</p>
             <a href="2014/11/02/hybrid_c_pascal_strings.html">Hybrid C/Pascal Strings</a>
         </li><li>
             <a href="2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
-        </li><li>
-            <a href="2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
@@ -632,6 +721,7 @@ to join me for some beers, don’t hesitate to contact me!)</p>
       <a href="tags/enlightenment.html" style="font-size: 8pt">enlightenment</a>&nbsp;&nbsp;
       <a href="tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
+      <a href="tags/json.html" style="font-size: 8pt">json</a>&nbsp;&nbsp;
       <a href="tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
       <a href="tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
       <a href="tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;

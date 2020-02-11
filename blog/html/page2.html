@@ -22,7 +22,7 @@
             <link rel="stylesheet" href="_static/flat.css" type="text/css">
             <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
             <link rel="stylesheet" href="_static/font-awesome.min.css" type="text/css">
-        <!-- Load modernizr and JQuery -->
+        <link rel="shortcut icon" href="_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
         <script src="_static/vendor/modernizr-2.6.2.min.js"></script>
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
         <script>window.jQuery || document.write('<script src="_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
@@ -31,13 +31,13 @@
         <link rel="search" title="Search" href="search.html" /><link rel="next" title="Older" href="page3.html" /><link rel="prev" title="Newer" href="index.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '1.7.1',
+        VERSION:     '1.7.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
-    </script><script type="text/javascript" src="_static/underscore.js"></script><script type="text/javascript" src="_static/doctools.js"></script><script type="text/javascript" src="_static/language_data.js"></script>
+    </script><script type="text/javascript" src="_static/underscore.js"></script><script type="text/javascript" src="_static/doctools.js"></script>
 <style type="text/css">img {max-width: 100%;}</style>
 </head>
     <body role="document">
@@ -58,6 +58,120 @@
                 </li>
               </ul>
           </nav><div class="main-container" role="main"><div class="main wrapper body clearfix"><article><div class="timestamp postmeta">
+            <span>March 01, 2017</span>
+        </div>
+        <div class="section">
+            <h1><a href="2017/03/01/parsing_json.html">Parsing JSON</a></h1>
+<p>There are many libraries out there to parse JSON files.  It might be a
+futile attempt, then, to write yet another one.  However, when you’re
+working on a RTOS where memory is golden, and the alternatives don’t look
+that great, you got to do something about it.</p>
+<p>Recently I wrote a <a class="reference external" href="http://www.json.org">JSON</a> parser for a project at
+work.  This parser uses constant memory, regardless of the amount of data
+it’s working with, and deserializes directly to a C struct.  Similar, in
+spirit, to the JSON parser that’s part of the Golang standard library, that
+encodes and decodes data based on a tagged structure.</p>
+<p>The lexer is the usual state machine, where the state itself is a function
+pointer to a function that handles that particular state.</p>
+<p>I’ve been using this technique for a while, and I found that it’s a very
+clean and efficient way of describing state machines, specially for lexers.</p>
+<p>I began using it after a coworker wrote a <a class="reference external" href="https://github.com/solettaproject/soletta/blob/3bda9802b243c2052555cf88263f754d34458414/src/shared/sol-fbp-internal-scanner.c">parser for a DSL</a>
+using it – and he got the idea from the – you guessed – Golang template
+package.  (There’s a <a class="reference external" href="https://www.youtube.com/watch?v=HxaD_trXwRE">nice talk by Rob Pike about it</a> – I recommend this talk
+not only for the lexing goodness, but also for the tips on how to evolve a
+concurrent design.)</p>
+<p>The parser implementation itself is nothing to write home about.  However,
+by using the same idea used in Lwan’s mustache template engine to <a class="reference external" href="https://tia.mat.br/posts/2012/11/11/mustache_templates_in_c.html">obtain
+the variables</a>, it
+manages to do some things that are not common in JSON parsers written in C:</p>
+<ul class="simple">
+<li>It will accept only values of known types for a particular key.</li>
+<li>It will save the decoded value directly in a struct field.</li>
+<li>It won’t try to decode the same field twice.</li>
+</ul>
+<p>The first point is crucial when working with data received from the network,
+which is precisely the kind of thing I’m dealing with.  This avoids problems
+such as type confusion and such, and moves the responsibility of checking
+the types to the library rather than the user of the library.</p>
+<p>By saving the decoded value directly into a struct field, it does use a
+predictable amount of memory.  This is good, as it’s not going to balloon
+out of control, or require some guesswork to know beforehand how many tokens
+are going to be necessary to deserialize some values.  The C compiler
+already knows exactly how many bytes a struct needs.</p>
+<p>Some fields might be optional in a JSON blob.  So the parser uses a bitmask
+to mark which fields have been decoded (and returns that, so that the
+library user can efficiently test if a value has been deserialized or not).
+Since it was easy to do, the library refuses to decode a key that has been
+deserialized before.</p>
+<p>So, a typical use is the following:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="cm">/* First, define a struct to hold the values. */</span>
+<span class="k">struct</span> <span class="n">values</span> <span class="p">{</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">some_string</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">some_int</span><span class="p">;</span>
+    <span class="kt">bool</span> <span class="n">some_bool</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="cm">/* Then, define a descriptor for that struct. */</span>
+<span class="k">static</span> <span class="k">const</span> <span class="k">struct</span> <span class="n">json_descr</span> <span class="n">values_descr</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">FIELD</span><span class="p">(</span><span class="k">struct</span> <span class="n">values</span><span class="p">,</span> <span class="n">some_string</span><span class="p">,</span> <span class="n">JSON_TOK_STRING</span><span class="p">),</span>
+    <span class="n">FIELD</span><span class="p">(</span><span class="k">struct</span> <span class="n">values</span><span class="p">,</span> <span class="n">some_int</span><span class="p">,</span> <span class="n">JSON_TOK_NUMBER</span><span class="p">),</span>
+    <span class="n">FIELD</span><span class="p">(</span><span class="k">struct</span> <span class="n">values</span><span class="p">,</span> <span class="n">some_bool</span><span class="p">,</span> <span class="n">JSON_TOK_TRUE</span><span class="p">),</span>
+<span class="p">};</span>
+<span class="cm">/* (FIELD is just a macro that saves the offsetof()</span>
+<span class="cm"> * each struct member so that a pointer can be produced</span>
+<span class="cm"> * afterwards.)  */</span>
+
+<span class="cm">/* It's now just a matter of parsing the JSON now. */</span>
+<span class="k">struct</span> <span class="n">values</span> <span class="n">values</span><span class="p">;</span>
+<span class="kt">int32_t</span> <span class="n">ret</span> <span class="o">=</span> <span class="n">json_parse</span><span class="p">(</span><span class="n">serialized</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="n">serialized</span><span class="p">),</span>
+    <span class="n">values_descr</span><span class="p">,</span> <span class="n">ARRAY_SIZE</span><span class="p">(</span><span class="n">values_descr</span><span class="p">),</span> <span class="o">&amp;</span><span class="n">values</span><span class="p">);</span>
+
+<span class="cm">/* Bits 0, 1, and 2 of ret will be set if some_string,</span>
+<span class="cm"> * some_int, and some_bool have been successfully</span>
+<span class="cm"> * deserialized.  */</span>
+</pre></div>
+</div>
+<p>Another thing that could be done – but that has not been implemented yet,
+is to do the opposite as well: the descriptor and a struct to produce
+JSON-encoded data.  This has many advantages over the usual JSON libraries
+that require generating a JSON tree in memory just to serialize it
+afterwards.</p>
+<p>And although I’m quite happy with this code, there are still some
+limitations that I’ll address whenever I have the need.</p>
+<p>Mainly, there’s no way to parse nested objects or arrays.  I’ve written code
+to do this but these changes haven’t gotten any fuzz-testing action so I’m
+holding them off it until my living room heater^Wcomputer has worked on the
+problem for at least a week.</p>
+<p>Another one that’s not a deal breaker for an embedded OS is the lack of
+floating pointing numbers (only integers for now).  Parsing floating point
+is <a class="reference external" href="http://www.netlib.org/fp/dtoa.c">trickier than it sounds</a>, and
+there’s no <span class="docutils literal"><span class="pre">strtod()</span></span> in Zephyr’s minimal libc.</p>
+<p>As a minor issue to work around, there’s the return value: this limits the
+number of fields to be parsed to 32; that should be plenty for most uses.
+However, in the unlikely event that’s not sufficient, this can be worked
+around by having multiple descriptors.</p>
+<p>And, finally, there’s the JSON encoding part that I’ve mentioned already.</p>
+<p>The major problem with this piece of code, that can’t be fixed by writing
+more code, is that I can’t use it with Lwan due to licensing reasons:
+although it is open source, part of the <a class="reference external" href="http://www.zephyrproject.org">Zephyr project</a>, it is licensed under the Apache 2
+license, which is incompatible with the GPL2+ used by Lwan (would have to
+bump it to [L]GPL3).</p>
+<p>(For those that might ask how fast is it: it’s fast enough. I didn’t
+measure, I didn’t compare, and I don’t really care: it’s readable,
+maintainable, and does the job.)</p>
+
+        </div>
+        <div class="postmeta">
+        <div class="author">
+            <span>Posted by Leandro Pereira</span>
+        </div>
+        
+        <div class="tags">
+            <span>
+                Tags:
+                <a href="tags/programming.html">programming</a>, <a href="tags/zephyr.html">zephyr</a>, <a href="tags/parser.html">parser</a></span>
+        </div>
+        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
             <span>November 08, 2016</span>
         </div>
         <div class="section">
@@ -120,14 +234,14 @@ transforms any program into a sandboxed version of itself.</p>
 limiting, just once, which system calls a program can execute.</p>
 <p>Sort of a less-powerful version of <a class="reference external" href="http://man.openbsd.org/cgi-bin/man.cgi/OpenBSD-current/man2/pledge.2">OpenBSD’s
 pledge(2)</a>
-(née <code class="docutils literal notranslate"><span class="pre">tame(2)</span></code>), which can be repeatedly called to reduce the amount of
+(née <span class="docutils literal"><span class="pre">tame(2)</span></span>), which can be repeatedly called to reduce the amount of
 privileges a process has. Useful, for instance, in cases where a
 configuration file has to be read before processing user-supplied work.
 That BSD version has <a class="reference external" href="https://www.openbsd.org/papers/hackfest2015-pledge/mgp00001.html">been sprinkling calls to
 pledge()</a>
 in almost all of the programs in the base install (which is easier for a
 BSD system, since everything is kept under the same roof.)</p>
-<p>But, unlike <code class="docutils literal notranslate"><span class="pre">pledge(2)</span></code>, this thing can be applied to binaries that have
+<p>But, unlike <span class="docutils literal"><span class="pre">pledge(2)</span></span>, this thing can be applied to binaries that have
 been already built. No source code modifications are necessary. If your
 distribution can withstand the stench, “infected” binaries could be a
 thing in the default installation.</p>
@@ -183,7 +297,7 @@ assembler</a>,
 and wrote a few macros that let me write BPF programs as if they were
 standard x86-64 instructions.</p>
 <p>The remaining issue is that a pointer to the BPF program must be passed
-to the call to <code class="docutils literal notranslate"><span class="pre">prctl()</span></code>, and the shellcode must be relocatable. A <a class="reference external" href="http://stackoverflow.com/a/15704848">common
+to the call to <span class="docutils literal"><span class="pre">prctl()</span></span>, and the shellcode must be relocatable. A <a class="reference external" href="http://stackoverflow.com/a/15704848">common
 trick</a> to perform in these
 scenarios is to employ the fact that, on x86, when a call instruction is
 made, the return address (i.e. the address of the byte right after the
@@ -203,14 +317,14 @@ call instruction) is pushed to the stack:</p>
 <span class="nl">bpf_end:</span>
 </pre></div>
 </div>
-<p>The <code class="docutils literal notranslate"><span class="pre">bpf</span></code> label doesn’t point to any x86 instruction: it contains only
-macros that expands to the definitions of <code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">sock_filter</span></code> as defined
-in <code class="docutils literal notranslate"><span class="pre">linux/filter.h</span></code>.  To copy the BPF program to the kernel, the <cite>prctl()</cite>
-call expects a <code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">sock_fprog</span></code>, which contains the BPF program length
-(in number of <code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">sock_filter</span></code> elements), and a pointer to the base of
+<p>The <span class="docutils literal"><span class="pre">bpf</span></span> label doesn’t point to any x86 instruction: it contains only
+macros that expands to the definitions of <span class="docutils literal"><span class="pre">struct</span> <span class="pre">sock_filter</span></span> as defined
+in <span class="docutils literal"><span class="pre">linux/filter.h</span></span>.  To copy the BPF program to the kernel, the <cite>prctl()</cite>
+call expects a <span class="docutils literal"><span class="pre">struct</span> <span class="pre">sock_fprog</span></span>, which contains the BPF program length
+(in number of <span class="docutils literal"><span class="pre">struct</span> <span class="pre">sock_filter</span></span> elements), and a pointer to the base of
 that array.  Since there’s no way to know where this code is gong to land in
-memory beforehand, this trick comes in handy: after the <code class="docutils literal notranslate"><span class="pre">call</span>
-<span class="pre">apply_filter</span></code> instruction, the top of the stack now contains the base
+memory beforehand, this trick comes in handy: after the <span class="docutils literal"><span class="pre">call</span>
+<span class="pre">apply_filter</span></span> instruction, the top of the stack now contains the base
 address of that array.</p>
 <p>Now that I had a way to write the shellcode, it was just the matter of
 shoehorning it into the executable.</p>
@@ -243,7 +357,7 @@ the Turbo Debugger I used to use in the DOS days) is not it’s strong
 suit. I’m not used to using it to debug programs without access to
 source, and this was a good opportunity to learn a few things.</p>
 <p>Since the infection program modifies the ELF entry point, setting a
-breakpoint on <code class="docutils literal notranslate"><span class="pre">main()</span></code> won’t actually work. But this is easily solvable:
+breakpoint on <span class="docutils literal"><span class="pre">main()</span></span> won’t actually work. But this is easily solvable:
 just use <a class="reference external" href="https://linux.die.net/man/1/readelf">readelf(1)</a> to find
 where the new entry point is, and set a breakpoint to that:</p>
 <div class="highlight-shell-session notranslate"><div class="highlight"><pre><span/><span class="gp">$</span> gcc -o hello hello.c
@@ -254,7 +368,7 @@ where the new entry point is, and set a breakpoint to that:</p>
 <span class="go">  Entry point address: 0x4007bc</span>
 <span class="gp">$</span> gdb ./hello
 <span class="go">…</span>
-<span class="go">(gdb) break *0x4007bc</span>
+<span class="gp gp-VirtualEnv">(gdb)</span> <span class="go">break *0x4007bc</span>
 <span class="go">Breakpoint 1 at 0x4007bc</span>
 </pre></div>
 </div>
@@ -270,7 +384,7 @@ registers</a>.</p>
 </div>
 <div class="section" id="watching-the-magic-happen">
 <h2>Watching the magic happen</h2>
-<p>The <code class="docutils literal notranslate"><span class="pre">hello</span></code> program is very short and the call to <code class="docutils literal notranslate"><span class="pre">socket(2)</span></code> doesn’t
+<p>The <span class="docutils literal"><span class="pre">hello</span></span> program is very short and the call to <span class="docutils literal"><span class="pre">socket(2)</span></span> doesn’t
 make much sense there.  It’s just a way to test what’s going to happen when
 the filter is in place, without the need to modify the program to test this
 assumption.  (<a class="reference external" href="https://www.bsdcan.org/2016/schedule/attachments/357_20160610-bsdcan-helloworld.pdf">Lots of things</a>
@@ -332,7 +446,7 @@ exit_group(0)                           = ?
 +++ exited with 0 +++
 </pre></div>
 </div>
-<p>Notice the calls to <code class="docutils literal notranslate"><span class="pre">prctl()</span></code>, very similar to the ones found in the
+<p>Notice the calls to <span class="docutils literal"><span class="pre">prctl()</span></span>, very similar to the ones found in the
 previously-mentioned commit. And then the program executes as usual.
 Now, if an argument is passed, the program will attempt to create a
 socket:</p>
@@ -345,7 +459,7 @@ socket(AF_INET, SOCK_STREAM, IPPROTO_TCP) = 41
 [1]    27536 invalid system call (core dumped)  strace ./hello 1
 </pre></div>
 </div>
-<p>And Seccomp kicks in and kills the program with a <code class="docutils literal notranslate"><span class="pre">SIGSYS</span></code> signal. As
+<p>And Seccomp kicks in and kills the program with a <span class="docutils literal"><span class="pre">SIGSYS</span></span> signal. As
 expected. <strong>It’s alive!</strong></p>
 <div class="figure align-center">
 <img alt="It's alive!" src="https://i.imgur.com/sWwquxp.jpg"/>
@@ -361,13 +475,13 @@ before even considering this idea for anything.</p>
 not optimal. Maintaining a list such as this for each and every program
 will most likely be so boring nobody is going to do that.</p>
 <p>I can think of three possible ways of coming up with this list.</p>
-<p>The first would be doing the same thing <code class="docutils literal notranslate"><span class="pre">pledge(2)</span></code> does: allowing a very
+<p>The first would be doing the same thing <span class="docutils literal"><span class="pre">pledge(2)</span></span> does: allowing a very
 restrict set of system calls at first, with some limitations, and then
 providing a few sets of calls per set of features a program might use: stdio,
 inet, tty, etc.  The nice thing about this is that the filters are more fine
 grained; it’s not just a whitelist of system calls.  (The <a class="reference external" href="http://man.openbsd.org/cgi-bin/man.cgi/OpenBSD-current/man2/pledge.2">man page</a> has
 more details.)</p>
-<p>The second way would involve running the program under <code class="docutils literal notranslate"><span class="pre">strace(1)</span></code> and
+<p>The second way would involve running the program under <span class="docutils literal"><span class="pre">strace(1)</span></span> and
 record which system calls the program makes from a few runs.  If the test
 coverage for each run is sufficiently high, this will work very reliably;
 this isn’t always the case, so the mileage may vary.  Also, for certain
@@ -375,10 +489,10 @@ large, complicated programs, stracing it all automatically could prove to be
 a challenge.</p>
 <p>Another way would be the following: Grab a list of undefined symbols a
 program uses, and find them in the shared libraries it links to.  Then scan
-the executable and the libraries for sequences like <code class="docutils literal notranslate"><span class="pre">mov</span> <span class="pre">eax,</span> <span class="pre">57;</span> <span class="pre">syscall</span></code>
-(for the oldschool <code class="docutils literal notranslate"><span class="pre">fork(2)</span></code> syscall on x86-64) or <code class="docutils literal notranslate"><span class="pre">mov</span> <span class="pre">rdi,</span> <span class="pre">57;</span> <span class="pre">call</span>
-<span class="pre">syscall@plt</span></code>.  This is still not foolproof, since not necessarily a system
-call number (loaded into <code class="docutils literal notranslate"><span class="pre">eax</span></code>) will be hardcoded within a program or
+the executable and the libraries for sequences like <span class="docutils literal"><span class="pre">mov</span> <span class="pre">eax,</span> <span class="pre">57;</span> <span class="pre">syscall</span></span>
+(for the oldschool <span class="docutils literal"><span class="pre">fork(2)</span></span> syscall on x86-64) or <span class="docutils literal"><span class="pre">mov</span> <span class="pre">rdi,</span> <span class="pre">57;</span> <span class="pre">call</span>
+<span class="pre">syscall@plt</span></span>.  This is still not foolproof, since not necessarily a system
+call number (loaded into <span class="docutils literal"><span class="pre">eax</span></span>) will be hardcoded within a program or
 shared library.</p>
 <p>There’s a fourth idea, as well, which involves both doing the automated
 static analysis on the binary and running strace to catch “runaway”
@@ -386,20 +500,20 @@ syscalls. This can get quite complicated and it’s unlikely I’ll get it
 correct in the first few tries (and, yet, the same shortcomings will
 apply in the end.)</p>
 <p>For me, though, these experiments are all about the hunt, not about the
-treasure. So the tried and true approach that <code class="docutils literal notranslate"><span class="pre">pledge(2)</span></code> uses won’t be
+treasure. So the tried and true approach that <span class="docutils literal"><span class="pre">pledge(2)</span></span> uses won’t be
 used at first.</p>
 </div>
 <div class="section" id="filter-optimization">
 <h3>Filter optimization</h3>
 <p>Another thing that might be a problem is: on x86-64, Linux has hundreds of
-system calls.  (329 according to <code class="docutils literal notranslate"><span class="pre">sys/syscall.h</span></code> at the moment I write
+system calls.  (329 according to <span class="docutils literal"><span class="pre">sys/syscall.h</span></span> at the moment I write
 this.)</p>
 <p>Even if the JIT for BPFs is quite efficient, doing a linear search before each
 and every system call will certainly be a bottleneck.  Also, BPF programs are
 limited in size, and a large whitelist that’s implemented the same way as the
 prototype will limit the possibility for more fine-grained filters.  Things
-like “the <code class="docutils literal notranslate"><span class="pre">socket(2)</span></code> call is allowed only for UNIX-domain sockets”, rather than
-allowing whatever call to <code class="docutils literal notranslate"><span class="pre">socket(2)</span></code> would be impractical.</p>
+like “the <span class="docutils literal"><span class="pre">socket(2)</span></span> call is allowed only for UNIX-domain sockets”, rather than
+allowing whatever call to <span class="docutils literal"><span class="pre">socket(2)</span></span> would be impractical.</p>
 <p>Since each syscall is identified by a number, a simple bitmap could be
 used to implement the whitelist. This will also free up some space in
 the BPF program for more detailed whitelisting for certain syscalls (for
@@ -426,8 +540,8 @@ accept:
         return SECCOMP_RET_ACCEPT
 </pre></div>
 </div>
-<p>(Some of the <code class="docutils literal notranslate"><span class="pre">if</span> <span class="pre">syscall_number</span> <span class="pre">&lt;</span> <span class="pre">N</span></code> blocks could be changed to
-<code class="docutils literal notranslate"><span class="pre">syscall_number</span> <span class="pre">-=</span> <span class="pre">M</span></code> if their respective bitmask is <code class="docutils literal notranslate"><span class="pre">0</span></code>.)</p>
+<p>(Some of the <span class="docutils literal"><span class="pre">if</span> <span class="pre">syscall_number</span> <span class="pre">&lt;</span> <span class="pre">N</span></span> blocks could be changed to
+<span class="docutils literal"><span class="pre">syscall_number</span> <span class="pre">-=</span> <span class="pre">M</span></span> if their respective bitmask is <span class="docutils literal"><span class="pre">0</span></span>.)</p>
 <p>Or maybe just a bloom filter instead of a series of bitmaps. I’ll have
 to experiment.</p>
 </div>
@@ -479,21 +593,21 @@ allocate less memory than necessary to hold a structure:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">foobar</span> <span class="o">*</span><span class="n">foobar</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">foobaz</span><span class="p">));</span>
 </pre></div>
 </div>
-<p>Note that <code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">foobaz</span></code> is passed instead of <code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">foobar</span></code>. We might get
-lucky, and <code class="docutils literal notranslate"><span class="pre">sizeof(struct</span> <span class="pre">foobaz)</span></code> might be larger or equal than
-<code class="docutils literal notranslate"><span class="pre">sizeof(struct</span> <span class="pre">foobar)</span></code>, but we might not.</p>
+<p>Note that <span class="docutils literal"><span class="pre">struct</span> <span class="pre">foobaz</span></span> is passed instead of <span class="docutils literal"><span class="pre">struct</span> <span class="pre">foobar</span></span>. We might get
+lucky, and <span class="docutils literal"><span class="pre">sizeof(struct</span> <span class="pre">foobaz)</span></span> might be larger or equal than
+<span class="docutils literal"><span class="pre">sizeof(struct</span> <span class="pre">foobar)</span></span>, but we might not.</p>
 <p>There are lots of tools out there that will catch these mistakes: static
 analyzers such as the one from Clang, and Memcheck from Valgrind are just
 two examples that should be in any C programmer’s toolbelt.</p>
-<p>Even then, people often resort to a a nicer idiom: <code class="docutils literal notranslate"><span class="pre">sizeof(*foobar)</span></code>,
+<p>Even then, people often resort to a a nicer idiom: <span class="docutils literal"><span class="pre">sizeof(*foobar)</span></span>,
 which not only avoids these problems, but also is somewhat future-proof,
-should the type of <code class="docutils literal notranslate"><span class="pre">foobar</span></code> change:</p>
+should the type of <span class="docutils literal"><span class="pre">foobar</span></span> change:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">foobar</span> <span class="o">*</span><span class="n">foobar</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="o">*</span><span class="n">foobar</span><span class="p">));</span>
 </pre></div>
 </div>
 <p>However, structures often have members that, if someone forgets to
 initialize, will inflict some undefined behavior pains on the user.  The
-things in the toolbelt might help here, as well as the <code class="docutils literal notranslate"><span class="pre">calloc()</span></code>
+things in the toolbelt might help here, as well as the <span class="docutils literal"><span class="pre">calloc()</span></span>
 function, that, in addition to allocating memory, also zero-out the memory
 block:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">struct</span> <span class="n">foobar</span> <span class="o">*</span><span class="n">foobar</span> <span class="o">=</span> <span class="n">calloc</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="o">*</span><span class="n">foobar</span><span class="p">));</span>
@@ -503,7 +617,7 @@ block:</p>
 out important fields afterwards, though.</p>
 <p>Here’s a trick that’s being used in a yet-to-be-released project I’ve been
 working on and off for the past few months. It starts by defining the
-generic-chunk-of-memory equivalent of <code class="docutils literal notranslate"><span class="pre">strdup()</span></code>, <code class="docutils literal notranslate"><span class="pre">memdup()</span></code>:</p>
+generic-chunk-of-memory equivalent of <span class="docutils literal"><span class="pre">strdup()</span></span>, <span class="docutils literal"><span class="pre">memdup()</span></span>:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="kt">void</span> <span class="o">*</span><span class="nf">memdup</span><span class="p">(</span><span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">src</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">sz</span><span class="p">)</span> <span class="p">{</span>
         <span class="kt">void</span> <span class="o">*</span><span class="n">mem</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="n">sz</span><span class="p">);</span>
         <span class="k">return</span> <span class="n">mem</span> <span class="o">?</span> <span class="n">memcpy</span><span class="p">(</span><span class="n">mem</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">sz</span><span class="p">)</span> <span class="o">:</span> <span class="nb">NULL</span><span class="p">;</span>
@@ -523,19 +637,19 @@ generic-chunk-of-memory equivalent of <code class="docutils literal notranslate"
 <span class="p">});</span>
 </pre></div>
 </div>
-<p>The compiler will check if <code class="docutils literal notranslate"><span class="pre">field</span></code>, <code class="docutils literal notranslate"><span class="pre">other_field</span></code>, and <code class="docutils literal notranslate"><span class="pre">yet_another_field</span></code>
-are actually part of <code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">foobar</span></code>, and will abort compilation of a field
+<p>The compiler will check if <span class="docutils literal"><span class="pre">field</span></span>, <span class="docutils literal"><span class="pre">other_field</span></span>, and <span class="docutils literal"><span class="pre">yet_another_field</span></span>
+are actually part of <span class="docutils literal"><span class="pre">struct</span> <span class="pre">foobar</span></span>, and will abort compilation of a field
 isn’t there or is of the wrong type.</p>
 <p>The cast prevents the allocated memory block from being assigned to the wrong
-type. (C will happily cast any <code class="docutils literal notranslate"><span class="pre">void*</span></code> to any other pointer.)</p>
+type. (C will happily cast any <span class="docutils literal"><span class="pre">void*</span></span> to any other pointer.)</p>
 <p>The amount of memory allocated will be exactly what’s needed by the
 structure, and all fields that not mentioned will be initialized with their
 default values as per <a class="reference external" href="https://gcc.gnu.org/onlinedocs/gcc/Designated-Inits.html">designated initializer rules</a>.</p>
-<p>If <code class="docutils literal notranslate"><span class="pre">memdup()</span></code> is inlined, a good compiler will generate pretty good code,
+<p>If <span class="docutils literal"><span class="pre">memdup()</span></span> is inlined, a good compiler will generate pretty good code,
 that’s often byte-by-byte equivalent to allocating directly with
-<code class="docutils literal notranslate"><span class="pre">malloc()</span></code>, initializing all the fields by hand, etc.</p>
-<p>If GCC is being used, the <code class="docutils literal notranslate"><span class="pre">__auto_type</span></code> <a class="reference external" href="https://gcc.gnu.org/onlinedocs/gcc/Typeof.html">extension</a> can be used, to avoid
-having to type <code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">foobar</span></code> twice. This has been suggested by <a class="reference external" href="https://plus.google.com/117917253135468806554/posts/DcBUyuicdLW">Thiago
+<span class="docutils literal"><span class="pre">malloc()</span></span>, initializing all the fields by hand, etc.</p>
+<p>If GCC is being used, the <span class="docutils literal"><span class="pre">__auto_type</span></span> <a class="reference external" href="https://gcc.gnu.org/onlinedocs/gcc/Typeof.html">extension</a> can be used, to avoid
+having to type <span class="docutils literal"><span class="pre">struct</span> <span class="pre">foobar</span></span> twice. This has been suggested by <a class="reference external" href="https://plus.google.com/117917253135468806554/posts/DcBUyuicdLW">Thiago
 Macieira</a>. I’d use this sparingly, though.</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">__auto_type</span> <span class="n">foobar</span> <span class="o">=</span> <span class="n">ALLOC_INIT</span><span class="p">(</span><span class="k">struct</span> <span class="n">foobar</span><span class="p">,</span> <span class="p">{</span>
         <span class="p">.</span><span class="n">field</span> <span class="o">=</span> <span class="n">value</span><span class="p">,</span>
@@ -567,18 +681,18 @@ it would be a shame if at least this didn’t become public.</p>
 <p>I’ve been thinking for a while on how to reduce the overhead in <a class="reference external" href="http://lwan.ws">Lwan</a>’s
 string buffer, when the strings are small. There are a number of
 ways of accomplishing this.</p>
-<p>A somewhat common way is what <code class="docutils literal notranslate"><span class="pre">std::string</span></code> does: it reuses the bits
+<p>A somewhat common way is what <span class="docutils literal"><span class="pre">std::string</span></span> does: it reuses the bits
 reserved for <cite>effective string length</cite>, <cite>allocated buffer size</cite>, and
 <cite>pointer to buffer</cite> to store the string contents inline.</p>
 <p>A <a class="reference external" href="http://tulrich.com/rants-2009.html#d2009-01-03T00:00:00Z">clever improvement</a> is, when the string is small, to turn the
 <cite>effective string length</cite> counter to a <cite>bytes remaining counter</cite>, and
 put it after the buffer that’s storing the string; this way, when the
-string is at full capacity, this serves as a <code class="docutils literal notranslate"><span class="pre">\0</span></code> terminator, which
+string is at full capacity, this serves as a <span class="docutils literal"><span class="pre">\0</span></span> terminator, which
 is very useful for compatibility with C.  And, of course, as a result,
 one more byte can be stored in that string.</p>
 <p>Another common approach are the strings used in <a class="reference external" href="https://en.wikipedia.org/wiki/String_(computer_science)#Length-prefixed">Pascal</a>, where the first
 byte tells the length of the string. This has the advantage of allowing
-strings to contain <code class="docutils literal notranslate"><span class="pre">\0</span></code>, but the disadvantage of limiting the maximum
+strings to contain <span class="docutils literal"><span class="pre">\0</span></span>, but the disadvantage of limiting the maximum
 size of the string. If someone were to implement this in C, the
 advantage would turn into a disadvantage, as most string-handling
 routines present in the standard library would be then rendered useless.</p>
@@ -587,20 +701,20 @@ routines present in the standard library would be then rendered useless.</p>
 C/Pascal String hybrid.  But at least the <a class="reference external" href="https://en.wikipedia.org/wiki/String_(computer_science)">Wikipedia</a> article on
 Strings doesn’t seem to mention this variant I just came up with:</p>
 <ul class="simple">
-<li><p>Keep the <code class="docutils literal notranslate"><span class="pre">\0</span></code> to terminate the string. This helps reusing the
+<li>Keep the <span class="docutils literal"><span class="pre">\0</span></span> to terminate the string. This helps reusing the
 string handling routines from the C standard library, which are usually
-very fast, hand-tuned functions</p></li>
-<li><p>The first byte tells the size, not in bytes, but in 8-byte blocks.
+very fast, hand-tuned functions</li>
+<li>The first byte tells the size, not in bytes, but in 8-byte blocks.
 To calculate the string length, one just jumps that amount of 8-byte
-blocks and find the position of the <code class="docutils literal notranslate"><span class="pre">\0</span></code> terminator.</p></li>
-<li><p>Larger blocks could be considered if <a class="reference external" href="https://en.wikipedia.org/wiki/SIMD">SIMD</a> instructions were available.</p></li>
+blocks and find the position of the <span class="docutils literal"><span class="pre">\0</span></span> terminator.</li>
+<li>Larger blocks could be considered if <a class="reference external" href="https://en.wikipedia.org/wiki/SIMD">SIMD</a> instructions were available.</li>
 </ul>
 <p>With 8-byte blocks, this can yield strings up to 2KiB of size (256 *
 8), with an overhead of only two bytes, while retaining compatibility
 with C strings.  With SIMD, the maximum string size could be easily
 doubled or quadrupled.</p>
 <p>Of course, this isn’t actually an improvement on the kind of small
-string optimization performed by <code class="docutils literal notranslate"><span class="pre">std::string</span></code>, so I’m not yet
+string optimization performed by <span class="docutils literal"><span class="pre">std::string</span></span>, so I’m not yet
 convinced this is the way to go. This is one of the reasons I haven’t
 yet implemented this, but I might use the fact that I’m currently
 enjoying some vacation time and write a prototype.</p>
@@ -670,7 +784,7 @@ accepting all the sockets and scheduling clients) blocks on a call to
 <a class="reference external" href="http://linux.die.net/man/2/accept4">accept4()</a> instead of something like <a class="reference external" href="http://linux.die.net/man/4/epoll">Epoll</a>.  This <a class="reference external" href="http://linux.die.net/man/2/accept">accept()</a> variant is
 Linux-only and, among other things, lets one specify flags in sockets
 without requiring an additional round trip to the kernel; the only flag that
-interests Lwan is <code class="docutils literal notranslate"><span class="pre">SOCK_NONBLOCK</span></code>.</p>
+interests Lwan is <span class="docutils literal"><span class="pre">SOCK_NONBLOCK</span></span>.</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="kt">void</span>
 <span class="nf">lwan_main_loop</span><span class="p">(</span><span class="n">lwan_t</span> <span class="o">*</span><span class="n">l</span><span class="p">)</span>
 <span class="p">{</span>
@@ -747,11 +861,11 @@ awakens, the file descriptor is added to it, and that thread’s death queue
 can handle the timeout by itself.</p>
 <p>The sole purpose of each thread is to react to Epoll events, such as:</p>
 <ul class="simple">
-<li><p>Timeouts (in which case the death queue iterates, potentially
-terminating connections);</p></li>
-<li><p>Epoll errors (in which case the thread finishes gracefully);</p></li>
-<li><p>Readiness events (can read, can write);</p></li>
-<li><p>Connection hung up.</p></li>
+<li>Timeouts (in which case the death queue iterates, potentially
+terminating connections);</li>
+<li>Epoll errors (in which case the thread finishes gracefully);</li>
+<li>Readiness events (can read, can write);</li>
+<li>Connection hung up.</li>
 </ul>
 <p>Epoll events are used as signals to create, destroy, resume, and reset
 coroutines: there’s one for each connection, and they’re used both as
@@ -762,7 +876,7 @@ lightweight threads and as resource management facilities.</p>
 <p><a class="reference external" href="https://en.wikipedia.org/wiki/Coroutine">Coroutines</a> provides a reasonably simple model for asynchronous I/O handling
 that’s less convoluted than the dreaded <a class="reference external" href="https://developer.gnome.org/gio/stable/">callback idiom</a> prevalent in C. They
 also require a lot less stack space than a thread and their creation is
-pretty efficient: essentially just a call to <code class="docutils literal notranslate"><span class="pre">malloc()</span></code>.</p>
+pretty efficient: essentially just a call to <span class="docutils literal"><span class="pre">malloc()</span></span>.</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">coro_t</span> <span class="o">*</span>
 <span class="nf">coro_new</span><span class="p">(</span><span class="n">coro_switcher_t</span> <span class="o">*</span><span class="n">switcher</span><span class="p">,</span>
          <span class="n">coro_function_t</span> <span class="n">function</span><span class="p">,</span>
@@ -799,10 +913,10 @@ management by having a single cleanup point.</p>
 common operations, such as <a class="reference external" href="http://linux.die.net/man/2/writev">writev()</a> or <a class="reference external" href="http://linux.die.net/man/2/sendfile">sendfile()</a>. Unlike the functions
 these wrap, they return no error:</p>
 <ul class="simple">
-<li><p>On success, the same return code is returned;</p></li>
-<li><p>Recoverable errors (such as <code class="docutils literal notranslate"><span class="pre">EINTR</span></code>) are handled by trying them again a
-few times before giving up;</p></li>
-<li><p>When giving up, or on unrecoverable errors, coroutines are aborted.</p></li>
+<li>On success, the same return code is returned;</li>
+<li>Recoverable errors (such as <span class="docutils literal"><span class="pre">EINTR</span></span>) are handled by trying them again a
+few times before giving up;</li>
+<li>When giving up, or on unrecoverable errors, coroutines are aborted.</li>
 </ul>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="kt">int</span>
 <span class="nf">lwan_openat</span><span class="p">(</span><span class="n">lwan_request_t</span> <span class="o">*</span><span class="n">request</span><span class="p">,</span>
@@ -894,18 +1008,17 @@ HTTP request headers is delayed until needed (and they might not be needed).</p>
 </div>
 <p>Among other things, one that often receives comments is how headers are
 parsed.  Two tricks are involved: avoiding <a class="reference external" href="https://en.wikipedia.org/wiki/Register_allocation#Spilling">spilling/filling registers</a> to
-compare strings with <code class="docutils literal notranslate"><span class="pre">strncmp()</span></code>, and applying a heuristic to avoid
+compare strings with <span class="docutils literal"><span class="pre">strncmp()</span></span>, and applying a heuristic to avoid
 reading (and comparing) more than necessary.  Both tricks are intertwined
 into a “string prefix switch”:</p>
 <ul class="simple">
-<li><p>Four bytes are read from memory, and are cast to a 32-bit integer pointer;</p></li>
-<li><p>That pointer is then dereferenced;</p></li>
-<li><p>A standard switch statement is used to perform cheap comparisons on a 32-bit
-integer;</p></li>
-<li><p>When a header prefix is matched, a simple heuristic of finding the
-separating colon and space character where they’re supposed to be is used.</p>
-<ul>
-<li><p>This might give false positives, although that’s very unlikely in practice.</p></li>
+<li>Four bytes are read from memory, and are cast to a 32-bit integer pointer;</li>
+<li>That pointer is then dereferenced;</li>
+<li>A standard switch statement is used to perform cheap comparisons on a 32-bit
+integer;</li>
+<li>When a header prefix is matched, a simple heuristic of finding the
+separating colon and space character where they’re supposed to be is used.<ul>
+<li>This might give false positives, although that’s very unlikely in practice.</li>
 </ul>
 </li>
 </ul>
@@ -1008,7 +1121,7 @@ copies and unneeded heap allocations.</p>
 <h3>Chunked encoding and Server-sent events</h3>
 <p>Supported also is the <a class="reference external" href="https://en.wikipedia.org/wiki/Chunked_transfer_encoding">Chunked Encoding</a>. Using it is very simple: just set
 the response MIME Type, fill the string buffer, and call
-<code class="docutils literal notranslate"><span class="pre">lwan_response_send_chunk()</span></code>. From this point on, the response headers will be
+<span class="docutils literal"><span class="pre">lwan_response_send_chunk()</span></span>. From this point on, the response headers will be
 sent alongside the first chunk, the string buffer will be cleared, and the
 coroutine will yield. To send the next chunk, just fill the string buffer
 again and send another chunk, until your handler is complete.</p>
@@ -1035,7 +1148,7 @@ again and send another chunk, until your handler is complete.</p>
 </pre></div>
 </div>
 <p>The same general idea is used by <a class="reference external" href="https://en.wikipedia.org/wiki/Server-sent_events">Server-sent events</a>; however, one uses
-<code class="docutils literal notranslate"><span class="pre">lwan_response_send_event()</span></code>, and passes the event name as well.</p>
+<span class="docutils literal"><span class="pre">lwan_response_send_event()</span></span>, and passes the event name as well.</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="n">lwan_http_status_t</span>
 <span class="nf">test_server_sent_event</span><span class="p">(</span><span class="n">lwan_request_t</span> <span class="o">*</span><span class="n">request</span><span class="p">,</span>
             <span class="n">lwan_response_t</span> <span class="o">*</span><span class="n">response</span><span class="p">,</span>
@@ -1055,9 +1168,9 @@ saved the day.</p>
 </div>
 <div class="section" id="file-serving-module">
 <h3>File serving module</h3>
-<p>Since files can be served using the <code class="docutils literal notranslate"><span class="pre">sendfile()</span></code> system call, the kind of
+<p>Since files can be served using the <span class="docutils literal"><span class="pre">sendfile()</span></span> system call, the kind of
 handlers used by Hello World can’t be used: responses are sent using
-<code class="docutils literal notranslate"><span class="pre">writev()</span></code> to send both response headers and contents in one kernel roundtrip.
+<span class="docutils literal"><span class="pre">writev()</span></span> to send both response headers and contents in one kernel roundtrip.
 Because of this, there’s a different kind of handler that gives more control
 as to how the response is sent: the (for the lack of a better name)
 streaming handlers. Streaming handlers are expected to send the whole
@@ -1102,9 +1215,9 @@ headers automatically.</p>
 information is cached for a few seconds. The caching mechanism itself is
 discussed in detail further down.</p>
 <p>While caching file information, the file size is considered while picking
-the way to serve it.  Files larger than 16KiB are served with <code class="docutils literal notranslate"><span class="pre">sendfile()</span></code>
+the way to serve it.  Files larger than 16KiB are served with <span class="docutils literal"><span class="pre">sendfile()</span></span>
 to allow zero (or fewer) copy transfers, and smaller files are mapped in
-memory using <code class="docutils literal notranslate"><span class="pre">mmap()</span></code>.</p>
+memory using <span class="docutils literal"><span class="pre">mmap()</span></span>.</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">static</span> <span class="k">const</span> <span class="n">cache_funcs_t</span> <span class="o">*</span>
 <span class="nf">_get_funcs</span><span class="p">(</span><span class="n">serve_files_priv_t</span> <span class="o">*</span><span class="n">priv</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span>
            <span class="kt">char</span> <span class="o">*</span><span class="n">full_path</span><span class="p">,</span> <span class="k">struct</span> <span class="n">stat</span> <span class="o">*</span><span class="n">st</span><span class="p">)</span>
@@ -1168,7 +1281,7 @@ memory using <code class="docutils literal notranslate"><span class="pre">mmap()
 larger than the original data. Especially if the response header is
 considered. Because of this, small files are only compressed if it’s worth
 the trouble. The 16KiB threshold has been chosen empirically: larger values
-did not yield substantial performance gains compared to using <code class="docutils literal notranslate"><span class="pre">sendfile()</span></code>.</p>
+did not yield substantial performance gains compared to using <span class="docutils literal"><span class="pre">sendfile()</span></span>.</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="k">static</span> <span class="kt">void</span>
 <span class="nf">_compress_cached_entry</span><span class="p">(</span><span class="n">mmap_cache_data_t</span> <span class="o">*</span><span class="n">md</span><span class="p">)</span>
 <span class="p">{</span>
@@ -1227,12 +1340,12 @@ mostly for laziness reasons, but the non-dynamic nature of C would make
 certain things needlessly difficult to implement and use, anyway. The
 templating engine supports the basic stuff. In no particular order:</p>
 <ul class="simple">
-<li><p>Variables of different types;</p></li>
-<li><p>Checking the emptiness of variables;</p></li>
-<li><p>Iteration on lists (and any kind of sequences);</p></li>
-<li><p>Partials;</p></li>
-<li><p>Comments;</p></li>
-<li><p>Inverted sections.</p></li>
+<li>Variables of different types;</li>
+<li>Checking the emptiness of variables;</li>
+<li>Iteration on lists (and any kind of sequences);</li>
+<li>Partials;</li>
+<li>Comments;</li>
+<li>Inverted sections.</li>
 </ul>
 <p>Setting the delimiters, triple mustaches (for escaping HTML output),
 ampersand to unescape strings — and possibly other things — are not
@@ -1525,143 +1638,6 @@ request.</p>
                 Tags:
                 <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/c.html">C</a></span>
         </div>
-        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
-            <span>June 23, 2014</span>
-        </div>
-        <div class="section">
-            <h1><a href="2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a></h1>
-<p>There are various ways to convert integers to their string representation.
-These conversions are rarely a bottleneck, but they often show up while
-profiling certain applications.  For instance, they’re very common in
-<a class="reference external" href="http://lwan.ws">Lwan</a> while building the response headers.</p>
-<p>To use Lwan as an example: initially, <code class="docutils literal notranslate"><span class="pre">snprintf()</span></code> was used to convert
-numbers.  Although this works, it is quite boring, performance-wise.</p>
-<p>The second approach was using the naïve algorithm, which basically divides
-the number by <code class="docutils literal notranslate"><span class="pre">10</span></code> in succession, writing backwards the result of modulus by
-<code class="docutils literal notranslate"><span class="pre">10</span></code> to a string, and then reversing the string when the number reaches <code class="docutils literal notranslate"><span class="pre">0</span></code>.</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="c1">// Code based on https://code.google.com/p/stringencoders/</span>
-<span class="kt">size_t</span> <span class="nf">naive_uint32_to_str</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">value</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">str</span><span class="p">)</span> <span class="p">{</span>
-    <span class="kt">char</span> <span class="o">*</span><span class="n">wstr</span> <span class="o">=</span> <span class="n">str</span><span class="p">;</span>
-    <span class="c1">// Conversion. Number is reversed.</span>
-    <span class="k">do</span>
-       <span class="o">*</span><span class="n">wstr</span><span class="o">++</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span><span class="p">)</span> <span class="n">decimal_digits</span><span class="p">[</span><span class="n">uvalue</span> <span class="o">%</span> <span class="mi">10</span><span class="p">];</span>
-    <span class="k">while</span> <span class="p">(</span><span class="n">uvalue</span> <span class="o">/=</span> <span class="mi">10</span><span class="p">);</span>
-    <span class="o">*</span><span class="n">wstr</span> <span class="o">=</span> <span class="sc">'\0'</span><span class="p">;</span>
-    <span class="c1">// Reverse string</span>
-    <span class="n">strreverse</span><span class="p">(</span><span class="n">str</span><span class="p">,</span> <span class="n">wstr</span> <span class="o">-</span> <span class="mi">1</span><span class="p">);</span>
-    <span class="k">return</span> <span class="n">wstr</span> <span class="o">-</span> <span class="n">str</span><span class="p">;</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-<p>This was fine for a while, but that string reversion step always bothered
-me.  Why not just write the string backwards already?</p>
-<p>I’ve then changed the code in Lwan to the following snippet. Note the nice
-trick of multiplying the size of an integer in bytes by <code class="docutils literal notranslate"><span class="pre">3</span></code> to obtain an
-approximation of the number of digits for <code class="docutils literal notranslate"><span class="pre">MAX_INT</span></code>, including the zero
-terminator, regardless of what <code class="docutils literal notranslate"><span class="pre">sizeof(int)</span></code> is.</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="cp">#define INT_TO_STR_BUFFER_SIZE (3 * sizeof(int))</span>
-
-<span class="kt">char</span> <span class="o">*</span><span class="nf">lwan_uint32_to_str</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">value</span><span class="p">,</span>
-            <span class="kt">char</span> <span class="n">buffer</span><span class="p">[</span><span class="k">static</span> <span class="n">INT_TO_STR_BUFFER_SIZE</span><span class="p">],</span>
-            <span class="kt">size_t</span> <span class="o">*</span><span class="n">len</span><span class="p">)</span> <span class="p">{</span>
-    <span class="kt">char</span> <span class="o">*</span><span class="n">p</span> <span class="o">=</span> <span class="n">buffer</span> <span class="o">+</span> <span class="n">INT_TO_STR_BUFFER_SIZE</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span>
-
-    <span class="o">*</span><span class="n">p</span> <span class="o">=</span> <span class="sc">'\0'</span><span class="p">;</span>
-    <span class="k">do</span> <span class="p">{</span>
-        <span class="o">*--</span><span class="n">p</span> <span class="o">=</span> <span class="s">"0123456789"</span><span class="p">[</span><span class="n">value</span> <span class="o">%</span> <span class="mi">10</span><span class="p">];</span>
-    <span class="p">}</span> <span class="k">while</span> <span class="p">(</span><span class="n">value</span> <span class="o">/=</span> <span class="mi">10</span><span class="p">);</span>
-
-    <span class="kt">size_t</span> <span class="n">difference</span> <span class="o">=</span> <span class="p">(</span><span class="kt">size_t</span><span class="p">)(</span><span class="n">p</span> <span class="o">-</span> <span class="n">buffer</span><span class="p">);</span>
-    <span class="o">*</span><span class="n">len</span> <span class="o">=</span> <span class="p">(</span><span class="kt">size_t</span><span class="p">)(</span><span class="n">INT_TO_STR_BUFFER_SIZE</span> <span class="o">-</span> <span class="n">difference</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span>
-
-    <span class="k">return</span> <span class="n">p</span><span class="p">;</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-<p>Reducing writes to the array made this algorithm significantly faster.
-However, I eventually did what one should always avoid when tinkering with
-this kind of thing: I’ve changed the array lookup to an addition, without
-measuring if it would perform better, and committed the code anyway.  The
-lookup table is ~9% faster.  Ouch!</p>
-<p>Last year, the Facebook Engineering team <a class="reference external" href="https://www.facebook.com/notes/facebook-engineering/three-optimization-tips-for-c/10151361643253920">posted a function</a> to convert
-integers to strings that manages to be even faster.  They do use the same
-idea of avoiding having to reverse the string after they’re done converting
-each digit, and they use a lookup table as well.</p>
-<p>But the nice trick is that, instead of having a lookup table for 10 digits,
-there’s a table for all pair of digits, from <cite>00</cite> to <cite>99</cite>.  This cuts the
-amount of divisions by half, yielding a significantly faster algorithm:
-around 31% faster than the above snippet:</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span/><span class="kt">size_t</span> <span class="nf">facebook_uint32_to_str</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">value</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">dst</span><span class="p">)</span>
-<span class="p">{</span>
-    <span class="k">static</span> <span class="k">const</span> <span class="kt">char</span> <span class="n">digits</span><span class="p">[</span><span class="mi">201</span><span class="p">]</span> <span class="o">=</span>
-        <span class="s">"0001020304050607080910111213141516171819"</span>
-        <span class="s">"2021222324252627282930313233343536373839"</span>
-        <span class="s">"4041424344454647484950515253545556575859"</span>
-        <span class="s">"6061626364656667686970717273747576777879"</span>
-        <span class="s">"8081828384858687888990919293949596979899"</span><span class="p">;</span>
-    <span class="kt">size_t</span> <span class="k">const</span> <span class="n">length</span> <span class="o">=</span> <span class="n">digits10</span><span class="p">(</span><span class="n">value</span><span class="p">);</span>
-    <span class="kt">size_t</span> <span class="n">next</span> <span class="o">=</span> <span class="n">length</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span>
-    <span class="k">while</span> <span class="p">(</span><span class="n">value</span> <span class="o">&gt;=</span> <span class="mi">100</span><span class="p">)</span> <span class="p">{</span>
-        <span class="k">auto</span> <span class="k">const</span> <span class="n">i</span> <span class="o">=</span> <span class="p">(</span><span class="n">value</span> <span class="o">%</span> <span class="mi">100</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span><span class="p">;</span>
-        <span class="n">value</span> <span class="o">/=</span> <span class="mi">100</span><span class="p">;</span>
-        <span class="n">dst</span><span class="p">[</span><span class="n">next</span><span class="p">]</span> <span class="o">=</span> <span class="n">digits</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">];</span>
-        <span class="n">dst</span><span class="p">[</span><span class="n">next</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">digits</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
-        <span class="n">next</span> <span class="o">-=</span> <span class="mi">2</span><span class="p">;</span>
-    <span class="p">}</span>
-    <span class="c1">// Handle last 1-2 digits</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">value</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">)</span> <span class="p">{</span>
-        <span class="n">dst</span><span class="p">[</span><span class="n">next</span><span class="p">]</span> <span class="o">=</span> <span class="sc">'0'</span> <span class="o">+</span> <span class="kt">uint32_t</span><span class="p">(</span><span class="n">value</span><span class="p">);</span>
-    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-        <span class="k">auto</span> <span class="n">i</span> <span class="o">=</span> <span class="kt">uint32_t</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span><span class="p">;</span>
-        <span class="n">dst</span><span class="p">[</span><span class="n">next</span><span class="p">]</span> <span class="o">=</span> <span class="n">digits</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">];</span>
-        <span class="n">dst</span><span class="p">[</span><span class="n">next</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">digits</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
-    <span class="p">}</span>
-    <span class="k">return</span> <span class="n">length</span><span class="p">;</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-<p>The <code class="docutils literal notranslate"><span class="pre">digits10()</span></code> function is also another function that calculates the
-number of digits of a number in a very efficient manner.  Even being
-performant, though, one can get rid of the call altogether: using a constant
-like <code class="docutils literal notranslate"><span class="pre">numeric_limits&lt;uint32_t&gt;::digits10</span></code> will keep the same interface.
-This is possible because the <code class="docutils literal notranslate"><span class="pre">dst</span></code> buffer should be large enough to hold
-all the digits of the largest 32-bit unsigned integer anyway.</p>
-<p>Because of implementation details – the function basically compares numbers
-to powers of 10 and recurses when the number of digits surpasses the maximum
-power that they’re comparing to – the speedup of using a constant length
-won’t be significant for small numbers (one and two digits); but if you’re
-optimizing to this level, using a constant won’t hurt.  So much so, that it
-is consistently faster on my machine (a Core i7 2640M laptop, with an
-up-to-date 64-bit Arch Linux):</p>
-<div class="figure align-center" id="id1">
-<a class="reference internal image-reference" href="2014/06/23/https://i.imgur.com/9V0PsPK.png"><img alt="relativespeedup" src="https://i.imgur.com/9V0PsPK.png" style="width: 100%;"/></a>
-<p class="caption"><span class="caption-text">Relative speedup of <code class="docutils literal notranslate"><span class="pre">facebook_uint32_to_str()</span></code> using <code class="docutils literal notranslate"><span class="pre">digits10()</span></code> and a
-constant value</span></p>
-</div>
-<p>That chart was obtained by using a <a class="reference external" href="https://gist.github.com/lpereira/c0bf3ca3148321395037">benchmark program</a> I wrote that will
-test all these ways of converting an integer to their string representation.
-To compare with other methods, here’s the full chart:</p>
-<div class="figure align-center" id="id2">
-<a class="reference internal image-reference" href="2014/06/23/https://i.imgur.com/b2enLNt.png"><img alt="benchmark" src="https://i.imgur.com/b2enLNt.png" style="width: 100%;"/></a>
-<p class="caption"><span class="caption-text">Results for <code class="docutils literal notranslate"><span class="pre">snprintf()</span></code> omitted to not skew results. Spoiler: it’s slow.</span></p>
-</div>
-<p>Unfortunately, there’s a licencing issue that won’t let me use this code in
-Lwan.  The blog post doesn’t mention the license.  I’ve found this <a class="reference external" href="https://mail-archives.apache.org/mod_mbox/apr-dev/200704.mbox/%3C344-65769@sneakemail.com%3E">two-digit
-lookup table in places unrelated to Facebook</a> as well, so I’m not sure who
-had this idea first.  My go-to source of this kind of thing is usually
-<a class="reference external" href="http://www.hackersdelight.org/">Hacker’s Delight</a>, but even then it’s not there.</p>
-
-        </div>
-        <div class="postmeta">
-        <div class="author">
-            <span>Posted by Leandro Pereira</span>
-        </div>
-        
-        <div class="tags">
-            <span>
-                Tags:
-                <a href="tags/lwan.html">lwan</a>, <a href="tags/programming.html">programming</a>, <a href="tags/trick.html">trick</a>, <a href="tags/c.html">C</a></span>
-        </div>
         </div><div class="archive_link">
         <a href="archive.html"> &mdash; Blog Archive &mdash; </a>
     </div><ul class="related clearfix">
@@ -1676,6 +1652,8 @@ had this idea first.  My go-to source of this kind of thing is usually
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="2020/02/10/optimizing_a_json_serializer.html">Optimizing a JSON serializer (part 1)</a>
+        </li><li>
             <a href="2019/10/24/lwan_5_years_in_snippets.html">Lwan: 5 years in snippets</a>
         </li><li>
             <a href="2018/06/28/include_next_and_portability.html">include_next and portability</a>
@@ -1693,8 +1671,6 @@ had this idea first.  My go-to source of this kind of thing is usually
             <a href="2014/11/02/hybrid_c_pascal_strings.html">Hybrid C/Pascal Strings</a>
         </li><li>
             <a href="2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
-        </li><li>
-            <a href="2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
@@ -1711,6 +1687,7 @@ had this idea first.  My go-to source of this kind of thing is usually
       <a href="tags/enlightenment.html" style="font-size: 8pt">enlightenment</a>&nbsp;&nbsp;
       <a href="tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
+      <a href="tags/json.html" style="font-size: 8pt">json</a>&nbsp;&nbsp;
       <a href="tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
       <a href="tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
       <a href="tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;

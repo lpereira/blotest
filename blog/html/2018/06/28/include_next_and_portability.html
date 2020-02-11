@@ -22,7 +22,7 @@
             <link rel="stylesheet" href="../../../_static/flat.css" type="text/css">
             <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
             <link rel="stylesheet" href="../../../_static/font-awesome.min.css" type="text/css">
-        <!-- Load modernizr and JQuery -->
+        <link rel="shortcut icon" href="../../../_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
         <script src="../../../_static/vendor/modernizr-2.6.2.min.js"></script>
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
         <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
@@ -31,13 +31,13 @@
         <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="More on string switch in C" href="../../02/01/more_on_string_switch_in_c.html" /><link rel="prev" title="Lwan: 5 years in snippets" href="../../../2019/10/24/lwan_5_years_in_snippets.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     '1.7.1',
+        VERSION:     '1.7.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
-    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script><script type="text/javascript" src="../../../_static/language_data.js"></script>
+    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
 <style type="text/css">img {max-width: 100%;}</style>
 </head>
     <body role="document">
@@ -73,7 +73,7 @@ challenging to port it to other operating systems.</p>
 <p>I was content with this decision – until people began asking for BSD and Mac
 ports.  With the exception of some system calls (e.g.  epoll, or the Linux
 <a class="reference external" href="http://man7.org/linux/man-pages/man2/sendfile.2.html">sendfile</a> variant), porting shouldn’t be surprising.  Ideally, having the code
-largely <code class="docutils literal notranslate"><span class="pre">#ifdef</span></code> free would be ideal, so I had to find a way to make this happen.</p>
+largely <span class="docutils literal"><span class="pre">#ifdef</span></span> free would be ideal, so I had to find a way to make this happen.</p>
 <p>While reading the GCC manual, I found out about an extension – that also
 happens to be <a class="reference external" href="https://clang.llvm.org/docs/LanguageExtensions.html">implemented by Clang</a> – that fit perfectly
 this scenario: <a class="reference external" href="https://gcc.gnu.org/onlinedocs/cpp/Wrapper-Headers.html">wrapper headers</a>.  It’s a C
@@ -98,22 +98,22 @@ files, named after standard header files:</p>
 </div>
 <p>Have it in a directory named, say, “missing”, and modify the header lookup path
 so it is looked up first by the compiler.  This is easily accomplished in CMake
-by specifying an include directory with the <code class="docutils literal notranslate"><span class="pre">BEFORE</span></code> option:</p>
+by specifying an include directory with the <span class="docutils literal"><span class="pre">BEFORE</span></span> option:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">include_directories</span><span class="p">(</span><span class="n">BEFORE</span> <span class="n">src</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">missing</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>(This just ensures that <code class="docutils literal notranslate"><span class="pre">src/lib/missing</span></code> will be passed before any other <code class="docutils literal notranslate"><span class="pre">-I</span></code>
+<p>(This just ensures that <span class="docutils literal"><span class="pre">src/lib/missing</span></span> will be passed before any other <span class="docutils literal"><span class="pre">-I</span></span>
 argument to the compiler, regardless of the order any other
-<code class="docutils literal notranslate"><span class="pre">include_directories()</span></code> macro is invoked.  Your build system might differ, this
+<span class="docutils literal"><span class="pre">include_directories()</span></span> macro is invoked.  Your build system might differ, this
 is copied straight from Lwan’s.)</p>
 <img alt="missing directory tree" class="align-right" src="https://i.imgur.com/c3ntvJL.png" />
 <p>Then it’s just the matter of implementing these functions in terms of other
 functions available in the system, and code using it will be none the wise: a
-<code class="docutils literal notranslate"><span class="pre">#include</span> <span class="pre">&lt;stdlib.h&gt;</span></code> line will include our wrapper header, which in turn will
-include the system’s <code class="docutils literal notranslate"><span class="pre">stdlib.h</span></code> header; it then might define, in this example,
+<span class="docutils literal"><span class="pre">#include</span> <span class="pre">&lt;stdlib.h&gt;</span></span> line will include our wrapper header, which in turn will
+include the system’s <span class="docutils literal"><span class="pre">stdlib.h</span></span> header; it then might define, in this example,
 additional prototypes, based on what the build system could determine during the
 configuration phase.</p>
-<p>This way, most <code class="docutils literal notranslate"><span class="pre">#ifdefs</span></code> are hidden away in a single file, making it a lot easier
+<p>This way, most <span class="docutils literal"><span class="pre">#ifdefs</span></span> are hidden away in a single file, making it a lot easier
 to maintain and read the code.  No application-specific abstraction layer with
 quirky semantics; just the familiar quirkiness from POSIX.</p>
 <p>One of the things I’m particular proud of is the miniature <a class="reference external" href="http://man7.org/linux/man-pages/man7/epoll.7.html">epoll(7)</a> implementation on top
@@ -142,6 +142,8 @@ of code from those libraries.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2020/02/10/optimizing_a_json_serializer.html">Optimizing a JSON serializer (part 1)</a>
+        </li><li>
             <a href="../../../2019/10/24/lwan_5_years_in_snippets.html">Lwan: 5 years in snippets</a>
         </li><li>
             <a href="#">include_next and portability</a>
@@ -159,8 +161,6 @@ of code from those libraries.</p>
             <a href="../../../2014/11/02/hybrid_c_pascal_strings.html">Hybrid C/Pascal Strings</a>
         </li><li>
             <a href="../../../2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
-        </li><li>
-            <a href="../../../2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
@@ -177,6 +177,7 @@ of code from those libraries.</p>
       <a href="../../../tags/enlightenment.html" style="font-size: 8pt">enlightenment</a>&nbsp;&nbsp;
       <a href="../../../tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="../../../tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
+      <a href="../../../tags/json.html" style="font-size: 8pt">json</a>&nbsp;&nbsp;
       <a href="../../../tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
       <a href="../../../tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
       <a href="../../../tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;

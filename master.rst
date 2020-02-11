@@ -4,6 +4,7 @@ Sitemap
 .. toctree::
    :maxdepth: 1
 
+   2020/02/10/optimizing_a_json_serializer
    2019/10/24/lwan_5_years_in_snippets
    2018/06/28/include_next_and_portability
    2018/02/01/more_on_string_switch_in_c

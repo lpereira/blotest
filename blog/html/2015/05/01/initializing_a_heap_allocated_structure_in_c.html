@@ -22,7 +22,7 @@
             <link rel="stylesheet" href="../../../_static/flat.css" type="text/css">
             <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
             <link rel="stylesheet" href="../../../_static/font-awesome.min.css" type="text/css">
-        <!-- Load modernizr and JQuery -->
+        <link rel="shortcut icon" href="../../../_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
         <script src="../../../_static/vendor/modernizr-2.6.2.min.js"></script>
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
         <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
@@ -31,13 +31,13 @@
         <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Hybrid C/Pascal Strings" href="../../../2014/11/02/hybrid_c_pascal_strings.html" /><link rel="prev" title="Infect to Protect" href="../../../2016/11/08/infect_to_protect.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     '1.7.1',
+        VERSION:     '1.7.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
-    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script><script type="text/javascript" src="../../../_static/language_data.js"></script>
+    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
 <style type="text/css">img {max-width: 100%;}</style>
 </head>
     <body role="document">
@@ -67,21 +67,21 @@ allocate less memory than necessary to hold a structure:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span> <span class="n">foobar</span> <span class="o">*</span><span class="n">foobar</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">foobaz</span><span class="p">));</span>
 </pre></div>
 </div>
-<p>Note that <code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">foobaz</span></code> is passed instead of <code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">foobar</span></code>. We might get
-lucky, and <code class="docutils literal notranslate"><span class="pre">sizeof(struct</span> <span class="pre">foobaz)</span></code> might be larger or equal than
-<code class="docutils literal notranslate"><span class="pre">sizeof(struct</span> <span class="pre">foobar)</span></code>, but we might not.</p>
+<p>Note that <span class="docutils literal"><span class="pre">struct</span> <span class="pre">foobaz</span></span> is passed instead of <span class="docutils literal"><span class="pre">struct</span> <span class="pre">foobar</span></span>. We might get
+lucky, and <span class="docutils literal"><span class="pre">sizeof(struct</span> <span class="pre">foobaz)</span></span> might be larger or equal than
+<span class="docutils literal"><span class="pre">sizeof(struct</span> <span class="pre">foobar)</span></span>, but we might not.</p>
 <p>There are lots of tools out there that will catch these mistakes: static
 analyzers such as the one from Clang, and Memcheck from Valgrind are just
 two examples that should be in any C programmer’s toolbelt.</p>
-<p>Even then, people often resort to a a nicer idiom: <code class="docutils literal notranslate"><span class="pre">sizeof(*foobar)</span></code>,
+<p>Even then, people often resort to a a nicer idiom: <span class="docutils literal"><span class="pre">sizeof(*foobar)</span></span>,
 which not only avoids these problems, but also is somewhat future-proof,
-should the type of <code class="docutils literal notranslate"><span class="pre">foobar</span></code> change:</p>
+should the type of <span class="docutils literal"><span class="pre">foobar</span></span> change:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span> <span class="n">foobar</span> <span class="o">*</span><span class="n">foobar</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="o">*</span><span class="n">foobar</span><span class="p">));</span>
 </pre></div>
 </div>
 <p>However, structures often have members that, if someone forgets to
 initialize, will inflict some undefined behavior pains on the user.  The
-things in the toolbelt might help here, as well as the <code class="docutils literal notranslate"><span class="pre">calloc()</span></code>
+things in the toolbelt might help here, as well as the <span class="docutils literal"><span class="pre">calloc()</span></span>
 function, that, in addition to allocating memory, also zero-out the memory
 block:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span> <span class="n">foobar</span> <span class="o">*</span><span class="n">foobar</span> <span class="o">=</span> <span class="n">calloc</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="o">*</span><span class="n">foobar</span><span class="p">));</span>
@@ -91,7 +91,7 @@ block:</p>
 out important fields afterwards, though.</p>
 <p>Here’s a trick that’s being used in a yet-to-be-released project I’ve been
 working on and off for the past few months. It starts by defining the
-generic-chunk-of-memory equivalent of <code class="docutils literal notranslate"><span class="pre">strdup()</span></code>, <code class="docutils literal notranslate"><span class="pre">memdup()</span></code>:</p>
+generic-chunk-of-memory equivalent of <span class="docutils literal"><span class="pre">strdup()</span></span>, <span class="docutils literal"><span class="pre">memdup()</span></span>:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="o">*</span><span class="nf">memdup</span><span class="p">(</span><span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">src</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">sz</span><span class="p">)</span> <span class="p">{</span>
         <span class="kt">void</span> <span class="o">*</span><span class="n">mem</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="n">sz</span><span class="p">);</span>
         <span class="k">return</span> <span class="n">mem</span> <span class="o">?</span> <span class="n">memcpy</span><span class="p">(</span><span class="n">mem</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">sz</span><span class="p">)</span> <span class="o">:</span> <span class="nb">NULL</span><span class="p">;</span>
@@ -111,19 +111,19 @@ generic-chunk-of-memory equivalent of <code class="docutils literal notranslate"
 <span class="p">});</span>
 </pre></div>
 </div>
-<p>The compiler will check if <code class="docutils literal notranslate"><span class="pre">field</span></code>, <code class="docutils literal notranslate"><span class="pre">other_field</span></code>, and <code class="docutils literal notranslate"><span class="pre">yet_another_field</span></code>
-are actually part of <code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">foobar</span></code>, and will abort compilation of a field
+<p>The compiler will check if <span class="docutils literal"><span class="pre">field</span></span>, <span class="docutils literal"><span class="pre">other_field</span></span>, and <span class="docutils literal"><span class="pre">yet_another_field</span></span>
+are actually part of <span class="docutils literal"><span class="pre">struct</span> <span class="pre">foobar</span></span>, and will abort compilation of a field
 isn’t there or is of the wrong type.</p>
 <p>The cast prevents the allocated memory block from being assigned to the wrong
-type. (C will happily cast any <code class="docutils literal notranslate"><span class="pre">void*</span></code> to any other pointer.)</p>
+type. (C will happily cast any <span class="docutils literal"><span class="pre">void*</span></span> to any other pointer.)</p>
 <p>The amount of memory allocated will be exactly what’s needed by the
 structure, and all fields that not mentioned will be initialized with their
 default values as per <a class="reference external" href="https://gcc.gnu.org/onlinedocs/gcc/Designated-Inits.html">designated initializer rules</a>.</p>
-<p>If <code class="docutils literal notranslate"><span class="pre">memdup()</span></code> is inlined, a good compiler will generate pretty good code,
+<p>If <span class="docutils literal"><span class="pre">memdup()</span></span> is inlined, a good compiler will generate pretty good code,
 that’s often byte-by-byte equivalent to allocating directly with
-<code class="docutils literal notranslate"><span class="pre">malloc()</span></code>, initializing all the fields by hand, etc.</p>
-<p>If GCC is being used, the <code class="docutils literal notranslate"><span class="pre">__auto_type</span></code> <a class="reference external" href="https://gcc.gnu.org/onlinedocs/gcc/Typeof.html">extension</a> can be used, to avoid
-having to type <code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">foobar</span></code> twice. This has been suggested by <a class="reference external" href="https://plus.google.com/117917253135468806554/posts/DcBUyuicdLW">Thiago
+<span class="docutils literal"><span class="pre">malloc()</span></span>, initializing all the fields by hand, etc.</p>
+<p>If GCC is being used, the <span class="docutils literal"><span class="pre">__auto_type</span></span> <a class="reference external" href="https://gcc.gnu.org/onlinedocs/gcc/Typeof.html">extension</a> can be used, to avoid
+having to type <span class="docutils literal"><span class="pre">struct</span> <span class="pre">foobar</span></span> twice. This has been suggested by <a class="reference external" href="https://plus.google.com/117917253135468806554/posts/DcBUyuicdLW">Thiago
 Macieira</a>. I’d use this sparingly, though.</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">__auto_type</span> <span class="n">foobar</span> <span class="o">=</span> <span class="n">ALLOC_INIT</span><span class="p">(</span><span class="k">struct</span> <span class="n">foobar</span><span class="p">,</span> <span class="p">{</span>
         <span class="p">.</span><span class="n">field</span> <span class="o">=</span> <span class="n">value</span><span class="p">,</span>
@@ -159,6 +159,8 @@ it would be a shame if at least this didn’t become public.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2020/02/10/optimizing_a_json_serializer.html">Optimizing a JSON serializer (part 1)</a>
+        </li><li>
             <a href="../../../2019/10/24/lwan_5_years_in_snippets.html">Lwan: 5 years in snippets</a>
         </li><li>
             <a href="../../../2018/06/28/include_next_and_portability.html">include_next and portability</a>
@@ -176,8 +178,6 @@ it would be a shame if at least this didn’t become public.</p>
             <a href="../../../2014/11/02/hybrid_c_pascal_strings.html">Hybrid C/Pascal Strings</a>
         </li><li>
             <a href="../../../2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
-        </li><li>
-            <a href="../../../2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
@@ -194,6 +194,7 @@ it would be a shame if at least this didn’t become public.</p>
       <a href="../../../tags/enlightenment.html" style="font-size: 8pt">enlightenment</a>&nbsp;&nbsp;
       <a href="../../../tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="../../../tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
+      <a href="../../../tags/json.html" style="font-size: 8pt">json</a>&nbsp;&nbsp;
       <a href="../../../tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
       <a href="../../../tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
       <a href="../../../tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;

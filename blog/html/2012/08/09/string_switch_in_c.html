@@ -22,7 +22,7 @@
             <link rel="stylesheet" href="../../../_static/flat.css" type="text/css">
             <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
             <link rel="stylesheet" href="../../../_static/font-awesome.min.css" type="text/css">
-        <!-- Load modernizr and JQuery -->
+        <link rel="shortcut icon" href="../../../_static/tinkerer.ico" /><!-- Load modernizr and JQuery -->
         <script src="../../../_static/vendor/modernizr-2.6.2.min.js"></script>
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
         <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
@@ -31,13 +31,13 @@
         <link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="FOSDEM 2012" href="../../02/13/fosdem_2012.html" /><link rel="prev" title="Hash trie" href="../10/hash_trie.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     '1.7.1',
+        VERSION:     '1.7.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true
       };
-    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script><script type="text/javascript" src="../../../_static/language_data.js"></script>
+    </script><script type="text/javascript" src="../../../_static/underscore.js"></script><script type="text/javascript" src="../../../_static/doctools.js"></script>
 <style type="text/css">img {max-width: 100%;}</style>
 </head>
     <body role="document">
@@ -62,22 +62,22 @@
         </div>
     <div class="section" id="string-switch-in-c">
 <h1>String switch in C</h1>
-<p>C’s <code class="docutils literal notranslate"><span class="pre">switch</span></code> statement is very powerful. However, it can’t be used with
+<p>C’s <span class="docutils literal"><span class="pre">switch</span></span> statement is very powerful. However, it can’t be used with
 strings, only with constant integral types. This is understandable, since
 strings in C are merely arrays – they’re not first-class citizens.</p>
 <p>There are cases where such statement would be useful for strings. Here’s a
-trick I’m employing in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a> to avoid calling the <code class="docutils literal notranslate"><span class="pre">strcmp</span></code> family of
+trick I’m employing in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a> to avoid calling the <span class="docutils literal"><span class="pre">strcmp</span></span> family of
 functions in some hot paths. This exploits the notion that strings are just
 an array of bytes – and by casting them to a pointer to a 32-bit integer, and
 dereferencing this pointer, we’ll be able to perform a switch statement on
 very small strings (such as file extensions, which are usually comprised of
 four characters, including the dot).</p>
 <p>C also supports multicharacters integral constants. However, because of
-endianess concerns, GCC warns by default when <code class="docutils literal notranslate"><span class="pre">-Wall</span> <span class="pre">-Wextra</span></code> is used with
+endianess concerns, GCC warns by default when <span class="docutils literal"><span class="pre">-Wall</span> <span class="pre">-Wextra</span></span> is used with
 these constants. My solution was to just use a macro in conjuntion with an
-<code class="docutils literal notranslate"><span class="pre">enum</span></code>, to create the constant integral types expected by the compiler.</p>
+<span class="docutils literal"><span class="pre">enum</span></span>, to create the constant integral types expected by the compiler.</p>
 <p>The code below, copied directly from <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a>, illustrates an usage of this
-<code class="docutils literal notranslate"><span class="pre">STRING_SWITCH</span></code> statement:</p>
+<span class="docutils literal"><span class="pre">STRING_SWITCH</span></span> statement:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#define STRING_SWITCH_L(s) switch (*((int32_t *)(s)) | 0x20202020)</span>
 <span class="cp">#define MULTICHAR_CONSTANT(a,b,c,d) ((int32_t)((a) | (b) &lt;&lt; 8 | (c)</span>
 <span class="o">&lt;&lt;</span> <span class="mi">16</span> <span class="o">|</span> <span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="mi">24</span><span class="p">))</span>
@@ -111,7 +111,7 @@ these constants. My solution was to just use a macro in conjuntion with an
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>Note that <code class="docutils literal notranslate"><span class="pre">STRING_SWITCH_L</span></code> performs a bitwise OR with the 32-bit integral
+<p>Note that <span class="docutils literal"><span class="pre">STRING_SWITCH_L</span></span> performs a bitwise OR with the 32-bit integral
 value – this is a fast means of lowering the case of four characters at once.</p>
 <p>This kind of switch statement is used in <a class="reference external" href="http://github.com/lpereira/lwan">lwan</a> to match HTTP headers and
 HTTP methods, and also the naïve file extension to MIME-Type conversion code
@@ -140,6 +140,8 @@ shown above.</p>
 </div></section><section><div class="widget">
     <h1>Recent Posts</h1>
     <ul><li>
+            <a href="../../../2020/02/10/optimizing_a_json_serializer.html">Optimizing a JSON serializer (part 1)</a>
+        </li><li>
             <a href="../../../2019/10/24/lwan_5_years_in_snippets.html">Lwan: 5 years in snippets</a>
         </li><li>
             <a href="../../../2018/06/28/include_next_and_portability.html">include_next and portability</a>
@@ -157,8 +159,6 @@ shown above.</p>
             <a href="../../../2014/11/02/hybrid_c_pascal_strings.html">Hybrid C/Pascal Strings</a>
         </li><li>
             <a href="../../../2014/10/06/life_of_a_http_request.html">Life of a HTTP request, as seen by my toy web server</a>
-        </li><li>
-            <a href="../../../2014/06/23/integer_to_string_conversion.html">Integer to string conversion</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
@@ -175,6 +175,7 @@ shown above.</p>
       <a href="../../../tags/enlightenment.html" style="font-size: 8pt">enlightenment</a>&nbsp;&nbsp;
       <a href="../../../tags/finf.html" style="font-size: 8pt">finf</a>&nbsp;&nbsp;
       <a href="../../../tags/javascript.html" style="font-size: 8pt">javascript</a>&nbsp;&nbsp;
+      <a href="../../../tags/json.html" style="font-size: 8pt">json</a>&nbsp;&nbsp;
       <a href="../../../tags/linux.html" style="font-size: 9pt">linux</a>&nbsp;&nbsp;
       <a href="../../../tags/lwan.html" style="font-size: 17pt">lwan</a>&nbsp;&nbsp;
       <a href="../../../tags/optimization.html" style="font-size: 8pt">optimization</a>&nbsp;&nbsp;
