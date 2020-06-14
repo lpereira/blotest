@@ -128,7 +128,7 @@ class BlogHTMLWriter(html4css1.Writer):
         self.translator_class = BlogHTMLTranslator
 
     def assemble_parts(self):
-        tags = '\n'.join('<li><a href="/tags/%s.html">%s</a></li>' % (tag, tag) for tag in set(self.tags))
+        tags = '\n'.join('<li><a href="/topic/%s.html">%s</a></li>' % (tag, tag) for tag in set(self.tags))
         self.body = ['<ul class="tags">', tags, '</ul>'] + self.body
         self.tags = ','.join(set(self.tags))
 
@@ -138,13 +138,13 @@ def save_html(filename, parts, is_post=True, template=open('pagetemplate.html', 
     tags = parts['tags'].strip()
     if tags:
         tags = tags.split(',')
-        tags = '\n'.join('<li><a href="/tags/%s.html">%s</a></li>' % (tag, tag) for tag in tags)
+        tags = '\n'.join('<li><a href="/topic/%s.html">%s</a></li>' % (tag, tag) for tag in tags)
         body = parts['html_body'].replace('</span><',
             '</span>' + '<ul class="tags">' + tags + '</ul>' + '<',
             1)
     else:
         if is_post:
-            print('WARNING: Post %s has no tag/category' % parts['title'])
+            print('WARNING: Post "%s" has no topic' % parts['title'])
         body = parts['html_body']
 
     contents = template. \
@@ -193,19 +193,36 @@ def gen_tags(writer, posts_by_tags):
         title = html.unescape(post['title'])
         return '''* `%s </%s>`_''' % (title, post['filename'])
 
+    def topic_link(topic, n_posts):
+        return '''* `%s (%d posts) </topic/%s.html>`_''' % (topic, n_posts, topic)
+
     for tag, posts in posts_by_tags.items():
         if not tag:
             continue
 
         print("  [%s]" % tag)
-        rst = ['Tag: %s' % tag,
-               '=====' + '=' * len(tag), '']
+        rst = ['Topic: %s' % tag,
+               '=======' + '=' * len(tag), '']
 
         for post in posts:
             rst.append(post_link(post))
 
+        rst.append('\n')
+        rst.append('View `list of topics </topic>`_.')
+
         parts = publish_parts('\n'.join(rst), writer=writer)
-        save_html(os.path.join('genblog', 'tags', '%s.html' % tag), parts, is_post=False)
+        save_html(os.path.join('genblog', 'topic', '%s.html' % tag), parts, is_post=False)
+
+    rst = ['Topics',
+           '======']
+    for tag, posts in posts_by_tags.items():
+        if not tag:
+            continue
+
+        rst.append(topic_link(tag, len(posts)))
+
+    parts = publish_parts('\n'.join(rst), writer=writer)
+    save_html(os.path.join('genblog', 'topic', 'index.html'), parts, is_post=False)
 
 def gen_index(writer, posts):
     print("Generating index")
@@ -237,8 +254,8 @@ def gen_index(writer, posts):
             rst.append(post_link(post))
 
     rst.append('')
-    rst.append('Posts by category')
-    rst.append('=================')
+    rst.append('Posts by topic')
+    rst.append('==============')
     rst.append('')
     for tag, posts in post_by_tags.items():
         if not tag:
@@ -279,7 +296,7 @@ if __name__ == '__main__':
 
     os.mkdir("genblog")
     os.makedirs("genblog/pages")
-    os.makedirs("genblog/tags")
+    os.makedirs("genblog/topic")
 
     posts = defaultdict(lambda: [])
     for dirpath, dirnames, filenames in os.walk('.'):
