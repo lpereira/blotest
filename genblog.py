@@ -77,17 +77,8 @@ class BlogHTMLTranslator(html4css1.HTMLTranslator):
         if node.children[0].rawsource == 'none':
             raise nodes.SkipNode
 
-        tags = ['<ul class="tags">\n']
-        taglist = []
-        for tag in node.children[0].rawsource.split(','):
-            tag = tag.strip()
-            taglist.append(tag)
-            tags.append('<li><a href="/tags/%s.html">%s</a></li>\n' % (tag, tag))
+        self.tags.extend(tag.strip().lower() for tag in node.children[0].rawsource.split(','))
         node.clear()
-        tags.append('</ul>\n')
-
-        self.body = tags + self.body
-        self.tags = taglist
     def depart_tags(self, node):
         pass
 
@@ -137,14 +128,27 @@ class BlogHTMLWriter(html4css1.Writer):
         self.translator_class = BlogHTMLTranslator
 
     def assemble_parts(self):
-        # What is joining self.tags?
-        self.tags = ','.join(self.tags)
+        tags = '\n'.join('<li><a href="/tags/%s.html">%s</a></li>' % (tag, tag) for tag in set(self.tags))
+        self.body = ['<ul class="tags">', tags, '</ul>'] + self.body
+        self.tags = ','.join(set(self.tags))
 
         super(html4css1.Writer, self).assemble_parts()
 
-def save_html(filename, parts, template=open('pagetemplate.html', 'r').read()):
+def save_html(filename, parts, is_post=True, template=open('pagetemplate.html', 'r').read()):
+    tags = parts['tags'].strip()
+    if tags:
+        tags = tags.split(',')
+        tags = '\n'.join('<li><a href="/tags/%s.html">%s</a></li>' % (tag, tag) for tag in tags)
+        body = parts['html_body'].replace('</span><',
+            '</span>' + '<ul class="tags">' + tags + '</ul>' + '<',
+            1)
+    else:
+        if is_post:
+            print('WARNING: Post %s has no tag/category' % parts['title'])
+        body = parts['html_body']
+
     contents = template. \
-        replace("{{contents}}", parts['html_body']). \
+        replace("{{contents}}", body). \
         replace("{{title}}", parts['title'])
 
     with open(filename, 'w') as f:
@@ -180,7 +184,7 @@ def gen_page(writer, dirpath, filename):
     parts = publish_parts(contents, writer=writer)
     filename = filename.replace('.rst', '.html')
 
-    save_html(os.path.join('genblog', dirpath, filename), parts)
+    save_html(os.path.join('genblog', dirpath, filename), parts, is_post=False)
 
 def gen_tags(writer, posts_by_tags):
     print("Generating tag index")
@@ -193,7 +197,7 @@ def gen_tags(writer, posts_by_tags):
         if not tag:
             continue
 
-        print("  %s" % tag)
+        print("  [%s]" % tag)
         rst = ['Tag: %s' % tag,
                '=====' + '=' * len(tag), '']
 
@@ -201,7 +205,7 @@ def gen_tags(writer, posts_by_tags):
             rst.append(post_link(post))
 
         parts = publish_parts('\n'.join(rst), writer=writer)
-        save_html(os.path.join('genblog', 'tags', '%s.html' % tag), parts)
+        save_html(os.path.join('genblog', 'tags', '%s.html' % tag), parts, is_post=False)
 
 def gen_index(writer, posts):
     print("Generating index")
@@ -249,7 +253,7 @@ def gen_index(writer, posts):
             rst.append(post_link(post))
 
     parts = publish_parts('\n'.join(rst), writer=writer)
-    save_html(os.path.join('genblog', 'index.html'), parts)
+    save_html(os.path.join('genblog', 'index.html'), parts, is_post=False)
 
     gen_tags(writer, post_by_tags)
 
