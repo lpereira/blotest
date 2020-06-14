@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style type="text/css">
     #header-wrapper {
-    	position: fixed;
-	width: 100%;
+        position: fixed;
+        width: 100%;
         /* Background by https://www.heropatterns.com/ */
         background-color: #360369;
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='49' viewBox='0 0 28 49'%3E%3Cg fill-rule='evenodd'%3E%3Cg id='hexagons' fill='%23663399' fill-opacity='0.4' fill-rule='nonzero'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l10.99 6.34 11-6.35V17.9l-11-6.34L3 17.9zM0 15l12.98-7.5V0h-2v6.35L0 12.69v2.3zm0 18.5L12.98 41v8h-2v-6.85L0 35.81v-2.3zM15 0v7.5L27.99 15H28v-2.31h-.01L17 6.35V0h-2zm0 49v-8l12.99-7.5H28v2.31h-.01L17 42.15V49h-2z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
@@ -18,7 +18,7 @@
         align-items: center;
         flex-wrap: wrap;
         max-width: 848px;
-	height: 48px;
+        height: 48px;
     }
     .document {
         padding: 48px;
@@ -28,95 +28,95 @@
         color:#999;
         min-height:100%;
         height: 100%;
-	max-width: 800px;
-	line-height: 24px;
+        max-width: 800px;
+        line-height: 24px;
     }
     #copyright {
-    	text-align: center;
-    	margin-top: 32px;
-    	margin-bottom: 32px;
-    	padding-top: 16px;
-    	padding-bottom: 16px;
-    	font-size: 80%;
-    	color: #666;
-    	position: relative;
+        text-align: center;
+        margin-top: 32px;
+        margin-bottom: 32px;
+        padding-top: 16px;
+        padding-bottom: 16px;
+        font-size: 80%;
+        color: #666;
+        position: relative;
     }
     #copyright:before {
-    	content: "▣";
+        content: "▣";
         color: #628d4d;
         text-align: center;
         display: block;
         padding-bottom: 8px;
-    }            
+    }
     .document .title {
-    	font-size: 24px;
-    	margin-bottom: 8px;
-	color: #628d4d;
-	display: block;
-	padding-top: 32px;
-	font-family: monospace;
+        font-size: 24px;
+        margin-bottom: 8px;
+        color: #628d4d;
+        display: block;
+        padding-top: 32px;
+        font-family: monospace;
     }
     .document h1 { text-shadow: 0px 0px 16px #000; font-size: 20px; font-weight: normal; font-family: monospace; }
     .document h2 { font-size: 18px }
     .document h3 { font-size: 16px }
     .document h1, .document h2, .document h3 {
-	color: #628d4d; margin-bottom: -8px;
-	font-weight: normal; font-family: monospace;
+        color: #628d4d; margin-bottom: -8px;
+        font-weight: normal; font-family: monospace;
     }
     .document h1 { margin-top: 48px }
     .document h2 { margin-top: 32px }
     .document h3 { margin-top: 16px }
     .document h1::before, .document h2::before, .document h3::before {
-      content: "⬡";
-      color: #628d4d;
-      position: relative;
-      left: -24px;
-      margin-right: -16px;
-      z-index: -1;
+        content: "⬡";
+        color: #628d4d;
+        position: relative;
+        left: -24px;
+        margin-right: -16px;
+        z-index: -1;
     }
     .document p > a, .document li > a {
-    	color: #628d4d;
-    	border-bottom: 1px dotted #628d4d;
-    	text-decoration: none;
+        color: #628d4d;
+        border-bottom: 1px dotted #628d4d;
+        text-decoration: none;
     }
     .document p > a:hover, .document li > a:hover {
-    	border-bottom: 2px solid #628d4d;
+        border-bottom: 2px solid #628d4d;
     }
     .document p:first-of-type {
-    	margin-top: 32px;
+        margin-top: 32px;
     }
     .document .time {
-    	color: #666;
-	border-right: 1px dotted #444;
-	margin-right: 16px;
-	padding-right: 16px;
-	font-family: monospace;
-	font-size: 90%;
+        color: #666;
+        border-right: 1px dotted #444;
+        margin-right: 16px;
+        padding-right: 16px;
+        font-family: monospace;
+        font-size: 90%;
     }
     .document ul.tags {
-    	list-style-type: none;
-    	display: inline;
-    	padding-left: 0;
+        list-style-type: none;
+        display: inline;
+        padding-left: 0;
     }
     .document ul.tags > li > a {
-    	color: #666;
-    	font-family: monospace;
-    	font-size: 90%;
-    	border-bottom: 1px solid #333;
+        color: #666;
+        font-family: monospace;
+        font-size: 90%;
+        border-bottom: 1px solid #333;
     }
     .document ul.tags > li > a::before {
-    	color: #666;
-    	content: "♯";
+        color: #666;
+        content: "♯";
     }
     .document ul.tags > li {
-    	display: inline-block;
+        display: inline-block;
     }
     .document ul.tags > li::after {
-    	display: inline-block;
-    	content: ", ";
+        display: inline-block;
+        content: ", ";
     }
     .document ul.tags > li:last-child::after {
-    	content: "";
+        content: "";
     }
     html {
         scrollbar-color: rebeccapurple #101010;
@@ -129,58 +129,58 @@
         border: 0;
         padding: 0;
         margin: 0;
-	flex: 1;
+        flex: 1;
     }
     #menu {
         font-size: 16px;
-	list-style-type: none;
-	line-height: 16px;
-	margin-right: 48px;
+        list-style-type: none;
+        line-height: 16px;
+        margin-right: 48px;
     }
     #menu > li {
-	display: inline-block;
-	border-right: 1px dotted #a2b282;
-	margin-right: 16px;
-	padding-right: 16px;
+        display: inline-block;
+        border-right: 1px dotted #a2b282;
+        margin-right: 16px;
+        padding-right: 16px;
     }
     #menu > li:last-child {
-	border-right: 0;
-	margin-right: 0;
-	padding-right: 0;
+        border-right: 0;
+        margin-right: 0;
+        padding-right: 0;
     }
     #menu > li > a {
-    	text-decoration: none;
-    	color: #ddd;
-    	text-shadow: 0px 0px 16px #fff;
+        text-decoration: none;
+        color: #ddd;
+        text-shadow: 0px 0px 16px #fff;
     }
     #menu > li > a:hover {
-    	color: #e2e2ed;
-    	border-bottom: 3px solid #829d6d;
-    	text-shadow: 0px 0px 4px gray;
+        color: #e2e2ed;
+        border-bottom: 3px solid #829d6d;
+        text-shadow: 0px 0px 4px gray;
     }
     #name {
-	margin-left: 48px;
-	color: #ddd;
-	font-size: 22px;
-    	letter-spacing: -0.05em;
-	animation: typer 0.8s;
-	overflow: hidden;
-	white-space: nowrap;
-	font-family: monospace;
-	text-shadow: 0px 0px 12px #fff;
+        margin-left: 48px;
+        color: #ddd;
+        font-size: 22px;
+        letter-spacing: -0.05em;
+        animation: typer 0.8s;
+        overflow: hidden;
+        white-space: nowrap;
+        font-family: monospace;
+        text-shadow: 0px 0px 12px #fff;
     }
     #name a {
-    	color: #ddd;
-    	text-decoration: none;
+        color: #ddd;
+        text-decoration: none;
     }
     #name::after {
-    	content: "▊";
-    	color: #ccc;
-	-webkit-animation-name: blinker;
-	-webkit-animation-duration: 0.6s;
-	-webkit-animation-iteration-count: 16;
-	-webkit-animation-timing-function:ease-in-out;
-	-webkit-animation-direction: alternate;
+        content: "▊";
+        color: #ccc;
+        -webkit-animation-name: blinker;
+        -webkit-animation-duration: 0.6s;
+        -webkit-animation-iteration-count: 16;
+        -webkit-animation-timing-function:ease-in-out;
+        -webkit-animation-direction: alternate;
     }
     @-webkit-keyframes blinker { from {opacity: 1.0} to {opacity: 0.0} }
     @-webkit-keyframes typer { from {width: 0} to {width: 15em} }
@@ -193,34 +193,34 @@
         background: linear-gradient(rgba(0,0,0,255), rgba(0,0,0,0));
     }
     @media all and (max-width:600px) {
-    	.document {
+        .document {
             padding: 16px;
             padding-top: 124px;
             width: calc(100% - 48px);
-    	}
-    	#header {
-    	    display: block;
-    	    height: 80px;
-    	    width: 100%;
-    	    text-align: center;
-    	    padding: 0;
-    	    margin: 0;
-    	    justify-content: none;
-    	    align-items: none;
-    	    max-width: 100%;
-    	}
-    	#header-wrapper {
-    	    padding: 0;
-    	    margin: 0;
-    	    padding-top: 16px;
-    	    width: 100%;
-    	}
-    	#name {
-    	    margin: 0;
-    	}
-    	#header-shadow {
-    	    top: 100px;
-    	}
+        }
+        #header {
+            display: block;
+            height: 80px;
+            width: 100%;
+            text-align: center;
+            padding: 0;
+            margin: 0;
+            justify-content: none;
+            align-items: none;
+            max-width: 100%;
+        }
+        #header-wrapper {
+            padding: 0;
+            margin: 0;
+            padding-top: 16px;
+            width: 100%;
+        }
+        #name {
+            margin: 0;
+        }
+        #header-shadow {
+            top: 100px;
+        }
         .document h2, .document h3 {
             margin-left: 0.5px;
         }
