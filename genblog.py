@@ -156,6 +156,7 @@ def save_html(filename, parts, is_post=True, template=open('pagetemplate.html', 
     if tags:
         tags = tags.split(',')
         tags = '\n'.join('<li><a href="/topic/%s.html">%s</a></li>' % (tag, tag) for tag in tags)
+        # FIXME: this is a big ugly hack!
         body = parts['html_body'].replace('</span><',
             '</span>' + '<ul class="tags">' + tags + '</ul>' + '<',
             1)
@@ -256,6 +257,8 @@ def gen_index(writer, posts):
 
     rst = ['Most recent posts',
            '=================', '']
+
+    # FIXME: show the first paragraph of a post?
 
     last_year = -1
     for date in reversed(sorted(posts.keys())):
