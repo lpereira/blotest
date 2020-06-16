@@ -9,6 +9,7 @@ from docutils.writers import html4css1
 from pygments.formatters import HtmlFormatter
 from pygments import highlight
 from pygments.lexers import get_lexer_by_name
+import subprocess
 import docutils.nodes
 import docutils.parsers.rst.directives.admonitions
 import json
@@ -16,6 +17,7 @@ import os
 import re
 import shutil
 import html
+import sys
 
 class AuthorDirective(docutils.parsers.rst.directives.admonitions.BaseAdmonition):
     node_class = nodes.author
@@ -294,6 +296,36 @@ def gen_index(writer, posts):
 
     gen_tags(writer, post_by_tags)
 
+def compress_css():
+    if not os.path.exists('./node_modules/.bin/csso'):
+        print("To minify CSS: npm install csso-cli")
+        return
+
+    print("Minifying CSS")
+    csso = subprocess.Popen(["./node_modules/.bin/csso"],
+                            stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    with open("blog.css", "r") as input_css:
+        output = csso.communicate(input=input_css.read().encode('utf-8'))[0]
+        with open("genblog/blog.css", "w") as output_css:
+            output_css.write(output.decode('utf-8'))
+
+def precompress_everything():
+    if os.path.exists("/usr/bin/zopfli"):
+        print("Pre-compressing generated files with zopfli")
+        def compress(src):
+            zopfli = subprocess.Popen(["/usr/bin/zopfli", "--gzip", src])
+            zopfli.communicate()
+    else:
+        print("zopfli not found, not pre-compressing")
+        return
+
+    for dirpath, dirnames, filenames in os.walk('genblog'):
+        for filename in filenames:
+            path = os.path.join(dirpath, filename)
+            sys.stderr.write("\033[2KPrecompressing %s\r" % path)
+            compress(path)
+    sys.stderr.write("\033[2k")
+
 if __name__ == '__main__':
     docutils.parsers.rst.directives.register_directive('author', AuthorDirective)
     docutils.parsers.rst.directives.register_directive('categories', CategoriesDirective)
@@ -318,8 +350,6 @@ if __name__ == '__main__':
     os.makedirs("genblog/pages")
     os.makedirs("genblog/topic")
 
-    shutil.copyfile('blog.css', 'genblog/blog.css')
-
     posts = defaultdict(lambda: [])
     for dirpath, dirnames, filenames in os.walk('.'):
         if post_re.match(dirpath):
@@ -335,3 +365,6 @@ if __name__ == '__main__':
                 gen_page(writer, dirpath, filename)
 
     gen_index(writer, posts)
+
+    compress_css()
+    precompress_everything()
