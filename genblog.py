@@ -147,7 +147,7 @@ class BlogHTMLWriter(html4css1.Writer):
     def assemble_parts(self):
         tags = '\n'.join('<li><a href="/topic/%s.html">%s</a></li>' % (tag, tag) for tag in set(self.tags))
         self.body = ['<ul class="tags">', tags, '</ul>'] + self.body
-        self.tags = ','.join(set(self.tags))
+        self.tags = ','.join(sorted(set(self.tags)))
 
         super(html4css1.Writer, self).assemble_parts()
 
@@ -232,7 +232,7 @@ def gen_tags(writer, posts_by_tags):
 
     rst = ['Topics',
            '======']
-    for tag, posts in posts_by_tags.items():
+    for tag, posts in sorted(posts_by_tags.items(), key=lambda kv: (len(kv[1]), kv[0]), reverse=True):
         if not tag:
             continue
 
@@ -274,7 +274,7 @@ def gen_index(writer, posts):
     rst.append('Posts by topic')
     rst.append('==============')
     rst.append('')
-    for tag, posts in post_by_tags.items():
+    for tag, posts in sorted(post_by_tags.items(), key=lambda kv: (len(kv[1]), kv[0]), reverse=True):
         if not tag:
             continue
 
