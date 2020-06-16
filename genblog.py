@@ -28,6 +28,10 @@ class PostedDirective(docutils.parsers.rst.directives.admonitions.BaseAdmonition
     class posted(docutils.nodes.TextElement): pass
     node_class = posted
 
+class YoutubeDirective(docutils.parsers.rst.directives.admonitions.BaseAdmonition):
+    class youtube(docutils.nodes.TextElement): pass
+    node_class = youtube
+
 class CommentsDirective(docutils.parsers.rst.directives.admonitions.BaseAdmonition):
     node_class = nodes.comment
 
@@ -120,6 +124,19 @@ class BlogHTMLTranslator(html4css1.HTMLTranslator):
         self.context.append('</span>\n')
         self.in_document_title = len(self.body)
         self.found_title = True
+
+    def visit_youtube(self, node):
+        video_id = node.children[0].rawsource.strip()
+
+        self.body.append('''<iframe width="560" height="315"
+                src="https://www.youtube.com/embed/%s"
+                frameborder="0"
+                allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen>
+            </iframe>''' % video_id)
+        node.clear()
+    def depart_youtube(self, node):
+        pass
 
 class BlogHTMLWriter(html4css1.Writer):
     def __init__(self):
@@ -280,9 +297,9 @@ if __name__ == '__main__':
     docutils.parsers.rst.directives.register_directive('tags', TagsDirective)
     docutils.parsers.rst.directives.register_directive('comments', CommentsDirective)
     docutils.parsers.rst.directives.register_directive('posted', PostedDirective)
+    docutils.parsers.rst.directives.register_directive('youtube', YoutubeDirective)
     docutils.parsers.rst.directives.register_directive('code-block', pygments_directive)
     docutils.parsers.rst.directives.register_directive('code', pygments_directive)
-    # TODO: youtube directive
 
     writer = BlogHTMLWriter()
 
