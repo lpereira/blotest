@@ -212,15 +212,15 @@ def gen_tags(writer, posts_by_tags):
         return '''* `%s </%s>`_''' % (title, post['filename'])
 
     def topic_link(topic, n_posts):
-        return '''* `%s (%d posts) </topic/%s.html>`_''' % (topic, n_posts, topic)
+        return '''* `%s </topic/%s.html>`_ (%d %s)''' % (topic, topic, n_posts, "posts" if n_posts != 1 else "post")
 
     for tag, posts in posts_by_tags.items():
         if not tag:
             continue
 
         print("  [%s]" % tag)
-        rst = ['Topic: %s' % tag,
-               '=======' + '=' * len(tag), '']
+        rst = ['Posts in topic *%s*' % tag,
+               '===============' + '=' * (2 + len(tag)), '']
 
         for post in posts:
             rst.append(post_link(post))
