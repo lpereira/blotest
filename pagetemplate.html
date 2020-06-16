@@ -55,13 +55,17 @@
         display: block;
         padding-top: 32px;
         font-family: monospace;
+        text-shadow: 0px 0px 16px #000;
     }
-    .document h1 { text-shadow: 0px 0px 16px #000; font-size: 20px; font-weight: normal; font-family: monospace; }
+    .document h1 { font-size: 20px; font-weight: normal; font-family: monospace; }
     .document h2 { font-size: 18px }
     .document h3 { font-size: 16px }
     .document h1, .document h2, .document h3 {
-        color: #628d4d; margin-bottom: -8px;
-        font-weight: normal; font-family: monospace;
+        color: #628d4d;
+        margin-bottom: -8px;
+        font-weight: normal;
+        font-family: monospace;
+        text-shadow: 0px 0px 16px #000;
     }
     .document h1 { margin-top: 48px }
     .document h2 { margin-top: 32px }
@@ -73,6 +77,7 @@
         left: -24px;
         margin-right: -16px;
         z-index: -1;
+        text-shadow: 0px 0px 16px #fff;
     }
     .document p > a, .document li > a {
         color: #628d4d;
@@ -174,11 +179,12 @@
         text-decoration: none;
     }
     #name::after {
-        content: "▊";
+        content: "▂";
         color: #ccc;
+        text-shadow: none;
         -webkit-animation-name: blinker;
         -webkit-animation-duration: 0.6s;
-        -webkit-animation-iteration-count: 16;
+        -webkit-animation-iteration-count: 8;
         -webkit-animation-timing-function:ease-in-out;
         -webkit-animation-direction: alternate;
     }
@@ -221,20 +227,43 @@
         #header-shadow {
             top: 100px;
         }
-        .document h2, .document h3 {
+        .document h1, .document h2, .document h3 {
             margin-left: 0.5px;
         }
-        .document h2::before, .document h3::before {
+        .document h1::before, .document h2::before, .document h3::before {
             display: none;
         }
     }
-    .document .align-right { float: right; }
+    .document .align-right { float: right; margin-left: 32px; margin-bottom: 32px; }
+    .document .align-center { text-align: center; margin-left: auto; margin-right: auto; display: block; }
+    .document .caption { max-width: 50%; margin: 0 auto; font-style: oblique; padding-top: 16px; padding-bottom: 16px; }
+    .document img { box-shadow: 0px 0px 16px #000; background-color: #eee; padding: 16px; }
     .document pre { margin: 0 }
     .document .highlight, .document .literal-block {
         background: #002b36; color: #839496;
+        box-shadow: 0px 0px 32px #111;
         padding: 32px;
         margin: 16px;
         overflow-x: auto;
+    }
+    .document table {
+        border: 2px solid #001b26;
+        border-collapse: collapse;
+        background: #002b36;
+        color: #839496;
+        box-shadow: 0px 0px 32px #111;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .document td, .document th {
+        padding: 8px;
+        border: 1px dotted #001b26;
+    }
+    .document th {
+        background-color: #103b46;
+    }
+    .document tr:hover {
+        background-color: #204b56;
     }
     .highlight .hll { background-color: #073642 }
     .highlight .c { color: #586e75; font-style: italic }
