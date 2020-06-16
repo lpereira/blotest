@@ -81,3 +81,9 @@ event-handling loop as is.  Not only I understand 100% of it, it was a
 worthwhile learning experience.  With ~120 lines of C code, this epoll
 implementation is easier to wrap my head around than the thousands of lines
 of code from those libraries.
+
+
+.. author:: default
+.. categories:: none
+.. tags:: programming, trick, C
+.. comments::
