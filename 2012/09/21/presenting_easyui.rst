@@ -28,12 +28,12 @@ sample EasyUI applications being executed:
 Brief overview of an EasyUI app
 :::::::::::::::::::::::::::::::
 
-An app begins with a simple call to ``EUI.app()``, passing at least one parameter:
-    the main view-controller. The other parameter is an optional object that
-    contains application settings, such as the theme or window titles. EasyUI
-    applications are contained inside one window only, since the main focus
-    are apps for mobile devices with stacked lists and the eventual popup
-    that appears on top of the content.
+An app begins with a simple call to ``EUI.app()``, passing at least one
+parameter: the main view-controller.  The other parameter is an optional
+object that contains application settings, such as the theme or window
+titles.  EasyUI applications are contained inside one window only, since the
+main focus are apps for mobile devices with stacked lists and the eventual
+popup that appears on top of the content.
 
 The code below shows a typical controller-view; explanation will follow.
 
