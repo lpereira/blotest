@@ -19,6 +19,10 @@ import shutil
 import html
 import sys
 
+def status(*msg):
+    sys.stdout.write("\033[2K\r%s" % ' '.join(msg))
+    sys.stdout.flush()
+
 class AuthorDirective(docutils.parsers.rst.directives.admonitions.BaseAdmonition):
     node_class = nodes.author
 
@@ -177,7 +181,7 @@ def save_html(filename, parts, is_post=True, template=open('pagetemplate.html', 
 def gen_blog_post(writer, dirpath, filename):
     outdir = os.path.join('genblog', dirpath)
 
-    print('Generating blog post:', os.path.join(outdir, filename))
+    status('Generating blog post:', os.path.join(outdir, filename))
 
     os.makedirs(outdir)
 
@@ -198,7 +202,7 @@ def gen_blog_post(writer, dirpath, filename):
     }
 
 def gen_page(writer, dirpath, filename):
-    print("Generating page:", filename)
+    status("Generating page:", filename)
 
     contents = open(os.path.join(dirpath, filename)).read()
     parts = publish_parts(contents, writer=writer)
@@ -207,8 +211,6 @@ def gen_page(writer, dirpath, filename):
     save_html(os.path.join('genblog', dirpath, filename), parts, is_post=False)
 
 def gen_tags(writer, posts_by_tags):
-    print("Generating tag index")
-
     def post_link(post):
         title = html.unescape(post['title'])
         return '''* `%s </%s>`_''' % (title, post['filename'])
@@ -220,7 +222,7 @@ def gen_tags(writer, posts_by_tags):
         if not tag:
             continue
 
-        print("  [%s]" % tag)
+        status("Generating tag", tag)
         rst = ['Posts in topic *%s*' % tag,
                '===============' + '=' * (2 + len(tag)), '']
 
@@ -245,7 +247,7 @@ def gen_tags(writer, posts_by_tags):
     save_html(os.path.join('genblog', 'topic', 'index.html'), parts, is_post=False)
 
 def gen_index(writer, posts):
-    print("Generating index")
+    status("Generating index")
 
     def post_link(post):
         title = html.unescape(post['title'])
@@ -301,7 +303,7 @@ def compress_css():
         print("To minify CSS: npm install csso-cli")
         return
 
-    print("Minifying CSS")
+    status("Minifying CSS")
     csso = subprocess.Popen(["./node_modules/.bin/csso"],
                             stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     with open("blog.css", "r") as input_css:
@@ -311,7 +313,6 @@ def compress_css():
 
 def precompress_everything():
     if os.path.exists("/usr/bin/zopfli"):
-        print("Pre-compressing generated files with zopfli")
         def compress(src):
             zopfli = subprocess.Popen(["/usr/bin/zopfli", "--gzip", src])
             zopfli.communicate()
@@ -322,9 +323,8 @@ def precompress_everything():
     for dirpath, dirnames, filenames in os.walk('genblog'):
         for filename in filenames:
             path = os.path.join(dirpath, filename)
-            sys.stderr.write("\033[2KPrecompressing %s\r" % path)
+            status("Precompressing %s" % path)
             compress(path)
-    sys.stderr.write("\033[2k")
 
 if __name__ == '__main__':
     docutils.parsers.rst.directives.register_directive('author', AuthorDirective)
@@ -368,3 +368,5 @@ if __name__ == '__main__':
 
     compress_css()
     precompress_everything()
+
+    status()
