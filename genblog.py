@@ -318,6 +318,8 @@ if __name__ == '__main__':
     os.makedirs("genblog/pages")
     os.makedirs("genblog/topic")
 
+    shutil.copyfile('blog.css', 'genblog/blog.css')
+
     posts = defaultdict(lambda: [])
     for dirpath, dirnames, filenames in os.walk('.'):
         if post_re.match(dirpath):
