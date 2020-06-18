@@ -141,7 +141,7 @@ body {
 }
 #menu > li {
     display: inline-block;
-    border-right: 1px dotted #a2b282;
+    border-right: 1px dotted #b2b2b2;
     margin-right: 16px;
     padding-right: 16px;
 }
