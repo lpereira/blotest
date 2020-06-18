@@ -283,7 +283,7 @@ def gen_tags(writer, posts_by_tags):
             rst.append(post_link(post, True))
 
         rst.append('\n')
-        rst.append('View `list of topics </topic>`_.')
+        rst.append('View `list of topics </topic/>`_.')
 
         parts = publish_parts('\n'.join(rst), writer=writer)
         save_html(os.path.join('genblog', 'topic', '%s.html' % tag), parts, is_post=False)
