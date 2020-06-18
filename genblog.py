@@ -9,6 +9,10 @@ from docutils.writers import html4css1
 from pygments.formatters import HtmlFormatter
 from pygments import highlight
 from pygments.lexers import get_lexer_by_name
+from html.parser import HTMLParser
+from dateutil.tz import tzlocal
+from xml.etree.ElementTree import Element as XmlElement, SubElement as XmlSubElement, tostring as xml_tostring
+import multiprocessing
 import subprocess
 import docutils.nodes
 import docutils.parsers.rst.directives.admonitions
@@ -18,6 +22,29 @@ import re
 import shutil
 import html
 import sys
+import textwrap
+import datetime
+class FirstParagraph(HTMLParser):
+    def __init__(self):
+        super().__init__()
+
+        self.first_paragraph = []
+        self.in_p = False
+
+    def handle_starttag(self, tag, attrs):
+        if not self.first_paragraph and tag == 'p':
+            self.in_p = True
+
+    def handle_endtag(self, tag):
+        if tag == 'p':
+            self.in_p = False
+
+    def handle_data(self, data):
+        if self.in_p:
+            self.first_paragraph.append(data)
+
+    def get_first_paragraph(self):
+        return ''.join(self.first_paragraph).replace("\n", " ")
 
 def status(*msg):
     sys.stdout.write("\033[2K\r%s" % ' '.join(msg))
@@ -178,6 +205,8 @@ def save_html(filename, parts, is_post=True, template=open('pagetemplate.html', 
     with open(filename, 'w') as f:
         f.write(contents)
 
+    return contents
+
 def gen_blog_post(writer, dirpath, filename):
     outdir = os.path.join('genblog', dirpath)
 
@@ -192,13 +221,17 @@ def gen_blog_post(writer, dirpath, filename):
 
     html_filename = filename.replace('.rst', '.html')
     rel_path = os.path.join(dirpath, html_filename)
-    save_html(os.path.join('genblog', rel_path), parts)
+    html = save_html(os.path.join('genblog', rel_path), parts)
+
+    first_paragraph = FirstParagraph()
+    first_paragraph.feed(html)
 
     return {
         'date': (year, month, day),
         'tags': parts['tags'].split(','),
         'filename': rel_path,
-        'title': parts['title']
+        'title': parts['title'],
+        'first_paragraph': first_paragraph.get_first_paragraph()
     }
 
 def gen_page(writer, dirpath, filename):
@@ -210,13 +243,33 @@ def gen_page(writer, dirpath, filename):
 
     save_html(os.path.join('genblog', dirpath, filename), parts, is_post=False)
 
-def gen_tags(writer, posts_by_tags):
-    def post_link(post):
-        title = html.unescape(post['title'])
-        return '''* `%s </%s>`_''' % (title, post['filename'])
+def post_link(post, include_year):
+    months = {
+        1:'January',
+        2:'February',
+        3:'March',
+        4:'April',
+        5:'May',
+        6:'June',
+        7:'July',
+        8:'August',
+        9:'September',
+        10:'October',
+        11:'November',
+        12:'December'
+    }
+    title = html.unescape(post['title'])
+    if include_year:
+        date = '``Published %s, %02d, %04d``' % (months[post['date'][1]], post['date'][2], post['date'][0])
+    else:
+        date = '``Published %s, %02d``' % (months[post['date'][1]], post['date'][2])
 
+    first_paragraph = textwrap.shorten(post['first_paragraph'], 256, placeholder="…")
+    return '''* `%s </%s>`_\n    %s %s\n''' % (title, post['filename'], first_paragraph, date)
+
+def gen_tags(writer, posts_by_tags):
     def topic_link(topic, n_posts):
-        return '''* `%s </topic/%s.html>`_ (%d %s)''' % (topic, topic, n_posts, "posts" if n_posts != 1 else "post")
+        return '''* `%s </topic/%s.html>`_ ``%d %s``''' % (topic, topic, n_posts, "posts" if n_posts != 1 else "post")
 
     for tag, posts in posts_by_tags.items():
         if not tag:
@@ -227,7 +280,7 @@ def gen_tags(writer, posts_by_tags):
                '===============' + '=' * (2 + len(tag)), '']
 
         for post in posts:
-            rst.append(post_link(post))
+            rst.append(post_link(post, True))
 
         rst.append('\n')
         rst.append('View `list of topics </topic>`_.')
@@ -248,10 +301,6 @@ def gen_tags(writer, posts_by_tags):
 
 def gen_index(writer, posts):
     status("Generating index")
-
-    def post_link(post):
-        title = html.unescape(post['title'])
-        return '''* `%s </%s>`_''' % (title, post['filename'])
 
     post_by_tags = defaultdict(lambda: [])
     for posts_by_date in posts.values():
@@ -275,7 +324,7 @@ def gen_index(writer, posts):
             last_year = year
 
         for post in posts[date]:
-            rst.append(post_link(post))
+            rst.append(post_link(post, False))
 
     rst.append('')
     rst.append('Posts by topic')
@@ -291,14 +340,14 @@ def gen_index(writer, posts):
         rst.append('')
 
         for post in posts:
-            rst.append(post_link(post))
+            rst.append(post_link(post, True))
 
     parts = publish_parts('\n'.join(rst), writer=writer)
     save_html(os.path.join('genblog', 'index.html'), parts, is_post=False)
 
     gen_tags(writer, post_by_tags)
 
-def compress_css():
+def optimize_css():
     if not os.path.exists('./node_modules/.bin/csso'):
         print("To minify CSS: npm install csso-cli")
         return
@@ -311,20 +360,96 @@ def compress_css():
         with open("genblog/blog.css", "w") as output_css:
             output_css.write(output.decode('utf-8'))
 
+def compress_zopfli(src):
+    status("Gzipping", src)
+    zopfli = subprocess.Popen(["/usr/bin/zopfli", "--gzip", src])
+    zopfli.communicate()
+
 def precompress_everything():
     if os.path.exists("/usr/bin/zopfli"):
-        def compress(src):
-            zopfli = subprocess.Popen(["/usr/bin/zopfli", "--gzip", src])
-            zopfli.communicate()
+        compress = compress_zopfli
     else:
         print("zopfli not found, not pre-compressing")
         return
 
+    to_compress = []
     for dirpath, dirnames, filenames in os.walk('genblog'):
         for filename in filenames:
-            path = os.path.join(dirpath, filename)
-            status("Precompressing %s" % path)
-            compress(path)
+            to_compress.append(os.path.join(dirpath, filename))
+
+    pool = multiprocessing.Pool(None)
+    pool.map(compress, to_compress)
+    pool.close()
+    pool.join()
+
+def minify(src):
+    status("Minifying", src)
+    html_minify = subprocess.Popen(["./node_modules/.bin/html-minifier",
+                                    "--collapse-whitespace",
+                                    "--remove-comments",
+                                    "--remove-optional-tags",
+                                    "--remove-redundant-attributes",
+                                    "--remove-script-type-attributes",
+                                    "--use-short-doctype",
+                                    "--decode-entities",
+                                    "--output", src,
+                                    src])
+    html_minify.communicate()
+
+def minimize_html():
+    if not os.path.exists("./node_modules/.bin/html-minifier"):
+        print("To minify HTML: npm install html-minifier")
+        return
+
+    to_minify = []
+    for dirpath, dirnames, filenames in os.walk('genblog'):
+        for filename in filenames:
+            if filename == 'rss.html':
+                continue
+            if filename.endswith('.html'):
+                to_minify.append(os.path.join(dirpath, filename))
+
+    pool = multiprocessing.Pool(None)
+    pool.map(minify, to_minify)
+    pool.close()
+    pool.join()
+
+def gen_rss(posts):
+    def append_data(root, tag_name, data):
+        element = XmlElement(tag_name)
+        element.text = data
+        root.append(element)
+
+    rfc822 = "%a, %d %b %Y %H:%M:%S %z"
+    tz = tzlocal()
+    pub_date = datetime.datetime.now(tz)
+
+    rss = XmlElement('rss', {'version': '2.0'})
+
+    channel = XmlElement('channel')
+    append_data(channel, 'title', 'Leandro Pereira')
+    append_data(channel, 'link', 'https://tia.mat.br')
+    append_data(channel, 'description', '')
+    append_data(channel, 'language', 'en')
+    append_data(channel, 'pubDate', pub_date.strftime(rfc822))
+    rss.append(channel)
+
+    for date, posts in sorted(posts.items(), key=lambda kv: kv[0], reverse=True):
+        for post in posts:
+            item = XmlElement('item')
+            append_data(item, 'link', 'https://tia.mat.br/' + post['filename'])
+            append_data(item, 'guid', 'https://tia.mat.br/' + post['filename'])
+            append_data(item, 'title', post['title'])
+            append_data(item, 'description', post['first_paragraph'])
+
+            year, month, day = post['date']
+            pub_date = datetime.datetime(year=year, month=month, day=day, tzinfo=tz)
+            append_data(item, 'pubDate', pub_date.strftime(rfc822))
+
+            channel.append(item)
+
+    with open('genblog/rss.html', 'wb') as rss_file:
+        rss_file.write(xml_tostring(rss))
 
 if __name__ == '__main__':
     docutils.parsers.rst.directives.register_directive('author', AuthorDirective)
@@ -365,8 +490,10 @@ if __name__ == '__main__':
                 gen_page(writer, dirpath, filename)
 
     gen_index(writer, posts)
+    gen_rss(posts)
 
-    compress_css()
+    optimize_css()
+    minimize_html()
     precompress_everything()
 
     status()
