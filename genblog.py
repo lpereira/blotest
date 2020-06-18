@@ -497,3 +497,4 @@ if __name__ == '__main__':
     precompress_everything()
 
     status()
+    os.system("lwan -r genblog -l 127.0.0.1:8080")
