@@ -115,7 +115,7 @@
 }
 .document ul.tags > li::after {
     display: inline-block;
-    content: ", ";
+    content: ", ";
 }
 .document ul.tags > li:last-child::after {
     content: "";
