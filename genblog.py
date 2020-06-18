@@ -229,7 +229,7 @@ def gen_blog_post(writer, dirpath, filename):
     return {
         'date': (year, month, day),
         'tags': parts['tags'].split(','),
-        'filename': rel_path,
+        'filename': ('posts/' + rel_path).replace("/./", "/"),
         'title': parts['title'],
         'first_paragraph': first_paragraph.get_first_paragraph()
     }
