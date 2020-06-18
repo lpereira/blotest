@@ -244,8 +244,8 @@ body {
 }
 .document .align-right { float: right; margin-left: 32px; margin-bottom: 32px; }
 .document .align-center { text-align: center; margin-left: auto; margin-right: auto; display: block; }
-.document .caption { max-width: 50%; margin: 0 auto; font-style: oblique; padding-top: 16px; padding-bottom: 16px; }
-.document img { box-shadow: 0px 0px 16px #000; background-color: #eee; padding: 16px; }
+.document .caption { min-width: 300px; max-width: 50%; margin: 0 auto; font-style: oblique; padding-top: 16px; padding-bottom: 16px; }
+.document img { max-width: calc(90% - 64px); box-shadow: 0px 0px 16px #000; background-color: #eee; padding: 16px; }
 .document pre { margin: 0 }
 .document .highlight, .document .literal-block {
     background: #002b36; color: #839496;
