@@ -161,15 +161,16 @@ body {
     text-shadow: 0px 0px 4px gray;
 }
 #name {
-    margin-left: 48px;
     color: #ddd;
     font-size: 22px;
     letter-spacing: -0.05em;
     animation: typer 0.8s;
-    overflow: hidden;
     white-space: nowrap;
     font-family: monospace;
-    text-shadow: 0px 0px 12px #fff;
+    text-shadow: 0px 0px 12px white;
+    overflow: hidden;
+    padding: 12px;
+    margin-left: 36px;
 }
 #name a {
     color: #ddd;
@@ -182,11 +183,11 @@ body {
     -webkit-animation-name: blinker;
     -webkit-animation-duration: 0.6s;
     -webkit-animation-iteration-count: 8;
-    -webkit-animation-timing-function:ease-in-out;
+    -webkit-animation-timing-function:ease-out-in;
     -webkit-animation-direction: alternate;
 }
 @-webkit-keyframes blinker { from {opacity: 1.0} to {opacity: 0.0} }
-@-webkit-keyframes typer { from {width: 0} to {width: 15em} }
+@-webkit-keyframes typer { from {width: 0} to {width: 12em;} }
 #header-shadow {
     width: 100%;
     position: fixed;
