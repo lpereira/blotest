@@ -231,6 +231,17 @@ body {
         display: none;
     }
 }
+.document tt {
+    background: #333;
+    color: #999;
+    padding: 2px;
+    border-top: 1px solid #181818;
+    border-left: 1px solid #181818;
+    border-bottom: 1px solid #282828;
+    border-right: 1px solid #282828;
+    text-shadow: 0px 0px 2px #202020;
+    border-radius: 2px;
+}
 .document .align-right { float: right; margin-left: 32px; margin-bottom: 32px; }
 .document .align-center { text-align: center; margin-left: auto; margin-right: auto; display: block; }
 .document .caption { max-width: 50%; margin: 0 auto; font-style: oblique; padding-top: 16px; padding-bottom: 16px; }
