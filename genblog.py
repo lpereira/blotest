@@ -311,8 +311,6 @@ def gen_index(writer, posts):
     rst = ['Most recent posts',
            '=================', '']
 
-    # FIXME: show the first paragraph of a post?
-
     last_year = -1
     for date in reversed(sorted(posts.keys())):
         year, month, day = date
@@ -475,6 +473,7 @@ if __name__ == '__main__':
     os.makedirs("genblog/pages")
     os.makedirs("genblog/topic")
 
+    # FIXME: prev/next?
     posts = defaultdict(lambda: [])
     for dirpath, dirnames, filenames in os.walk('.'):
         if post_re.match(dirpath):
