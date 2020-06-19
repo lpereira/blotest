@@ -198,9 +198,11 @@ def save_html(filename, parts, is_post=True, template=open('pagetemplate.html', 
             print('WARNING: Post "%s" has no topic' % parts['title'])
         body = parts['html_body']
 
+    title = re.sub('<[^<]+?>', '', parts['title'])
+
     contents = template. \
         replace("{{contents}}", body). \
-        replace("{{title}}", parts['title'])
+        replace("{{title}}", title)
 
     with open(filename, 'w') as f:
         f.write(contents)
