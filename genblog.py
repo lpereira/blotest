@@ -479,6 +479,8 @@ if __name__ == '__main__':
     os.makedirs("genblog/topic")
 
     # FIXME: prev/next?
+    # FIXME: lucene?
+    # FIXME: Projects | Blog posts by: Date, Topic | About
     posts = defaultdict(lambda: [])
     for dirpath, dirnames, filenames in os.walk('.'):
         if post_re.match(dirpath):
