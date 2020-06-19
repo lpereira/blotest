@@ -450,7 +450,7 @@ def gen_rss(posts):
 
             channel.append(item)
 
-    with open('genblog/rss.html', 'wb') as rss_file:
+    with open('genblog/rss.xml', 'wb') as rss_file:
         rss_file.write(xml_tostring(rss))
 
 if __name__ == '__main__':
