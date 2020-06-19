@@ -270,9 +270,12 @@ def post_link(post, include_year):
     first_paragraph = textwrap.shorten(post['first_paragraph'], 256, placeholder="…")
     return '''* `%s </%s>`_\n    %s %s\n''' % (title, post['filename'], first_paragraph, date)
 
-def gen_tags(writer, posts_by_tags):
+def gen_tags(writer, posts_by_tags, rst):
     def topic_link(topic, n_posts):
         return '''* `%s </topic/%s.html>`_ ``%d %s``''' % (topic, topic, n_posts, "posts" if n_posts != 1 else "post")
+
+    parts = publish_parts('\n'.join(rst), writer=writer)
+    save_html(os.path.join('genblog', 'topic', 'index.html'), parts, is_post=False)
 
     for tag, posts in posts_by_tags.items():
         if not tag:
@@ -291,25 +294,38 @@ def gen_tags(writer, posts_by_tags):
         parts = publish_parts('\n'.join(rst), writer=writer)
         save_html(os.path.join('genblog', 'topic', '%s.html' % tag), parts, is_post=False)
 
-    rst = ['Topics',
-           '======']
-    for tag, posts in sorted(posts_by_tags.items(), key=lambda kv: (len(kv[1]), kv[0]), reverse=True):
-        if not tag:
-            continue
-
-        rst.append(topic_link(tag, len(posts)))
-
-    parts = publish_parts('\n'.join(rst), writer=writer)
-    save_html(os.path.join('genblog', 'topic', 'index.html'), parts, is_post=False)
-
-def gen_index(writer, posts):
-    status("Generating index")
-
+def gen_topiclist(posts):
     post_by_tags = defaultdict(lambda: [])
     for posts_by_date in posts.values():
         for post in posts_by_date:
             for tag in post['tags']:
                 post_by_tags[tag].append(post)
+
+    rst = []
+
+    rst.append('')
+    rst.append('Posts by topic')
+    rst.append('==============')
+    rst.append('')
+    # FIXME: https://docutils.sourceforge.io/docs/ref/rst/directives.html#table-of-contents
+    for tag, posts in sorted(post_by_tags.items(), key=lambda kv: (len(kv[1]), kv[0]), reverse=True):
+        if not tag:
+            continue
+
+        rst.append('')
+        rst.append(tag)
+        rst.append('-' * len(tag))
+        rst.append('')
+
+        for post in sorted(posts, key=lambda p: post['date'], reverse=True):
+            rst.append(post_link(post, True))
+
+    gen_tags(writer, post_by_tags, rst)
+
+    return rst
+
+def gen_index(writer, posts):
+    status("Generating index")
 
     rst = ['Most recent posts',
            '=================', '']
@@ -327,26 +343,11 @@ def gen_index(writer, posts):
         for post in posts[date]:
             rst.append(post_link(post, False))
 
-    rst.append('')
-    rst.append('Posts by topic')
-    rst.append('==============')
-    rst.append('')
-    for tag, posts in sorted(post_by_tags.items(), key=lambda kv: (len(kv[1]), kv[0]), reverse=True):
-        if not tag:
-            continue
-
-        rst.append('')
-        rst.append(tag)
-        rst.append('-' * len(tag))
-        rst.append('')
-
-        for post in posts:
-            rst.append(post_link(post, True))
+    rst.extend(gen_topiclist(posts))
 
     parts = publish_parts('\n'.join(rst), writer=writer)
     save_html(os.path.join('genblog', 'index.html'), parts, is_post=False)
 
-    gen_tags(writer, post_by_tags)
 
 def optimize_css():
     if not os.path.exists('./node_modules/.bin/csso'):
