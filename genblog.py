@@ -47,7 +47,8 @@ class FirstParagraph(HTMLParser):
         return ''.join(self.first_paragraph).replace("\n", " ")
 
 def status(*msg):
-    sys.stdout.write("\033[2K\r%s" % ' '.join(msg))
+    msg = textwrap.shorten(' '.join(msg), 80, placeholder='...')
+    sys.stdout.write("\033[2K\r%s" % msg)
     sys.stdout.flush()
 
 class AuthorDirective(docutils.parsers.rst.directives.admonitions.BaseAdmonition):
