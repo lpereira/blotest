@@ -211,7 +211,7 @@ def save_html(filename, parts, is_post=True, template=open('pagetemplate.html', 
     return contents
 
 def gen_blog_post(writer, dirpath, filename):
-    outdir = os.path.join('genblog', dirpath)
+    outdir = os.path.join('genblog', 'posts', dirpath)
 
     status('Generating blog post:', os.path.join(outdir, filename))
 
@@ -224,7 +224,7 @@ def gen_blog_post(writer, dirpath, filename):
 
     html_filename = filename.replace('.rst', '.html')
     rel_path = os.path.join(dirpath, html_filename)
-    html = save_html(os.path.join('genblog', rel_path), parts)
+    html = save_html(os.path.join('genblog', 'posts', rel_path), parts)
 
     first_paragraph = FirstParagraph()
     first_paragraph.feed(html)
@@ -474,6 +474,7 @@ if __name__ == '__main__':
 
     os.mkdir("genblog")
     os.makedirs("genblog/pages")
+    os.makedirs("genblog/posts")
     os.makedirs("genblog/topic")
 
     # FIXME: prev/next?
