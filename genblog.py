@@ -336,7 +336,7 @@ def gen_topiclist(posts):
         rst.append('-' * len(tag))
         rst.append('')
 
-        for post in sorted(posts, key=lambda p: post['date'], reverse=True):
+        for post in sorted(posts, key=lambda p: p['date'], reverse=True):
             rst.append(post_link(post, True))
 
     gen_tags(writer, post_by_tags, rst)
