@@ -265,5 +265,5 @@ unreadable and full of magical constants.
 
 .. author:: default
 .. categories:: none
-.. tags:: lwan, programming, trick, C
+.. tags:: lwan, programming, trick, C, _featured
 .. comments::

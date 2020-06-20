@@ -1068,6 +1068,6 @@ request.
 
 .. author:: default
 .. categories:: none
-.. tags:: lwan, programming, C
+.. tags:: lwan, programming, C, _featured
 .. comments::
 
