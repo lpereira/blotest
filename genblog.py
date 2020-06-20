@@ -186,11 +186,25 @@ class BlogHTMLWriter(html4css1.Writer):
 
         super(html4css1.Writer, self).assemble_parts()
 
-def save_html(filename, parts, is_post=True, template=open('pagetemplate.html', 'r').read()):
+def process_tags(parts):
     tags = parts['tags'].strip()
     if tags:
         tags = tags.split(',')
-        tags = '\n'.join('<li><a href="/topic/%s.html">%s</a></li>' % (tag, tag) for tag in tags)
+        featured = '_featured' in tags
+        return {
+            'tags': set(tag for tag in tags if not tag.startswith('_')),
+            'featured': featured
+        }
+
+    return {
+        'tags': (),
+        'featured': False
+    }
+
+def save_html(filename, parts, is_post=True, template=open('pagetemplate.html', 'r').read()):
+    tags = process_tags(parts)
+    if tags['tags']:
+        tags = '\n'.join('<li><a href="/topic/%s.html">%s</a></li>' % (tag, tag) for tag in tags['tags'])
         # FIXME: this is a big ugly hack!
         body = parts['html_body'].replace('</span><',
             '</span>' + '<ul class="tags">' + tags + '</ul>' + '<',
@@ -230,9 +244,11 @@ def gen_blog_post(writer, dirpath, filename):
     first_paragraph = FirstParagraph()
     first_paragraph.feed(html)
 
+    tags = process_tags(parts)
     return {
         'date': (year, month, day),
-        'tags': parts['tags'].split(','),
+        'tags': tags['tags'],
+        'featured': tags['featured'],
         'filename': ('posts/' + rel_path).replace("/./", "/"),
         'title': parts['title'],
         'first_paragraph': first_paragraph.get_first_paragraph()
@@ -262,14 +278,16 @@ def post_link(post, include_year):
         11:'November',
         12:'December'
     }
+
     title = html.unescape(post['title'])
+    star = '★ ' if post['featured'] else ''
     if include_year:
         date = '``Published %s, %02d, %04d``' % (months[post['date'][1]], post['date'][2], post['date'][0])
     else:
         date = '``Published %s, %02d``' % (months[post['date'][1]], post['date'][2])
 
     first_paragraph = textwrap.shorten(post['first_paragraph'], 256, placeholder="…")
-    return '''* `%s </%s>`_\n    %s %s\n''' % (title, post['filename'], first_paragraph, date)
+    return '''* %s`%s </%s>`_\n    %s %s\n''' % (star, title, post['filename'], first_paragraph, date)
 
 def gen_tags(writer, posts_by_tags, rst):
     def topic_link(topic, n_posts):
