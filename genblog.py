@@ -166,7 +166,8 @@ class BlogHTMLTranslator(html4css1.HTMLTranslator):
                 src="https://www.youtube.com/embed/%s"
                 frameborder="0"
                 allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-                allowfullscreen>
+                allowfullscreen
+                style="max-width: 90%%">
             </iframe>''' % video_id)
         node.clear()
     def depart_youtube(self, node):
