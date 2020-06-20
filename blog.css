@@ -79,6 +79,7 @@
 }
 .document dd {
     font-size: 90%;
+    padding-bottom: 16px;
 }
 .document p > a, .document li > a, .document dt > a {
     color: #628d4d;
