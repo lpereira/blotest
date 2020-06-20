@@ -1,16 +1,22 @@
 About
 =====
 
-By day, Leandro is a Software Engineer with the Linux Systems Group at
-`Microsoft`_.  He holds a degree in Computer Engineering by `PUC Campinas`_,
-and has been programming since the early 90s (the `MSX`_ still has a special
-place in his heart).
+.. image:: https://tia.mat.br/temp/img/acidx.jpg
+    :align: right
+    :width: 120px
+
+Leandro is a Software Engineer with the Linux Systems Group at `Microsoft`_. 
+He holds a degree in Computer Engineering by `PUC Campinas`_, and has been
+programming since the early 90s (the `MSX`_ still has a special place in his
+heart).
 
 .. _MSX: https://en.wikipedia.org/wiki/MSX
 
 In his free time, he likes to work on `Free and Open Source Projects`_; this
 blog documents some of this work.  Here's a curated `list of projects`_ he
-has worked on over the years.
+has worked on over the years.  (Current hobbies outside programming include
+painting 3D-printed objects, electronics, and occasionaly, playing video
+games.)
 
 .. _list of projects: /pages/projects.html
 .. _Free and Open Source Projects: https://en.wikipedia.org/wiki/Free_and_open-source_software
