@@ -166,5 +166,5 @@ is available in this `gist`_.
 
 .. author:: default
 .. categories:: none
-.. tags:: c,trick,programming
+.. tags:: c,trick,programming,_featured
 .. comments::
