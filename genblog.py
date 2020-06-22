@@ -24,6 +24,7 @@ import html
 import sys
 import textwrap
 import datetime
+
 class FirstParagraph(HTMLParser):
     def __init__(self):
         super().__init__()
