@@ -493,7 +493,6 @@ if __name__ == '__main__':
     except FileNotFoundError:
         pass
 
-    os.mkdir("genblog")
     os.makedirs("genblog/pages")
     os.makedirs("genblog/posts")
     os.makedirs("genblog/topic")
