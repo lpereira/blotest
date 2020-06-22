@@ -82,6 +82,10 @@
     border-bottom: 1px dotted #628d4d;
     text-decoration: none;
 }
+.document dl > dd {
+    margin-left: 0;
+    margin-bottom: 16px;
+}
 .document p > a:hover, .document li > a:hover, .document dt > a:hover {
     border-bottom: 2px solid #628d4d;
 }
