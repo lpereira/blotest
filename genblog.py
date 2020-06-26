@@ -227,6 +227,13 @@ def save_html(filename, parts, is_post=True, template=open('pagetemplate.html', 
 
     return contents
 
+def add_unicode_subst_rules(contents):
+    contents += ".. |--| unicode:: U+2013   .. en dash\n"
+    contents += ".. |---| unicode:: U+2014  .. em dash, trimming surrounding whitespace\n"
+    contents += "   :trim:\n\n"
+
+    return contents
+
 def gen_blog_post(writer, dirpath, filename):
     outdir = os.path.join('genblog', 'posts', dirpath)
 
@@ -237,6 +244,7 @@ def gen_blog_post(writer, dirpath, filename):
     contents = open(os.path.join(dirpath, filename)).read()
     year, month, day = (int(i) for i in dirpath[2:].split('/'))
     contents += "\n\n.. posted:: %04d-%02d-%02d\n\n" % (year, month, day)
+    contents = add_unicode_subst_rules(contents)
     parts = publish_parts(contents, writer=writer)
 
     html_filename = filename.replace('.rst', '.html')
@@ -260,6 +268,7 @@ def gen_page(writer, dirpath, filename):
     status("Generating page:", filename)
 
     contents = open(os.path.join(dirpath, filename)).read()
+    contents = add_unicode_subst_rules(contents)
     parts = publish_parts(contents, writer=writer)
     filename = filename.replace('.rst', '.html')
 
