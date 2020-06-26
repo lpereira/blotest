@@ -8,7 +8,7 @@ for the first version of GW-BASIC for the MS-DOS under the MIT license
 <https://devblogs.microsoft.com/commandline/microsoft-open-sources-gw-basic/>`_.
 Not only this is an improved version of the very first product that
 kickstarted the company, it's also the base for my first programming
-language, the MSX Basic.
+language, the `MSX BASIC <https://en.wikipedia.org/wiki/MSX_BASIC>`_.
 
 .. code:: plain
 
@@ -28,13 +28,13 @@ language, the MSX Basic.
     *
 
 Needless to say, I was stoked to see this release, and decided to take
-a look -- it's a historic artifact that's very close to home.  To my
+a look |---| it's a historic artifact that's very close to home.  To my
 surprise, I noticed that many of the comments were referencing the
 Intel 8080 registers and not the Intel 8086 registers.  The reason for
 this is that these sources were translated mechanically by a tool written
 in the 80s; that's why there were many versions of the Microsoft BASIC
-for home computers in that era, despite the variety in CPU architectures
-of the era.
+for home computers in that era, despite the variety in CPU instruction
+set architectures available at the time.
 
 .. code:: asm
 
@@ -47,11 +47,11 @@ of the era.
                                     ;AND THE RETURN ADDRESS OF THIS
             ADD     BX,SP           ;SUBROUTINE, SET [H,L]=SP
 
-(Note in the fragment above that ``BX`` is used as instruction arguments,
-although ``H`` and ``L`` are referenced in the comment.  It also mentions
-``D`` and ``E``, which are Z80/8080 registers.  This kind of comment was
-helpful in determining the register mapping between 8086 and Z80.  More
-details below.)
+(Note in the fragment above that ``BX`` is used as one of the arguments for
+``ADD``, although ``H`` and ``L`` are referenced in the comment.  It also
+mentions ``D`` and ``E``, which are Z80/8080 registers.  This kind of
+comment was helpful in determining the register mapping between 8086 and
+Z80.  More details below.)
 
 All assembly source files contain a comment in the first line referencing
 this instruction set conversion tool, which wasn't unfortunately open
@@ -65,8 +65,8 @@ Naturally, this intrigued me and I decided to port this back to the Z80
 (which is compatible, on a machine code level, with the Intel 8080), with
 the intention of running it on a `MSX <https://en.wikipedia.org/wiki/MSX>`_
 (or a `RC2014 <https://rc2014.co.uk/>`_).  And, of course, instead of converting
-the whole source code from 8086 assembly into Z80 assembly, I decided to write
-a tool to perform (most) of the conversion for me.
+the whole source code from 8086 assembly into Z80 assembly manually, I decided to write
+a tool to perform (most) of the conversion.
 
 Although my first computer had a Z80 processor, I never had a chance to
 actually write any Z80 code; so this has been an interesting experience.
@@ -80,10 +80,11 @@ The conversion tool works pretty much like a compiler.
 
 It's written in Python and is set up as a pipeline, with 4 components: the
 lexer, the parser, the transformer, and the writer.  (I'm currently
-refactoring the converter to have 4 components, that will sit between the
+refactoring the converter to have another component, that will sit between the
 transformer and the writer, and which sole purpose will be to transform 8086
 tokens into Z80 tokens, in such as way that it's consistent and
-error-checked.)
+error-checked; the writer step will only care about producing assembly output
+in the syntax of a particular Z80 assembler.)
 
 Each component is a generator, yielding a token whenever they're done munching
 their input.
@@ -104,7 +105,7 @@ the GW-BASIC code base.  Mainly, a Python implementation of the ``MOVRI`` and ``
 macros:
 
 - The ``INS86`` macro is used to generate assembly instructions that were
-  either not supported by the assembler used at the time.  It's heavily used
+  not supported by the assembler used at the time.  It's heavily used
   throghout the code base, with over 120 uses.  The parameters are either
   numeric opcode names (usually in octal base), or reference to a symbol, with
   up to 4 parameters (e.g. ``INS86 62, 344`` for ``XOR AH, AH``).  The parser will
@@ -198,53 +199,77 @@ emerge and this step got some much needed refinement.
 Writer
 ------
 
+.. table:: 8086→Z80 registers
+    :align: right
+
+    ====== ======
+    8086   Z80
+    ====== ======
+    BX     HL
+    BH     H
+    BL     L
+    ------ ------
+    DX     DE
+    DH     D
+    DL     E
+    ------ ------
+    CX     BC
+    CH     B
+    CL     C 
+    ------ ------
+    SI     IY
+    DI     IX
+    ------ ------
+    SP     SP
+    AL     A
+    ====== ======
+
 The last step is generating the Z80 code.
 
-The first thing that I had to do was figure out the register mapping of 8086
-and Z80.  This wasn't that difficult, because a lot of the older code in
-GW-BASIC still had comments referencing the Intel 8080 registers, which are
-named the same in the Z80.  Some newer code couldn't be mapped to the Intel
-8080, but luckily, they could in the Z80 due to the existence of the
-indexing registers ``IX`` and ``IY``.
+One of the first things I did to implement this step was figuring out the
+register mapping between 8086 and Z80.  Guided by the comments still
+referencing the Intel 8080 comments (which have the same names as the Z80
+registers), and by the assumption that the original translation tool worked
+on an instruction-by-instruction basis rather than some sofisticated
+analysis mechanism, this wasn't a terribly difficult task.
 
-The following table summarizes the register mapping that my converter is
-using, based on reading the source comments and the availability of Z80
-instructions:
+On the right there's a table summarizing this initial work.  In order to
+produce this table, some unknowns had to be resolved; it had to do with some
+of these registers, mainly ``SI``, ``DI``, ``AH``, and ``AX``:
 
-====== ======
-8086   Z80
-====== ======
-BX     HL
-BH     H
-BL     L
------- ------
-DX     DE
-DH     D
-DL     E
------- ------
-CX     BC
-CH     B
-CL     C 
------- ------
-SI     IY
-DI     IX
------- ------
-SP     SP
-AL     A
-====== ======
+- ``SI`` and ``DI`` do not have a Intel 8080 equivalent, but Z80 has ``IX`` and ``IY``.
+  While they're not that efficient to work with, for the purposes of GW-BASIC,
+  they worked like a charm.  Even if I had to resort to some of the `not-officially-documented
+  Z80 instructions <http://www.z80.info/z80undoc.htm>`_.
 
-Before writing the Transformation step, I had no clue what I would have to
-do with the usage of the `AH` register.  There were some uses throughout the
-code base, and there's no equivalent in the Z80: the low part of the 16-bit
-register ``AF``, ``F``, is used for flags; it's not really a general-purpose
-register.  Luckily, due to the nature of the 8086 GW-BASIC code, uses of the
-AH register followed a pattern (emitted by the proprietary Microsoft ISA
-converter) that I was able to figure out and emit instructions such as ``EX
-AF, AF'``, or ``PUSH AF`` and ``POP AF`` depending on the case.
+- The Z80 equivalent of ``AX`` is ``AF``, but it isn't a general-purpose
+  register: ``F``, the low part of ``AF``, stores the CPU flags, unlike ``AL``
+  in the Intel 8086.  The 8086 ``AH`` register was also used in the code, so I
+  had to do something about it.
 
-This last step will either fail assertions when trying to generate an instruction
-with the wrong number of arguments, or raise an exception if none of the other
-invariants hold.
+  Luckily, usages of both ``AH`` and ``AX`` followed a pattern that I was
+  eventually able to recognize (either from the comments, or by recognizing the
+  instruction patterns), and emit Z80 instructions to save/restore the flags
+  using either the Z80 instructions ``EX AF, AF'`` (exchange ``AF`` with its
+  prime register, ``AF'``), or ``PUSH AF`` and ``POP AF`` (leveraging the
+  stack) depending on the case.
+
+  On the same note, all uses of ``AL`` that I could find ended up matching the
+  purpose of Z80's ``A`` register.  Quite a bit of 8086 code ends up ferrying
+  data from other registers to the ``AL`` register (and back) even though the
+  processor was perfectly capable of doing that |--| because the 8080 (and the
+  Z80) couldn't perform these operations unless the data was already in the
+  ``A`` register.  This finding corroborates the idea that the original
+  Microsoft translation tool didn't perform any kind of advanced analysis and
+  worked primarily on an instruction-by-instruction basis.
+
+In this step, Z80 instructions are generated one-by-one, possibly like the original
+code translation tool used to do.  Primitive validation is performed |--| although at
+the moment, some invalid Z80 instructions might be generated, and some of them are
+still stubbed out |--| aborting the conversion tool so that unhandled cases can be
+implemented before moving forward.  Since this is a purpose-built tool, I can get away
+with not implementing every nook and cranny of Intel 8086 instructions: only the things
+that are actually needed by GW-BASIC.
 
 For instance, the code to generate the Z80 equivalent of the 8086 ``ROR``
 (rotate right) instruction is the following:
@@ -263,8 +288,62 @@ For instance, the code to generate the Z80 equivalent of the 8086 ``ROR``
                 return 'RR (HL)'  
         raise SyntaxError("Don't know how to generate ROR with op %s, %s" % (op1, op2))
 
-It'll only recognize uses of the ``ROR`` instruction that makes sense for the
-GW-BASIC source code.  This theme repeats over and over again.
+It'll only recognize uses of the ``ROR`` instruction that is used in the original
+code.  It makes sense that it's a very limited subset and that many instructions
+have a trivial conversion implementation such as this one: the original code was meant
+to execute in the target processor.
+
+This theme repeated over and over again until most source files that
+implement the platform-neutral parts of the GW-BASIC interpreter could be
+converted |--| barring validation, of course.  The generator needs to be
+fine-combed, either through careful code review, or trying to assemble it
+and fixing potential errors.
+
+Files that can't yet be converted are those that implement platform-specific
+glue code, specifically routines to control the IBM-PC hardware (either
+using BIOS interrupts, reprogramming the `PIT
+<https://wiki.osdev.org/Programmable_Interval_Timer>`_, or accessing video
+or input devices), or invokes MS-DOS interrupts, and these would have to be
+implemented by hand anyway.
+
+Stubbed out instructions are those that perform operations not available in
+Z80 processors, such as multiplication, division, or memory copies. 
+Subroutines will need to be implemented for those in a way that's compatible
+with the GW-BASIC usage, and will happen sometime after most of the Z80 code
+can be assembled.  A curious fact is that the 8086 version still carries
+macros implementing some Z80 instructions for the 8080, like ``LDIR`` and
+``DJNZ`` |--| which are stripped by the conversion tool.  For instance,
+here's an excerpt from ``OEM.H``:
+
+.. code:: asm
+
+    ;*******************************************************************
+    ; Z80 related macros
+    ;*******************************************************************
+            Z80=1                   ;FOR VERSION THAT RUNS ON BOTH
+                                    ;8080'S AND ZILOG Z-80'S
+            Z80MAC=1                ;USE 8080 MACROS INSTEAD OF Z80 INSTRUCTIONS
+            Z80=0
+            Z80=1
+    LDIR    MACRO
+            MOV     WORD PTR A,WORD PTR M
+            STAX    D
+            INXF    H
+            INXF    D
+            DCXF    B
+            MOV     WORD PTR A,WORD PTR B
+            ORA     C
+            JNZ     _-8D
+    ENDM
+
+(Macros being defined to different values in succession is a common pattern,
+and believed to be artifact of the original conversion tool; the main source
+code, where these are derived from, probably contains chunks of code between
+these assignments.  It also probably means that the Microsoft Assembler
+lazily-parses macros, because those instructions do not exist in 8086.)
+
+Thanks to
+=========
 
 Sites such as `MAP <http://map.grauw.nl/resources/z80instr.php>`_, `Z80
 Heaven <http://z80-heaven.wikidot.com/>`_, and `this table detailing how
@@ -296,28 +375,29 @@ steps, which should reduce some of the churn when addressing bugs due to invalid
 instructions being generated.
 
 Some work has been also being made in other forks of the GW-BASIC source code, where
-people are trying to build it using either older versions of the Microsoft Assembler
-and Linker, or using more modern tooling such as JWAsm and JWLink.  Some of the code
+`people are trying to build it using either older versions of the Microsoft Assembler
+and Linker, or using more modern tooling such as JWAsm and JWLink <https://github.com/tkchia/GW-BASIC>`_.  Some of the code
 to make the interpreter work is missing, but it's mostly platform-specific glue code,
 which is being either reimplemented from the scratch, or reverse-engineered from the
-`BASICA.COM` code that was released previously under the MIT license.
+(binary-only) ``BASICA.COM`` code that was released previously under the MIT license.
 
-Some of the missing symbols had names that were suspicious to me, and, indeed, many of
-them were actually names of BIOS functions from the MSX.  Considering that Microsoft
-designed the BIOS in those computers, it's not really surprising.  (It's good, too,
-because I wouldn't need to reimplement those things if I ever get this to work on the
-MSX.)
+Some of the missing symbols had names that were suspicious to me, and,
+indeed, `many of them were actually names of BIOS functions from the MSX
+<https://github.com/dspinellis/GW-BASIC/issues/4#issuecomment-634755754`>_. 
+Considering that Microsoft designed the BIOS in those computers, it's not
+really surprising.  (It's good, too, because I wouldn't need to reimplement
+those things if I ever get this to work on the MSX.)
 
 My idea, eventually, is to use this as a base for a BASIC interpreter in the
-C-BIOS project, which is an open source BIOS for the MSX computers.  It
+`C-BIOS <http://cbios.sourceforge.net/>`_ project, which is an open source BIOS for the MSX computers.  It
 currently lacks the BASIC component, and using one that's essentially the
 same that shipped with the MSX would be a good starting step.  Of course, a
 lot of the hardware-specific things, such as the ``PLAY`` command (which has
 3 channels in the MSX, and is extensible to use FM synthethizers and
 whatnot), general extensibility via hooks in ROMs attached to the computer,
 and many other MSX-specific routines will need to be implemented.  I'm not
-really worried about all this, however, as I'll be really happy if I could
-fill the screen with the quintessential BASIC Hello, World:
+really worried about all this, however, as I'll be happy if all I can do in the
+end is fill the screen with the output of the quintessential BASIC Hello, World:
 
 .. code:: plain
 
@@ -326,4 +406,3 @@ fill the screen with the quintessential BASIC Hello, World:
 
 This work is open source and I `appreciate help if this is the kind of rabbit
 hole you'd like to burrow in <https://github.com/lpereira/gw-basic>`_.
-
