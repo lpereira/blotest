@@ -181,9 +181,10 @@ class BlogHTMLWriter(html4css1.Writer):
         self.translator_class = BlogHTMLTranslator
 
     def assemble_parts(self):
-        tags = '\n'.join('<li><a href="/topic/%s.html">%s</a></li>' % (tag, tag) for tag in set(self.tags))
+        sorted_tags = sorted(set(self.tags))
+        tags = '\n'.join('<li><a href="/topic/%s.html">%s</a></li>' % (tag, tag) for tag in sorted_tags)
         self.body = ['<ul class="tags">', tags, '</ul>'] + self.body
-        self.tags = ','.join(sorted(set(self.tags)))
+        self.tags = ','.join(sorted_tags)
 
         super(html4css1.Writer, self).assemble_parts()
 
