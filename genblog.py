@@ -193,8 +193,9 @@ def process_tags(parts):
     if tags:
         tags = tags.split(',')
         featured = '_featured' in tags
+        tags = sorted(set(tag for tag in tags if not tag.startswith('_')))
         return {
-            'tags': set(tag for tag in tags if not tag.startswith('_')),
+            'tags': tags,
             'featured': featured
         }
 
