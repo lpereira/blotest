@@ -36,22 +36,24 @@ in the 80s; that's why there were many versions of the Microsoft BASIC
 for home computers in that era, despite the variety in CPU instruction
 set architectures available at the time.
 
-.. code:: asm
+.. note::
 
-    ;
-    ; FIND A "FOR" ENTRY ON THE STACK WITH THE VARIABLE POINTER
-    ; PASSED IN [D,E].
-    ;
-    PUBLIC  FNDFOR
-    FNDFOR: MOV     BX,OFFSET 4+0   ;IGNORING EVERYONES "NEWSTT"   
-                                    ;AND THE RETURN ADDRESS OF THIS
-            ADD     BX,SP           ;SUBROUTINE, SET [H,L]=SP
+    .. code:: asm
 
-(Note in the fragment above that ``BX`` is used as one of the arguments for
-``ADD``, although ``H`` and ``L`` are referenced in the comment.  It also
-mentions ``D`` and ``E``, which are Z80/8080 registers.  This kind of
-comment was helpful in determining the register mapping between 8086 and
-Z80.  More details below.)
+        ;
+        ; FIND A "FOR" ENTRY ON THE STACK WITH THE VARIABLE POINTER
+        ; PASSED IN [D,E].
+        ;
+        PUBLIC  FNDFOR
+        FNDFOR: MOV     BX,OFFSET 4+0   ;IGNORING EVERYONES "NEWSTT"
+                                        ;AND THE RETURN ADDRESS OF THIS
+                ADD     BX,SP           ;SUBROUTINE, SET [H,L]=SP
+
+    In the fragment above, ``BX`` is used as one of the arguments for
+    ``ADD``, although ``H`` and ``L`` are referenced in the comment.  It also
+    mentions ``D`` and ``E``, which are Z80/8080 registers.  This kind of
+    comment was helpful in determining the register mapping between 8086 and
+    Z80.  More details below.
 
 All assembly source files contain a comment in the first line referencing
 this instruction set conversion tool, which wasn't unfortunately open
@@ -99,36 +101,78 @@ there.
 Parser
 ------
 
-The parser is a traditional recursive descent parser.  It's a trivial implementation
-for one, but there's quite a bit of logic to handle some special cases found only in
-the GW-BASIC code base.  Mainly, a Python implementation of the ``MOVRI`` and ``INS86``
-macros:
+The parser used by the converter is a recursive-descent parser, but written in the same
+style as the lexer: as a state machine, where functions handling the current state are
+called indirectly by a main driver function.
 
-- The ``INS86`` macro is used to generate assembly instructions that were
-  not supported by the assembler used at the time.  It's heavily used
-  throghout the code base, with over 120 uses.  The parameters are either
-  numeric opcode names (usually in octal base), or reference to a symbol, with
-  up to 4 parameters (e.g. ``INS86 62, 344`` for ``XOR AH, AH``).  The parser will
-  convert the instruction bytes to actual 8086 mnemonics so the next pass in
-  the pipeline can more easily convert them to Z80 instructions.
-
-  The ``rasm2`` tool from the `radare <https://rada.re/n/>`_ project was really
-  useful in decoding these instructions.  For instance, calling it with ``rasm2 -d  -a x86 -b 16 d3ea``
-  in the command line will provide the decoded instruction, ``shr dx, cl``.  Padding
-  the instructions with ``00`` (or any other value) will help in cases where ``INS86``
-  was called with half a instruction and directives such as ``DB`` (define byte) were
-  used right after it.  The conversion tool will print out the code in hexadecimal when
-  the arguments are unknown in the same way that ``rasm2`` expects for this reason.
+It contains quite a bit of logic to handle some special cases found only in
+the GW-BASIC code base.  Mainly, it contains Python implementations of some macros,
+such as ``MOVRI``, ``POPR``, and ``INS86``:
 
 - The ``MOVRI`` macro is used to initialize the ``CX`` and ``DX`` registers. It's
   not clear why it's necessary (and why they couldn't just use ``MOV CX, ...`` instead),
   but I'm going to assume that it's a remnant of previous efforts to port the code
   from the original 8080 assembly into other ISAs, before the automated tool existed.
 
+- ``POPR`` expands to ``POP CX; POP DX``.
+
+- The ``INS86`` macro is used to generate assembly instructions that were
+  not supported by the assembler used at the time (or to force a specific
+  instruction encoding for whatever reason).  It's heavily used throghout
+  the code base, with over 120 uses.  The parameters are either numeric
+  opcode numbers (usually in octal base), or references to symbols.  It takes up to
+  4 parameters (e.g. ``INS86 62, 344`` for ``XOR AH, AH``).  The parser
+  will convert the instruction bytes to actual 8086 mnemonics so the next
+  pass in the pipeline can more easily convert them to Z80 instructions.
+
+  The ``rasm2`` tool from the `radare <https://rada.re/n/>`_ project was
+  really useful in decoding these instructions.  For instance, calling it
+  with ``rasm2 -d -a x86 -b 16 d3ea`` in the command line will provide the
+  decoded instruction, ``SHR DX, CL``.  Padding the instructions with ``00``
+  (or any other value) will help in cases where ``INS86`` was called with
+  half a instruction and directives such as ``DB`` (define byte) were used
+  right after it.  The conversion tool will print out the code in
+  hexadecimal when the arguments are unknown in the same way that ``rasm2``
+  expects for this reason.
+
 It also performs some tasks, such as removing macros that are known to not
 be used anywhere in the code (and which used instructions that were not
 supported by the converter), parses instruction arguments (so numbers are
 numbers, in the correct base, etc.), and a few other similar tasks.
+
+.. note::
+
+    A curious fact is that the 8086 version still carries macros implementing
+    some Z80 instructions for the 8080, like ``LDIR`` and ``DJNZ`` |--| which
+    are stripped by the conversion tool.  For instance, here's an excerpt from
+    ``OEM.H``:
+
+    .. code:: asm
+
+        ;*******************************************************************
+        ; Z80 related macros
+        ;*******************************************************************
+                Z80=1                   ;FOR VERSION THAT RUNS ON BOTH
+                                        ;8080'S AND ZILOG Z-80'S
+                Z80MAC=1                ;USE 8080 MACROS INSTEAD OF Z80 INSTRUCTIONS
+                Z80=0
+                Z80=1
+        LDIR    MACRO
+                MOV     WORD PTR A,WORD PTR M
+                STAX    D
+                INXF    H
+                INXF    D
+                DCXF    B
+                MOV     WORD PTR A,WORD PTR B
+                ORA     C
+                JNZ     _-8D
+        ENDM
+
+    Macros being defined to different values in succession is a common pattern,
+    and believed to be artifact of the original conversion tool; the main source
+    code, where these are derived from, probably contains chunks of code between
+    these assignments.  It also probably means that the Microsoft Assembler
+    lazily-parses macros, because those instructions do not exist in 8086.
 
 Most other tokens are forwarded unmodified to the next step.
 
@@ -231,11 +275,9 @@ register mapping between 8086 and Z80.  Guided by the comments still
 referencing the Intel 8080 comments (which have the same names as the Z80
 registers), and by the assumption that the original translation tool worked
 on an instruction-by-instruction basis rather than some sofisticated
-analysis mechanism, this wasn't a terribly difficult task.
-
-On the right there's a table summarizing this initial work.  In order to
-produce this table, some unknowns had to be resolved; it had to do with some
-of these registers, mainly ``SI``, ``DI``, ``AH``, and ``AX``:
+analysis mechanism, this wasn't a terribly difficult task.  On the right,
+a table summarizes the result of this work.  Some of it required a little bit
+more investigative work: 
 
 - ``SI`` and ``DI`` do not have a Intel 8080 equivalent, but Z80 has ``IX`` and ``IY``.
   While they're not that efficient to work with, for the purposes of GW-BASIC,
@@ -310,37 +352,8 @@ Stubbed out instructions are those that perform operations not available in
 Z80 processors, such as multiplication, division, or memory copies. 
 Subroutines will need to be implemented for those in a way that's compatible
 with the GW-BASIC usage, and will happen sometime after most of the Z80 code
-can be assembled.  A curious fact is that the 8086 version still carries
-macros implementing some Z80 instructions for the 8080, like ``LDIR`` and
-``DJNZ`` |--| which are stripped by the conversion tool.  For instance,
-here's an excerpt from ``OEM.H``:
+can be assembled.
 
-.. code:: asm
-
-    ;*******************************************************************
-    ; Z80 related macros
-    ;*******************************************************************
-            Z80=1                   ;FOR VERSION THAT RUNS ON BOTH
-                                    ;8080'S AND ZILOG Z-80'S
-            Z80MAC=1                ;USE 8080 MACROS INSTEAD OF Z80 INSTRUCTIONS
-            Z80=0
-            Z80=1
-    LDIR    MACRO
-            MOV     WORD PTR A,WORD PTR M
-            STAX    D
-            INXF    H
-            INXF    D
-            DCXF    B
-            MOV     WORD PTR A,WORD PTR B
-            ORA     C
-            JNZ     _-8D
-    ENDM
-
-(Macros being defined to different values in succession is a common pattern,
-and believed to be artifact of the original conversion tool; the main source
-code, where these are derived from, probably contains chunks of code between
-these assignments.  It also probably means that the Microsoft Assembler
-lazily-parses macros, because those instructions do not exist in 8086.)
 
 Thanks to
 =========
@@ -383,7 +396,7 @@ which is being either reimplemented from the scratch, or reverse-engineered from
 
 Some of the missing symbols had names that were suspicious to me, and,
 indeed, `many of them were actually names of BIOS functions from the MSX
-<https://github.com/dspinellis/GW-BASIC/issues/4#issuecomment-634755754`>_. 
+<https://github.com/dspinellis/GW-BASIC/issues/4#issuecomment-634755754>`_. 
 Considering that Microsoft designed the BIOS in those computers, it's not
 really surprising.  (It's good, too, because I wouldn't need to reimplement
 those things if I ever get this to work on the MSX.)
