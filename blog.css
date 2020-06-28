@@ -202,42 +202,6 @@ body {
     background: linear-gradient(rgba(0,0,0,255), rgba(0,0,0,0));
     z-order: -1;
 }
-@media all and (max-width:600px) {
-    .document {
-        padding: 16px;
-        padding-top: 124px;
-        width: calc(100% - 48px);
-    }
-    #header {
-        display: block;
-        height: 80px;
-        width: 100%;
-        text-align: center;
-        padding: 0;
-        margin: 0;
-        justify-content: none;
-        align-items: none;
-        max-width: 100%;
-    }
-    #header-wrapper {
-        padding: 0;
-        margin: 0;
-        padding-top: 16px;
-        width: 100%;
-    }
-    #name {
-        margin: 0;
-    }
-    #header-shadow {
-        top: 100px;
-    }
-    .document h1, .document h2, .document h3 {
-        margin-left: 0.5px;
-    }
-    .document h1::before, .document h2::before, .document h3::before {
-        display: none;
-    }
-}
 .document tt {
     background: #333;
     color: #999;
@@ -252,14 +216,38 @@ body {
 .document .align-right { float: right; margin-left: 32px; margin-bottom: 32px; }
 .document .align-center { text-align: center; margin-left: auto; margin-right: auto; display: block; }
 .document .caption { min-width: 300px; max-width: 50%; margin: 0 auto; font-style: oblique; padding-bottom: 8px; }
+.document .note { background: #181818;
+    border-top: 2px solid #181818;
+    border-left: 2px solid #181818;
+    border-bottom: 2px solid #282828;
+    border-right: 2px solid #282828;
+    padding-left: 32px;
+    padding-right: 32px;
+    margin-left: -32px;
+    margin-right: -32px;
+}
+.document .note > p.admonition-title {
+    color: #628d4d;
+    font-size: 18px;
+    font-family: monospace;
+    margin-top: 16px;
+}
 .document img { max-width: calc(90% - 64px); box-shadow: 0px 0px 16px #000; background-color: #eee; padding: 16px; }
 .document pre { margin: 0 }
 .document .highlight, .document .literal-block {
-    background: #002b36; color: #839496;
+    background: #002b36;
+    color: #839496;
     box-shadow: 0px 0px 32px #111;
-    padding: 32px;
-    margin: 16px;
     overflow-x: auto;
+    padding: 32px;
+    padding-right: 32px;
+    margin-left: -32px;
+    margin-right: -32px;
+}
+.document .note > .highlight {
+    padding-top: 16px;
+    padding-bottom: 16px;
+    box-shadow: none;
 }
 .document table {
     border: 2px solid #001b26;
@@ -357,3 +345,45 @@ body {
 .highlight .vi { color: #268bd2 }
 .highlight .vm { color: #268bd2 }
 .highlight .il { color: #2aa198 }
+@media all and (max-width:600px) {
+    .document {
+        padding: 16px;
+        padding-top: 124px;
+        width: calc(100% - 48px);
+    }
+    #header {
+        display: block;
+        height: 80px;
+        width: 100%;
+        text-align: center;
+        padding: 0;
+        margin: 0;
+        justify-content: none;
+        align-items: none;
+        max-width: 100%;
+    }
+    #header-wrapper {
+        padding: 0;
+        margin: 0;
+        padding-top: 16px;
+        width: 100%;
+    }
+    #name {
+        margin: 0;
+    }
+    #header-shadow {
+        top: 100px;
+    }
+    .document h1, .document h2, .document h3 {
+        margin-left: 0.5px;
+    }
+    .document h1::before, .document h2::before, .document h3::before {
+        display: none;
+    }
+    .document .highlight, .document .literal-block, .document .note {
+        padding-left: 16px;
+        padding-right: 16px;
+        margin-left: -16px;
+        margin-right: -16px;
+    }
+}
