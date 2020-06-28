@@ -38,6 +38,10 @@ set architectures available at the time.
 
 .. note::
 
+    In the fragment below, ``BX`` is used as one of the arguments for
+    ``ADD``, although ``H`` and ``L`` are referenced in the comment.  It also
+    mentions ``D`` and ``E``, which are Z80/8080 registers.
+
     .. code:: asm
 
         ;
@@ -49,11 +53,8 @@ set architectures available at the time.
                                         ;AND THE RETURN ADDRESS OF THIS
                 ADD     BX,SP           ;SUBROUTINE, SET [H,L]=SP
 
-    In the fragment above, ``BX`` is used as one of the arguments for
-    ``ADD``, although ``H`` and ``L`` are referenced in the comment.  It also
-    mentions ``D`` and ``E``, which are Z80/8080 registers.  This kind of
-    comment was helpful in determining the register mapping between 8086 and
-    Z80.  More details below.
+    This kind of comment was helpful in determining the register mapping
+    between 8086 and Z80.  Details will follow.
 
 All assembly source files contain a comment in the first line referencing
 this instruction set conversion tool, which wasn't unfortunately open
