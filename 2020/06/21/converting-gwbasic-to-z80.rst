@@ -306,13 +306,15 @@ more investigative work:
   Microsoft translation tool didn't perform any kind of advanced analysis and
   worked primarily on an instruction-by-instruction basis.
 
-In this step, Z80 instructions are generated one-by-one, possibly like the original
-code translation tool used to do.  Primitive validation is performed |--| although at
-the moment, some invalid Z80 instructions might be generated, and some of them are
-still stubbed out |--| aborting the conversion tool so that unhandled cases can be
-implemented before moving forward.  Since this is a purpose-built tool, I can get away
-with not implementing every nook and cranny of Intel 8086 instructions: only the things
-that are actually needed by GW-BASIC.
+In this step, Z80 instructions are generated one-by-one.  Comments, directives,
+macros, and other non-instructions are reconstructed.
+
+Primitive validation is performed |--| although at the moment, some invalid
+Z80 instructions might be generated, and some of them are still stubbed out
+|--| aborting the conversion tool so that unhandled cases can be implemented
+before moving forward.  Since this is a purpose-built tool, I can get away
+with not implementing every nook and cranny of Intel 8086 instructions: only
+the things that are actually needed by GW-BASIC.
 
 For instance, the code to generate the Z80 equivalent of the 8086 ``ROR``
 (rotate right) instruction is the following:
@@ -331,10 +333,10 @@ For instance, the code to generate the Z80 equivalent of the 8086 ``ROR``
                 return 'RR (HL)'  
         raise SyntaxError("Don't know how to generate ROR with op %s, %s" % (op1, op2))
 
-It'll only recognize uses of the ``ROR`` instruction that is used in the original
-code.  It makes sense that it's a very limited subset and that many instructions
-have a trivial conversion implementation such as this one: the original code was meant
-to execute in the target processor.
+It'll only recognize uses of the ``ROR`` instruction that is used in the
+original code.  It makes sense that it's a very limited subset and that many
+instructions have a trivial conversion implementation such as this one: the
+original code was meant to execute in the target processor.
 
 This theme repeated over and over again until most source files that
 implement the platform-neutral parts of the GW-BASIC interpreter could be
@@ -387,6 +389,37 @@ pause the work on it for a while due to personal reasons, but as I mentioned bef
 it's being refactored to have an intermediate step between the Transformer and Writer
 steps, which should reduce some of the churn when addressing bugs due to invalid Z80
 instructions being generated.
+
+.. note::
+
+    The fragment below shows part of the ``FNDFOR``, in Z80 assembly, as converted
+    by the tool described in this blog post:
+
+    .. code:: asm
+
+        ; 
+        ;  FIND A "FOR" ENTRY ON THE STACK WITH THE VARIABLE POINTER
+        ;  PASSED IN [D,E].
+        ; 
+                PUBLIC FNDFOR
+        FNDFOR:
+                LD HL, OFFSET 4 +0		; IGNORING EVERYONES "NEWSTT"
+        ; AND THE RETURN ADDRESS OF THIS
+                ADD HL, SP		; SUBROUTINE, SET [H,L]=SP
+        LOOPER:
+                INC HL		; 8086 USES TWO BYTE ENTRIES
+                LD A, (HL)		; SEE WHAT TYPE OF THING IS ON THE STACK
+                INC HL
+                WHLSIZ=6
+                CP $WHILE
+                JR NZ, STKSRC
+                LD BC, OFFSET WHLSIZ
+                ADD HL, BC
+                JR LOOPER
+
+    As you can see, it retains comments referencing the 8086, going full-circle in
+    the translation that made this re-translation possible.  At least the register
+    names are correct this time around.
 
 Some work has been also being made in other forks of the GW-BASIC source code, where
 `people are trying to build it using either older versions of the Microsoft Assembler
