@@ -316,7 +316,7 @@ def gen_tags(writer, posts_by_tags, rst):
         rst = ['Posts in topic *%s*' % tag,
                '===============' + '=' * (2 + len(tag)), '']
 
-        for post in posts:
+        for post in sorted(posts, key=lambda p: p['date'], reverse=True):
             rst.append(post_link(post, True))
 
         rst.append('\n')
