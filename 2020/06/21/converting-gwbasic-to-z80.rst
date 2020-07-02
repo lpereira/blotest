@@ -275,7 +275,7 @@ One of the first things I did to implement this step was figuring out the
 register mapping between 8086 and Z80.  Guided by the comments still
 referencing the Intel 8080 comments (which have the same names as the Z80
 registers), and by the assumption that the original translation tool worked
-on an instruction-by-instruction basis rather than some sofisticated
+on an instruction-by-instruction basis rather than some sophisticated
 analysis mechanism, this wasn't a terribly difficult task.  On the right,
 a table summarizes the result of this work.  Some of it required a little bit
 more investigative work: 
