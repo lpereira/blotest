@@ -528,6 +528,8 @@ if __name__ == '__main__':
                 gen_page(writer, dirpath, filename)
 
     gen_index(writer, posts)
+
+    # FIXME: generate RSS feed per tag, too?
     gen_rss(posts)
 
     optimize_css()
