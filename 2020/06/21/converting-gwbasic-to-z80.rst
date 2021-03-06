@@ -1,7 +1,7 @@
 Converting GW-BASIC to the Z80
 ==============================
 
-.. tags:: programming, z80, assembly, retrocomputing
+.. tags:: programming, z80, assembly, retrocomputing, _featured
 
 Right after the BUILD conference, Microsoft `released the source code
 for the first version of GW-BASIC for the MS-DOS under the MIT license
