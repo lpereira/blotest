@@ -193,15 +193,18 @@ def process_tags(parts):
     if tags:
         tags = tags.split(',')
         featured = '_featured' in tags
+        draft = '_draft' in tags
         tags = sorted(set(tag for tag in tags if not tag.startswith('_')))
         return {
             'tags': tags,
-            'featured': featured
+            'featured': featured,
+            'draft': draft
         }
 
     return {
         'tags': (),
-        'featured': False
+        'featured': False,
+        'draft': False
     }
 
 def save_html(filename, parts, is_post=True, template=open('pagetemplate.html', 'r').read()):
@@ -260,6 +263,7 @@ def gen_blog_post(writer, dirpath, filename):
         'date': (year, month, day),
         'tags': tags['tags'],
         'featured': tags['featured'],
+        'draft': tags['draft'],
         'filename': ('posts/' + rel_path).replace("/./", "/"),
         'title': parts['title'],
         'first_paragraph': first_paragraph.get_first_paragraph()
@@ -301,6 +305,9 @@ def post_link(post, include_year):
     first_paragraph = textwrap.shorten(post['first_paragraph'], 256, placeholder="…")
     return '''* %s`%s </%s>`_\n    %s %s\n''' % (star, title, post['filename'], first_paragraph, date)
 
+def filter_drafts(posts):
+    return (post for post in posts if not post['draft'])
+
 def gen_tags(writer, posts_by_tags, rst):
     def topic_link(topic, n_posts):
         return '''* `%s </topic/%s.html>`_ ``%d %s``''' % (topic, topic, n_posts, "posts" if n_posts != 1 else "post")
@@ -310,6 +317,10 @@ def gen_tags(writer, posts_by_tags, rst):
 
     for tag, posts in posts_by_tags.items():
         if not tag:
+            continue
+
+        posts = filter_drafts(posts)
+        if not posts:
             continue
 
         status("Generating tag", tag)
@@ -343,6 +354,10 @@ def gen_topiclist(posts):
         if not tag:
             continue
 
+        posts = filter_drafts(posts)
+        if not posts:
+            continue
+
         rst.append('')
         rst.append(tag)
         rst.append('-' * len(tag))
@@ -362,7 +377,15 @@ def gen_index(writer, posts):
            '=================', '']
 
     last_year = -1
+
     for date in reversed(sorted(posts.keys())):
+        if not posts:
+            continue
+
+        no_drafts = list(filter_drafts(posts[date]))
+        if not no_drafts:
+            continue
+
         year, month, day = date
         if year != last_year:
             rst.append('')
@@ -371,7 +394,7 @@ def gen_index(writer, posts):
             rst.append('')
             last_year = year
 
-        for post in posts[date]:
+        for post in no_drafts:
             rst.append(post_link(post, False))
 
     rst.extend(gen_topiclist(posts))
