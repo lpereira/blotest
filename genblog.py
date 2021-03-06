@@ -508,6 +508,8 @@ if __name__ == '__main__':
     os.makedirs("genblog/posts")
     os.makedirs("genblog/topic")
 
+    shutil.copy("favicon.ico", "genblog")
+
     # FIXME: prev/next?
     # FIXME: lucene?
     # FIXME: Projects | Blog posts by: Date, Topic | About
