@@ -404,7 +404,6 @@ def gen_index(writer, posts):
         for post in no_drafts:
             rst.append(post_link(post, False))
 
-    rst.extend(gen_topiclist(posts))
 
     parts = publish_parts('\n'.join(rst), writer=writer)
     save_html(os.path.join('genblog', 'index.html'), parts, is_post=False)
@@ -558,6 +557,7 @@ if __name__ == '__main__':
                 gen_page(writer, dirpath, filename)
 
     gen_index(writer, posts)
+    gen_topiclist(posts)
 
     # FIXME: generate RSS feed per tag, too?
     gen_rss(posts)
