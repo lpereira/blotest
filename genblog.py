@@ -230,7 +230,8 @@ def save_html(filename, parts, is_post=True, template=open('pagetemplate.html', 
 
     contents = template. \
         replace("{{contents}}", body). \
-        replace("{{title}}", title)
+        replace("{{title}}", title). \
+        replace("{{coffee-visible}}", "block" if is_post else "none")
 
     with open(filename, 'w') as f:
         f.write(contents)
