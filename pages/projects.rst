@@ -210,7 +210,7 @@ This was my attempt at writing an instant messenger in the year 2000.
 Inspired by ICQ and written in Perl it even featured WebCam support (by
 detecting if the user had `camserv <http://cserv.sourceforge.net/>`__ installed).
 
-Written in an era before XML-RPC, Server-Sent-Events, and WebSockets, this thing
+Written in an era before XMLHttpRequest, Server-Sent-Events, and WebSockets, this thing
 had a borderless frame that reloaded every few seconds to show a different icon if
 there was a pending message.  In retrospect, I should have used long-polling mode and
 send ``<script>`` tags to control the other frame; this kind of thing was allowed back
