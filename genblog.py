@@ -1,4 +1,10 @@
 #!/usr/bin/python
+#
+# This absolute mess of a python script is used to generate my web page,
+# https://tia.mat.br, based on a collection of source documents marked up
+# in ReST and directory structure layout.  The HTML and CSS outputs are
+# minified and pre-compressed with gzip.
+#
 # Thanks to http://www.arnebrodowski.de/blog/write-your-own-restructuredtext-writer.html
 # Better code formatter: https://docutils.sourceforge.io/sandbox/code-block-directive/tools/pygments-enhanced-front-ends/rst2html-pygments
 
