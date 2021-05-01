@@ -102,6 +102,8 @@ def pikchr_directive(name, arguments, options, content, lineno,
     source = u'\n'.join(content)
     pikchr = subprocess.run(['./pikchr', '--svg-only', '-'],
         stdout=subprocess.PIPE, input=source, encoding='utf8')
+    if pikchr.returncode != 0:
+        raise SyntaxError(pikchr.stdout)
     return [
         nodes.raw('', "<div class=\"figure align-center\">", format='html'),
         nodes.raw('', pikchr.stdout, format='html'),
