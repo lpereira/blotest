@@ -278,11 +278,49 @@ and perform many other cleanup tasks. This ensures resources are released
 regardless if the coroutine ended normally or an unrecoverable error has
 been detected.
 
-.. figure:: https://i.imgur.com/7sHL2ZH.png
-    :alt: coroutines
-    :align: center
+.. pikchr:: Diagram of main loop plus two coroutines
 
-    Diagram of main loop plus two coroutines
+    ML: box "Main Loop" wid 150% ht 75%  fill 0xd0ece8 
+    move
+    C1: box "Connection 1" wid 150% ht 75% fill 0xd8ecd0 
+    move
+    C2: box "Connection 2" wid 150% ht 75% fill 0xe0ecc8 
+    down
+    move to ML.s
+    move
+    ML1: box "" width 20% ht 20%   fill 0xd0ece8 
+         arrow -> from bottom of ML to top of ML1
+    move 120%
+    ML2: box "" width 20% ht 40%  fill 0xd0ece8 
+         line from bottom of ML1 to top of ML2 dotted
+    move
+    ML3: box "" width 20% ht 80%  fill 0xd0ece8 
+         line from bottom of ML2 to top of ML3 dotted
+         line from bottom of ML3 dotted
+    move to C1.s
+    move 120%
+    CL1a: box "" width 20% ht 100% fill 0xd8ecd0 
+          line from bottom of C1 to top of CL1a dotted
+          arrow "Resume" above -> from ML1.se to CL1a.nw
+          arrow "Yield (can resume)" above -> from CL1a.sw to ML2.ne
+    move to CL1a.s
+    move 180%
+    CL1b: box "" width 20% ht 50% fill 0xd8ecd0 
+          line from bottom of CL1a to top of CL1b dotted
+          arrow "Resume" above -> from ML3.se to CL1b.nw
+    move to C2.s
+    move 260%
+    CL2a: box "" width 20% ht 60% fill 0xe0ecc8 
+          line from bottom of C2 to top of CL2a dotted
+          arrow "Resume" above -> from ML2.se to CL2a.nw
+          arrow "Yield (finished)" above -> from CL2a.sw to ML3.ne
+    right
+    move to CL2a.s
+    move
+    Defer: oval "Deferred" italic "callbacks" italic "called" italic
+           arrow -> from Defer.w to CL2a.se
+    arrow left from CL1b.sw dashed
+    line down from CL1b.s dotted
 
 
 On supported architectures, coroutine context switching is almost as cheap
