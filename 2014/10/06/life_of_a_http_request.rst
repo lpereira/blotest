@@ -888,11 +888,45 @@ hold state plus a few callbacks — I gave up while imagining the amount of
 boilerplate necessary. A function is simple to write on the other hand, and
 can include initialization, iteration, and cleanup.
 
-.. figure:: https://i.imgur.com/VsAfnsC.png
-    :alt: sequences
-    :align: center
+.. pikchr:: How sequences are evaluated by the templating engine
 
-    How sequences are evaluated by the templating engine
+    $margin=lineht*2.5
+
+    SEQ0: box "{{#sequence}}"  fill 0xbcd9f3
+    line down from SEQ0.s dotted
+    SEQ1: box "..." "{{/sequence}}" fill 0xacc9e3
+    line down from SEQ1.s dotted
+    SEQ2: box "..." "{{/sequence}}" fill 0xacc9e3
+    line down from SEQ2.s dotted
+    SEQ3: box "{{/sequence}}" fill 0xacc9e3
+    arrow down from SEQ3.s
+    SEQ4: box  fill 0x9cb9d3
+
+    GEN0: box same with .nw at 1.25*$margin east of 1st box.se  fill 0xc9ace3
+    line down from GEN0.s dotted
+    GEN1: box same  fill 0xc9ace3
+    line down from GEN1.s dotted
+    GEN2: box same "Generator" "finished"  fill 0xe3acc9
+
+    arrow from SEQ0.e to GEN0.w
+    arrow from GEN0.w to SEQ1.e
+    arrow from SEQ1.e to GEN1.w
+    arrow from GEN1.w to SEQ2.e
+    arrow from SEQ2.e to GEN2.w
+    arrow from GEN2.w to SEQ3.e
+
+    text with .s at 0 north of 1st box.n "Template Engine"
+    text with .s at 0 north of 6th box.n "Generator Function"
+
+    text with .w at 0 east of 6th box.e "yield 1"
+    text with .w at 0 east of 7th box.e "yield 1"
+    text with .w at 0 east of 8th box.e "yield 0"
+
+    text with .e at 0 west of 1st box.w "First iteration"
+    text with .e at 0 west of 2nd box.w "Recurse"
+    text with .e at 0 west of 3rd box.w "Recurse"
+    text with .e at 0 west of 4th box.w "Recurse"
+    text with .e at 0 west of 5th box.w "Continue" "rendering"
 
 The only user of sequences in templates within Lwan is the file listing
 feature in the file serving module. The generator function is pretty
