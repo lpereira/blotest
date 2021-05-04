@@ -96,8 +96,6 @@ pygments_directive.content = 1
 def pikchr_directive(name, arguments, options, content, lineno,
                        content_offset, block_text, state, state_machine,
 		       pygments_formatter = HtmlFormatter()):
-    if not os.path.exists("./pikchr"):
-        os.system("gcc -DPIKCHR_SHELL -o pikchr pikchr.c -lm")
 
     source = u'\n'.join(content)
     pikchr = subprocess.run(['./pikchr', '--svg-only', '-'],
@@ -449,10 +447,6 @@ def gen_index(writer, posts):
 
 
 def optimize_css():
-    if not os.path.exists('./node_modules/.bin/csso'):
-        print("To minify CSS: npm install csso-cli")
-        return
-
     status("Minifying CSS")
     csso = subprocess.Popen(["./node_modules/.bin/csso"],
                             stdin=subprocess.PIPE, stdout=subprocess.PIPE)
@@ -498,10 +492,6 @@ def minify(src):
     html_minify.communicate()
 
 def minimize_html():
-    if not os.path.exists("./node_modules/.bin/html-minifier"):
-        print("To minify HTML: npm install html-minifier")
-        return
-
     to_minify = []
     for dirpath, dirnames, filenames in os.walk('genblog'):
         for filename in filenames:
@@ -563,6 +553,13 @@ if __name__ == '__main__':
     docutils.parsers.rst.directives.register_directive('graphviz', graphviz_directive)
     docutils.parsers.rst.directives.register_directive('code-block', pygments_directive)
     docutils.parsers.rst.directives.register_directive('code', pygments_directive)
+
+    if not os.path.exists("./pikchr"):
+        os.system("gcc -DPIKCHR_SHELL -o pikchr pikchr.c -lm")
+    if not os.path.exists("./node_modules/.bin/html-minifier"):
+        os.system("npm install html-minifier")
+    if not os.path.exists('./node_modules/.bin/csso'):
+        os.system("npm install csso-cli")
 
     writer = BlogHTMLWriter()
 
