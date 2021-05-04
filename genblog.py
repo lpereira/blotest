@@ -113,6 +113,25 @@ def pikchr_directive(name, arguments, options, content, lineno,
 pikchr_directive.arguments = (1, 0, 1)
 pikchr_directive.content = 1
 
+def graphviz_directive(name, arguments, options, content, lineno,
+                       content_offset, block_text, state, state_machine,
+		       pygments_formatter = HtmlFormatter()):
+    source = u'\n'.join(content)
+    dot = subprocess.run(['dot', '-Tsvg'],
+        stdout=subprocess.PIPE, input=source, encoding='utf8')
+    if dot.returncode != 0:
+        raise SyntaxError(dot.stdout)
+    #  width="826pt" height="557pt" viewBox="0.00 0.00 826.00 557.34"
+    dot.stdout = re.sub('(width|height)="\d+pt"\s*', '', dot.stdout)
+    return [
+        nodes.raw('', "<div class=\"figure align-center\">", format='html'),
+        nodes.raw('', dot.stdout, format='html'),
+        nodes.raw('', "<p class=\"caption\">%s</p>" % ' '.join(arguments), format='html'),
+        nodes.raw('', "</div>", format='html'),
+    ]
+graphviz_directive.arguments = (1, 0, 1)
+graphviz_directive.content = 1
+
 original_assert_has_content = docutils.parsers.rst.Directive.assert_has_content
 def assert_has_content(self):
     if isinstance(self, CommentsDirective):
@@ -541,6 +560,7 @@ if __name__ == '__main__':
     docutils.parsers.rst.directives.register_directive('posted', PostedDirective)
     docutils.parsers.rst.directives.register_directive('youtube', YoutubeDirective)
     docutils.parsers.rst.directives.register_directive('pikchr', pikchr_directive)
+    docutils.parsers.rst.directives.register_directive('graphviz', graphviz_directive)
     docutils.parsers.rst.directives.register_directive('code-block', pygments_directive)
     docutils.parsers.rst.directives.register_directive('code', pygments_directive)
 
