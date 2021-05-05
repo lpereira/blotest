@@ -268,7 +268,8 @@ def process_tags(parts):
         'draft': False
     }
 
-def save_html(filename, parts, is_post=True, template=open('pagetemplate.html', 'r').read()):
+def save_html(filename, parts, is_post=True, template=open('pagetemplate.html', 'r').read(),
+                blog_css_timestamp=[None]):
     tags = process_tags(parts)
     if tags['tags']:
         tags = '\n'.join('<li><a href="/topic/%s.html">%s</a></li>' % (tag, tag) for tag in tags['tags'])
@@ -283,10 +284,14 @@ def save_html(filename, parts, is_post=True, template=open('pagetemplate.html', 
 
     title = re.sub('<[^<]+?>', '', parts['title'])
 
+    if blog_css_timestamp[0] is None:
+        blog_css_timestamp[0] = str(int(os.stat('blog.css').st_mtime))
+
     contents = template. \
         replace("{{contents}}", body). \
         replace("{{title}}", title). \
-        replace("{{coffee-visible}}", "block" if is_post else "none")
+        replace("{{coffee-visible}}", "block" if is_post else "none"). \
+        replace("{{blog-css-timestamp}}", blog_css_timestamp[0])
 
     with open(filename, 'w') as f:
         f.write(contents)
