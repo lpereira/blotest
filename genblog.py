@@ -194,8 +194,26 @@ class BlogHTMLTranslator(html4css1.HTMLTranslator):
     def depart_section(self, node):
         self.section_level -= 1
 
+    def _anchor_from_node(self, node):
+        anchor = node.astext()
+        anchor = anchor.lower()
+        anchor = re.sub('[^a-z0-9-]', '-', anchor)
+        return anchor
+
     def visit_title(self, node):
         if self.found_title:
+            if isinstance(node.parent, nodes.section):
+                anchor_id = self._anchor_from_node(node)
+                self.body.append(self.starttag(node, 'span', '', ids=(anchor_id,),
+                        CLASS='anchor'))
+                self.body.append('</span>')
+
+                h_level = self.section_level
+                self.body.append(self.starttag(node, 'h%s' % h_level, ''))
+                self.body.append(self.starttag(node, 'a', href='#%s' % anchor_id))
+                self.context.append('</a></h%s>' % h_level)
+                return
+
             return super(html4css1.HTMLTranslator, self).visit_title(node)
 
         self.body.append(self.starttag(node, 'span', '', CLASS='title'))

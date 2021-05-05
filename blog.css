@@ -58,12 +58,20 @@
 .document h1 { font-size: 20px; font-weight: normal; font-family: monospace; }
 .document h2 { font-size: 18px }
 .document h3 { font-size: 16px }
-.document h1, .document h2, .document h3 {
+.document h1 a, .document h2 a, .document h3 a {
     color: #628d4d;
     margin-bottom: -8px;
     font-weight: normal;
     font-family: monospace;
     text-shadow: 0px 0px 16px #000;
+    border-bottom: 1px dotted #628d4d;
+    text-decoration: none;
+}
+.document .anchor {
+    display: block;
+    height: 64px;
+    margin-top: -64px;
+    visibility: hidden;
 }
 .document h1 { margin-top: 48px }
 .document h2 { margin-top: 32px }
