@@ -67,12 +67,6 @@
     border-bottom: 1px dotted #628d4d;
     text-decoration: none;
 }
-.document .anchor {
-    display: block;
-    height: 64px;
-    margin-top: -64px;
-    visibility: hidden;
-}
 .document h1 { margin-top: 48px }
 .document h2 { margin-top: 32px }
 .document h3 { margin-top: 16px }
@@ -352,6 +346,13 @@ body {
 .highlight .vi { color: #268bd2 }
 .highlight .vm { color: #268bd2 }
 .highlight .il { color: #2aa198 }
+
+.document .anchor {
+    display: block;
+    height: 64px;
+    margin-top: -64px;
+    visibility: hidden;
+}
 @media all and (max-width:600px) {
     .document {
         padding: 16px;
@@ -392,6 +393,10 @@ body {
         padding-right: 16px;
         margin-left: -16px;
         margin-right: -16px;
+    }
+    .document .anchor {
+        height: 96px;
+        margin-top: -96px;
     }
 }
 .coffee {
