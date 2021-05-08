@@ -98,12 +98,12 @@ def pikchr_directive(name, arguments, options, content, lineno,
 		       pygments_formatter = HtmlFormatter()):
 
     source = u'\n'.join(content)
-    pikchr = subprocess.run(['./pikchr', '--svg-only', '-'],
+    pikchr = subprocess.run(['./pikchr', '--dark-mode', '--svg-only', '-'],
         stdout=subprocess.PIPE, input=source, encoding='utf8')
     if pikchr.returncode != 0:
         raise SyntaxError(pikchr.stdout)
     return [
-        nodes.raw('', "<div class=\"figure align-center\">", format='html'),
+        nodes.raw('', "<div class=\"pikchr align-center\">", format='html'),
         nodes.raw('', pikchr.stdout, format='html'),
         nodes.raw('', "<p class=\"caption\">%s</p>" % ' '.join(arguments), format='html'),
         nodes.raw('', "</div>", format='html'),

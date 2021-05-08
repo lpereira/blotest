@@ -234,7 +234,8 @@ body {
     font-family: monospace;
     margin-top: 16px;
 }
-.document img, .document svg { max-width: calc(90% - 64px); box-shadow: 0px 0px 16px #000; background-color: #eee; padding: 16px; }
+.document img { max-width: calc(90% - 64px); box-shadow: 0px 0px 16px #000; background-color: #eee; padding: 16px; }
+.document svg { max-width: calc(90% - 64px); padding: 16px; }
 .document pre { margin: 0 }
 .document .highlight, .document .literal-block {
     background: #002b36;

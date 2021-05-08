@@ -4594,6 +4594,12 @@ static void pik_append_point(Pik *p, const char *z, PPoint *pPt){
   pik_append(p, buf, -1);
 }
 
+static unsigned int
+rgb_to_yiq(int r, int g, int b)
+{
+    return ((r * 299) + (g * 587) + (b * 114)) / 1000;
+}
+
 /*
 ** Invert the RGB color so that it is appropriate for dark mode.
 ** Variable x hold the initial color.  The color is intended for use
@@ -4602,34 +4608,20 @@ static void pik_append_point(Pik *p, const char *z, PPoint *pPt){
 */
 static int pik_color_to_dark_mode(int x, int isBg){
   int r, g, b;
-  int mn, mx;
+
   x = 0xffffff - x;
+
   r = (x>>16) & 0xff;
   g = (x>>8) & 0xff;
   b = x & 0xff;
-  mx = r;
-  if( g>mx ) mx = g;
-  if( b>mx ) mx = b;
-  mn = r;
-  if( g<mn ) mn = g;
-  if( b<mn ) mn = b;
-  r = mn + (mx-r);
-  g = mn + (mx-g);
-  b = mn + (mx-b);
-  if( isBg ){
-    if( mx>127 ){
-      r = (127*r)/mx;
-      g = (127*g)/mx;
-      b = (127*b)/mx;
-    }
-  }else{
-    if( mn<128 && mx>mn ){
-      r = 127 + ((r-mn)*128)/(mx-mn);
-      g = 127 + ((g-mn)*128)/(mx-mn);
-      b = 127 + ((b-mn)*128)/(mx-mn);
-    }
-  }
-  return r*0x10000 + g*0x100 + b;
+
+  if (rgb_to_yiq(r, g, b) > 0x7f)
+    return ((r * 3) / 4) << 16 | ((g * 3) / 4) << 8 | ((b * 3) / 4);
+
+  if (isBg)
+    return x;
+
+  return ((r + 32) & 0xff) << 16 | ((g + 32) & 0xff) << 8 | ((b + 32) & 0xff);
 }
 
 /* Append a PNum value surrounded by text.  Do coordinate transformations
