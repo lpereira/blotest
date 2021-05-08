@@ -197,7 +197,9 @@ class BlogHTMLTranslator(html4css1.HTMLTranslator):
     def _anchor_from_node(self, node):
         anchor = node.astext()
         anchor = anchor.lower()
-        anchor = re.sub('[^a-z0-9-]', '-', anchor)
+        anchor = re.sub(r'[^a-z0-9-]', '-', anchor)
+        anchor = re.sub(r'\-+', '-', anchor)
+        anchor = re.sub(r'\-$', '', anchor)
         return anchor
 
     def visit_title(self, node):
